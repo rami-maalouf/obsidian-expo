@@ -19,6 +19,20 @@ defaults:
     shell: bash
 
 jobs:
+  vault-core-tests:
+    runs-on: macos-26
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: select the newest stable xcode
+        run: |
+          xcode=$(ls -d /Applications/Xcode_*.app | grep -viE 'beta|release_candidate|_rc' | sort -V | tail -1)
+          sudo xcode-select -s "$xcode"
+          xcodebuild -version
+          swift --version
+      - name: swift test
+        run: swift test --package-path modules/vault
+
   simulator-build:
     runs-on: macos-26
     timeout-minutes: 75
@@ -44,6 +58,8 @@ jobs:
         run: bunx expo prebuild --platform ios
         env:
           CI: 1
+      - name: confirm the local vault module is autolinked
+        run: grep -rl 'VaultModule' ios/Pods/Target\ Support\ Files/*/ExpoModulesProvider.swift
       - name: build for the simulator
         run: |
           workspace=$(ls -d ios/*.xcworkspace | head -1)
