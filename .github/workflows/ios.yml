@@ -101,6 +101,20 @@ jobs:
           (cd tests/fixtures/vault-basic && find . -type f -exec shasum -a 256 {} + | sort -k2) > smoke/before.txt
           (cd "$data/Documents/vault" && find . -type f ! -path "./Daily/$today.md" -exec shasum -a 256 {} + | sort -k2) > smoke/after.txt
           diff smoke/before.txt smoke/after.txt
+          # the app indexes the vault with fts5 in its own sqlite build.
+          expected=$(cd "$data/Documents/vault" && find . -type f -name '*.md' -not -path '*/.*' | wc -l | tr -d ' ')
+          for _ in $(seq 1 60); do
+            db=$(ls "$data"/Library/Caches/vault-index/index-*.db 2>/dev/null | head -1 || true)
+            if [ -n "$db" ]; then
+              indexed=$(sqlite3 "$db" "select count(*) from notes where indexed_modified is not null" 2>/dev/null || echo 0)
+              [ "$indexed" = "$expected" ] && break
+            fi
+            sleep 1
+          done
+          echo "index: $db, $indexed of $expected notes indexed"
+          [ "$indexed" = "$expected" ]
+          sqlite3 "$db" "select n.path from note_text join notes n on n.id = note_text.rowid where note_text match '\"callout\"*'" | tee smoke/fts.txt
+          grep -qx 'Welcome.md' smoke/fts.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

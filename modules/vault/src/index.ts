@@ -41,6 +41,8 @@ export type NativeDraft = {
 /** the native vault module. it exists only in ios builds; web and expo go return null. */
 export type VaultNativeModule = {
   readonly coreVersion: string;
+  /** app caches folder for the disposable search index. */
+  readonly indexDirectory: string;
   /** returns null for a valid vault-relative path, or the reason it is refused. */
   checkRelativePath(path: string): string | null;
   /** resolves null when the user cancels; an open vault stays open. */
