@@ -63,7 +63,11 @@ for _ in $(seq 1 60); do
 done
 echo "index: $indexed of $expected notes indexed"
 [ "$indexed" = "$expected" ]
-sqlite3 "$db" "select n.path from note_text join notes n on n.id = note_text.rowid where note_text match '\"callout\"*'" | tee "$out/fts.txt"
+# the runner's sqlite3 tool has no fts5 module, so check the app-created fts5 table through its
+# schema and its plain content table; the maestro flow then searches through the app itself.
+sqlite3 "$db" "select sql from sqlite_master where name = 'note_text'" | tee "$out/fts.txt"
+grep -qi 'using fts5' "$out/fts.txt"
+sqlite3 "$db" "select n.path from note_text_content c join notes n on n.id = c.id where c.c1 like '%Callout title%'" | tee -a "$out/fts.txt"
 grep -qx 'Welcome.md' "$out/fts.txt"
 
 if [ "$#" -gt 0 ]; then
