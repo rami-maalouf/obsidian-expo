@@ -18,6 +18,8 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   private var hasPendingEdits = false
   private var applyingNewline = false
   private var lastStatus: String?
+  /// "saved locally" is shown only after a save of this document completed (integrity gate).
+  private var savedSinceOpen = false
   private var observers: [NSObjectProtocol] = []
   private static let settleDelay: TimeInterval = 0.2
 
@@ -55,11 +57,17 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   }
 
   deinit {
-    observers.forEach(NotificationCenter.default.removeObserver)
-    debounce?.cancel()
-    if hasPendingEdits, let document {
-      document.update(text: textView.text)
-      document.persist()
+    for observer in observers {
+      NotificationCenter.default.removeObserver(observer)
+    }
+  }
+
+  /// saves edits made in the last moments before the view is removed, for example when the
+  /// user opens search or another note.
+  public override func willMove(toSuperview newSuperview: UIView?) {
+    super.willMove(toSuperview: newSuperview)
+    if newSuperview == nil {
+      flush()
     }
   }
 
@@ -80,6 +88,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     }
     flush()
     openedTarget = target
+    savedSinceOpen = false
     document = nil
     textView.isEditable = false
     textView.text = ""
@@ -90,7 +99,13 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
       return
     }
     let document = DocumentSession(vaultId: vaultId, path: path, session: session, journal: journal) { [weak self] status in
-      DispatchQueue.main.async { self?.emit(VaultEditorView.payload(status)) }
+      DispatchQueue.main.async {
+        guard let self, self.openedTarget == target else { return }
+        if status == .saving {
+          self.savedSinceOpen = true
+        }
+        self.emit(VaultEditorView.payload(status, savedSinceOpen: self.savedSinceOpen))
+      }
     }
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let outcome = document.load()
@@ -251,11 +266,11 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     onStatus(payload)
   }
 
-  static func payload(_ status: DocumentStatus) -> [String: Any] {
+  static func payload(_ status: DocumentStatus, savedSinceOpen: Bool) -> [String: Any] {
     switch status {
     case .loading: return ["status": "loading"]
     case let .readOnly(encoding): return ["status": "read-only", "detail": encoding]
-    case .clean: return ["status": "saved"]
+    case .clean: return ["status": savedSinceOpen ? "saved" : "opened"]
     case .dirty: return ["status": "unsaved"]
     case .journaled: return ["status": "unsaved", "detail": "journaled"]
     case .saving: return ["status": "saving"]

@@ -11,6 +11,7 @@ describe('statusLabel', () => {
   test('only a completed save reads "Saved locally"', () => {
     const statuses: EditorStatus[] = [
       'loading',
+      'opened',
       'unsaved',
       'saving',
       'saved',
