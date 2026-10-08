@@ -104,47 +104,45 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 ## T07. Explorer and result virtualization
 
-**Decided provisionally:** October 8, 2026, for U4 search results; U5 revisits it for the explorer.
+**Decided:** October 8, 2026; revised for the native shell (T08).
 
-**Choice:** option A, the core `FlatList`, with no extra dependency. Result rows hold no local state, so recycling concerns do not apply.
+**Choice:** the explorer and search results are SwiftUI lists from `@expo/ui`: `List.ForEach` with `data` and `keyExtractor`, which renders only the rows near the visible range and reuses them while scrolling. The folder tree is still flattened in TypeScript (`src/features/explorer/tree.ts`), so only expanded folders produce rows.
 
-**Alternatives:** `@shopify/flash-list` (SDK 58 lists 2.3.2). It will be compared on the explorer in U5, where rapid scrolling and expansion matter more.
+**Alternatives:** the core `FlatList` (the earlier choice, not native list cells) and `@shopify/flash-list` (SDK 58 lists 2.3.2), which has the same limit.
 
-**Limits:** scrolling, Dynamic Type, and VoiceOver checks on a device are open.
+**Limits:** scrolling a 10,000-note tree, Dynamic Type, and VoiceOver have not been checked on a device.
 
 ## T08. Navigation shell
 
-**Decided provisionally:** October 8, 2026, for U5 and U7. iPad resizing and VoiceOver checks remain open.
+**Decided:** October 8, 2026, at the user's direction, replacing the provisional layout built from React Native views. The user asked for native sidebars and menus with Liquid Glass, a theme that follows the phone, and an Obsidian-like layout: files on the left, calendar on the right.
 
-**Choice:** one Expo Router Stack screen that lays out its own panes with React Native views and `useWindowDimensions`. At 768 points and wider the file sidebar stays beside the editor; below that it opens as a full-screen drawer from a Files button. At 1,180 points and wider the calendar is a trailing panel; below that it opens over the editor. Search and settings open over the editor. Only one overlay is visible at a time (A2). No dependency was added.
+**Choice:** a native `UISplitViewController` through Expo Router's `SplitView` (`expo-router/unstable-split-view`, from `expo-router@58.0.16`, built on `react-native-screens@4.28.0`). The root layout renders `SplitView.Column` with the file sidebar, the detail column with the notes stack, and `SplitView.Inspector` (iOS 26) with the calendar. On iPad, the sidebar and the inspector sit beside the editor and use the system's Liquid Glass sidebar style; on iPhone, the split view collapses to the editor, the sidebar opens from a toolbar button, and the inspector opens as a sheet. The detail column is an Expo Router native `Stack`: the note title is the navigation title, and `Stack.Toolbar` gives native bar buttons and menus (sidebar, bookmark, search, calendar, more). Search and daily-note settings open as native form sheets. The split view needs `RNS_GAMMA_ENABLED=1`, which the `expo-router` config plugin always writes to the Podfile.
 
-**Alternatives:** the Expo Router drawer, which needs `@react-navigation/drawer` and adds a gesture drawer; Router SplitView, which its documentation calls alpha and not for production; and `@expo/ui` `NavigationSplitView`, a preview in SDK 58. The current layout keeps the required behavior without a preview API; the gesture drawer can be added later if device testing shows the button-opened drawer is not enough.
+**App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The iOS workflow checks both settings after `expo prebuild`.
 
-**App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode, so the wide layout never appears. All four orientations are needed for rotation (R17) and for iPad multitasking, which iPadOS gives only to apps that support every orientation and do not require full screen. The iOS workflow checks both settings after `expo prebuild`.
+**Alternatives:** `@expo/ui` `NavigationSplitView` (SwiftUI) has a sidebar and detail but no inspector column, so the calendar could not sit on the right; the earlier React Native panes (not native, the reason for this change).
 
-**Limits:** no swipe gesture for the drawer; split-screen and Slide Over widths on iPad, state restoration, and keyboard focus after closing overlays are untested.
+**Risks:** the router's split view is marked unstable (alpha) in its documentation. Its column API is small, and changing the number of columns remounts it, so the app always renders both the sidebar and the inspector.
+
+**Limits:** VoiceOver, keyboard focus, Stage Manager window sizes, and the iPadOS menu bar have not been checked on a device. iPadOS menu-bar commands are not implemented yet.
 
 ## T09. Calendar
 
-**Decided provisionally:** October 8, 2026, for U7.
+**Decided:** October 8, 2026, at the user's direction, replacing the React Native month grid.
 
-**Choice:** a small month grid built with React Native views (`src/features/calendar/`). It uses the same civil-date code as the template renderer, gives every day an explicit press handler (so re-tapping the selected day opens it again), labels each day for VoiceOver with the weekday, date, "today", and "has a daily note", and shows a dot for days whose note exists. Weeks start on Monday. No dependency was added.
+**Choice:** the native SwiftUI graphical `DatePicker` from `@expo/ui@58.0.14` in the inspector column, with a Today button and the daily-note settings in the inspector's toolbar. A picked day opens or creates that day's note through the existing daily-note resolver.
 
-**Alternatives:** the `@expo/ui` SwiftUI DatePicker, whose events describe selection changes (so re-selecting the same day needs a workaround) and which cannot mark days; `react-native-calendars@1.1314.0`, which supports day presses and markings but is a further dependency whose accessibility the app would still own.
-
-**Validation:** `tests/unit/calendar.test.ts` covers the grid, leap February, Sunday- and Monday-first weeks, paging across years, and VoiceOver labels.
-
-**Limits:** the week start does not follow the device locale yet; month and weekday names are English; VoiceOver and Dynamic Type checks on a device are open.
+**Trade-offs:** the native picker cannot mark days that have a note, and picking the already selected day sends no change, so Today is a separate button. The pure month-grid code (`src/features/calendar/month.ts`) and its tests remain for these labels and for a later marked-day view.
 
 ## T11. UI state and styling
 
-**Decided:** October 8, 2026, for the U1-U3 shell.
+**Decided:** October 8, 2026; styling revised at the user's direction.
 
-**Choice:** option A for both layers. UI state uses React state and effects, with asynchronous results keyed to the request that produced them so a stale result is never shown. Editor text stays native. Styling uses React Native `StyleSheet` with the existing theme tokens in `src/constants/theme.ts` and the system light and dark appearance. No dependency was added.
+**Choice:** UI state uses React state and context: a workspace provider holds the open vault, its settings, notes, bookmarks, search index, drafts, and the open note, and passes them to the sidebar, editor, and calendar. Asynchronous results stay keyed to the request that produced them. Editor text stays native. Chrome uses native components: `@expo/ui` SwiftUI views (`List` with the sidebar style, `Form`, `Section`, `Button`, `Menu`, `DatePicker`, `ContentUnavailableView`, `ProgressView`) inside `Host`, and native navigation bars and toolbars. Colors come from the system (`PlatformColor` and SwiftUI defaults), so light and dark follow the phone. The accent is Obsidian's purple, `#7F6DF2`.
 
-**Alternatives:** `zustand@5.0.15` for shared state; `uniwind@1.12.2` or `react-native-unistyles@3.5.1` for styling. Neither is needed while the shell has one screen; this will be revisited with the sidebar and calendar (U5, U7) if shared state grows.
+**Alternatives:** `zustand@5.0.15` for shared state, not needed for one provider; `uniwind@1.12.2` or `react-native-unistyles@3.5.1`, not needed because native components style themselves.
 
-**Validation:** type check, lint, and production export. Rerender measurements during typing and indexing need a profiler on a device and remain open.
+**Validation:** type check, lint, production export, the iOS Release build, and the Simulator flows. Rerender measurements during typing and indexing need a profiler on a device and remain open.
 
 ## T12 (part). Test runner for pure TypeScript logic
 
@@ -236,4 +234,4 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
-| T08, T09 device qualification | U5, U7 | iPhone and iPad layout, multitasking widths, keyboard focus, and VoiceOver checks |
+| T08, T09 device qualification | U5, U7 | Native split view and inspector on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar |
