@@ -7,6 +7,8 @@ public struct VaultEntry: Equatable, Sendable {
   public let modified: Date?
   /// `.readable` or `.placeholder`.
   public let state: FileState
+  /// volume and inode, which survive a rename on the same volume; nil when unknown.
+  public let fileId: String?
 }
 
 public struct EnumerationSummary: Equatable, Sendable {
@@ -18,6 +20,15 @@ public struct EnumerationSummary: Equatable, Sendable {
 }
 
 extension VaultFiles {
+  /// "<device>:<inode>" for a file, or nil. used to recognize a renamed file, never to guess.
+  static func fileId(of url: URL) -> String? {
+    var info = stat()
+    guard lstat(url.path, &info) == 0 else {
+      return nil
+    }
+    return "\(info.st_dev):\(info.st_ino)"
+  }
+
   /// lists markdown files in batches without reading or downloading them, so filenames are
   /// known before content indexing (ktd4). hidden folders such as .obsidian and all symlinks
   /// are skipped. return false from `handle` to stop. run this off the main thread.
@@ -82,7 +93,8 @@ extension VaultFiles {
         path: path,
         size: state == .readable ? values?.fileSize : nil,
         modified: values?.contentModificationDate,
-        state: state
+        state: state,
+        fileId: state == .readable ? VaultFiles.fileId(of: url) : nil
       ))
       count += 1
       if batch.count >= batchSize {

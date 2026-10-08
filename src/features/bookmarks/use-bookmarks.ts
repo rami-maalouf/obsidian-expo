@@ -8,6 +8,7 @@ import {
   addBookmark,
   type BookmarkList,
   EMPTY_BOOKMARKS,
+  followMoves,
   moveBookmark,
   parseBookmarks,
   removeBookmark,
@@ -17,7 +18,7 @@ export function bookmarksKey(vaultId: string) {
   return `vault:${vaultId}:bookmarks`;
 }
 
-export function useBookmarks(vaultId: string) {
+export function useBookmarks(vaultId: string, notes: { path: string; fileId?: string }[] | null = null) {
   const [list, setList] = useState<BookmarkList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const latest = useRef<BookmarkList>(EMPTY_BOOKMARKS);
@@ -50,10 +51,18 @@ export function useBookmarks(vaultId: string) {
     [vaultId],
   );
 
+  // when the listing changes, follow positively observed moves and record identities.
+  useEffect(() => {
+    if (!notes || !list) return;
+    const next = followMoves(latest.current, notes);
+    if (next !== latest.current) update(() => next);
+  }, [notes, list, update]);
+
   return {
     list,
     error,
-    add: (path: string) => update((current) => addBookmark(current, path, Date.now())),
+    add: (path: string) =>
+      update((current) => addBookmark(current, path, Date.now(), notes?.find((note) => note.path === path)?.fileId)),
     remove: (path: string) => update((current) => removeBookmark(current, path)),
     move: (from: string, to: string) => update((current) => moveBookmark(current, from, to)),
   };

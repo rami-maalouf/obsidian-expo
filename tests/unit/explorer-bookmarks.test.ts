@@ -3,6 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   addBookmark,
   EMPTY_BOOKMARKS,
+  followMoves,
   moveBookmark,
   parseBookmarks,
   removeBookmark,
@@ -105,6 +106,28 @@ describe('bookmarks', () => {
   test('moving onto an existing bookmark keeps one entry', () => {
     const list = addBookmark(addBookmark(EMPTY_BOOKMARKS, 'A.md', 1), 'B.md', 2);
     expect(moveBookmark(list, 'A.md', 'B.md').items).toEqual([{ path: 'B.md', addedAt: 2 }]);
+  });
+
+  test('a positively observed move is followed; anything else stays missing', () => {
+    let list = addBookmark(EMPTY_BOOKMARKS, 'Old.md', 1, 'dev:1');
+    list = addBookmark(list, 'NoId.md', 2);
+    list = addBookmark(list, 'Twice.md', 3, 'dev:3');
+    const notes = [
+      { path: 'Folder/Renamed.md', fileId: 'dev:1' },
+      { path: 'Copy A.md', fileId: 'dev:3' },
+      { path: 'Copy B.md', fileId: 'dev:3' },
+      { path: 'Unrelated.md', fileId: 'dev:9' },
+    ];
+    const next = followMoves(list, notes);
+    expect(next.items.map((item) => item.path)).toEqual(['Folder/Renamed.md', 'NoId.md', 'Twice.md']);
+    expect(viewBookmarks(next, new Set(notes.map((note) => note.path))).map((item) => item.missing)).toEqual([false, true, true]);
+  });
+
+  test('present bookmarks learn their file identity; unchanged lists are returned as is', () => {
+    const list = addBookmark(EMPTY_BOOKMARKS, 'A.md', 1);
+    const learned = followMoves(list, [{ path: 'A.md', fileId: 'dev:5' }]);
+    expect(learned.items).toEqual([{ path: 'A.md', addedAt: 1, fileId: 'dev:5' }]);
+    expect(followMoves(learned, [{ path: 'A.md', fileId: 'dev:5' }])).toBe(learned);
   });
 
   test('stored json is validated', () => {
