@@ -14,7 +14,10 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ramimaalouf.obsidianexpo",
-      "icon": "./assets/icons/app.icon"
+      "icon": "./assets/icons/app.icon",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.ramimaalouf.obsidianexpo",
@@ -48,6 +51,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "34b038c2-b880-4e9a-b790-38a7441e6486"
+      }
     }
   }
 }
