@@ -25,6 +25,12 @@ udid=$(xcrun simctl list devices available -j | jq -r --arg prefix "$prefix" '[.
 xcrun simctl list devices available | grep "$udid"
 xcrun simctl boot "$udid"
 xcrun simctl bootstatus "$udid" -b
+# simulator keyboard settings, not app settings: typed test text stays exact, and the keyboard
+# does less work while maestro types. in run 37766313601 maestro's typing never reported a
+# result while the prediction bar was showing, although the app had saved the text.
+for key in KeyboardAutocorrection KeyboardPrediction KeyboardCheckSpelling KeyboardAutocapitalization; do
+  xcrun simctl spawn "$udid" defaults write com.apple.Preferences "$key" -bool NO
+done
 xcrun simctl install "$udid" "$app"
 data=$(xcrun simctl get_app_container "$udid" "$bundle" data)
 mkdir -p "$data/Documents/vault"
