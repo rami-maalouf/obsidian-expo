@@ -1,11 +1,11 @@
 /**
  * the note between the two side panels: drafts to recover before today, then the open note
- * (flow f2). the note title is the native navigation title. the toolbar opens the files
- * panel, today's note, and the calendar panel; bookmark, search, and the rest are in the
- * native "more" menu (t08).
+ * (flow f2). the note title is the native navigation title. the toolbar's left group opens the
+ * files panel and today's note; the right group opens the calendar panel and the native
+ * "more" menu with bookmark, search, and the rest (t08).
  */
 import { Stack, useRouter } from 'expo-router';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
 import { NoteEditor, noteTitle } from '@/features/editor/note-editor';
@@ -71,11 +71,10 @@ export function NotesScreen() {
           selected={workspace.wide && workspace.filesOpen}
           onPress={() => workspace.setFilesOpen(!workspace.filesOpen)}
         />
+        {/* today's day number on a calendar page, like the calendar app's icon. */}
+        <Stack.Toolbar.Button icon={todayIcon(workspace.civilToday.day)} accessibilityLabel="Open today's note" onPress={workspace.openToday} />
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button accessibilityLabel="Open today's note" onPress={workspace.openToday}>
-          Today
-        </Stack.Toolbar.Button>
         <Stack.Toolbar.Button
           icon="calendar"
           accessibilityLabel="Calendar"
@@ -106,6 +105,13 @@ export function NotesScreen() {
       {content}
     </>
   );
+}
+
+/** sf symbols has a calendar page for every day of the month: 1.calendar to 31.calendar. */
+type ToolbarIcon = ComponentProps<typeof Stack.Toolbar.Button>['icon'];
+
+function todayIcon(day: number): ToolbarIcon {
+  return `${day}.calendar` as ToolbarIcon;
 }
 
 function TodayProblem({ outcome, onRetry }: { outcome: DailyNoteOutcome; onRetry: () => void }) {

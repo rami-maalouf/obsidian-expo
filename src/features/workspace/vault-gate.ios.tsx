@@ -67,8 +67,10 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
 
 /** how far from a screen edge a swipe starts opening a panel. */
 const EDGE_SWIPE = 32;
-/** panels never cover more of a phone than this. */
-const PANEL_WIDTH = 320;
+/** the files panel's width; it never covers more than 86% of a phone. */
+const FILES_WIDTH = 320;
+/** the calendar panel is a little wider, so the graphical month fits with its margins. */
+const CALENDAR_WIDTH = 360;
 
 /**
  * the note with a side panel on each edge (t08): files on the left, the calendar on the right.
@@ -77,7 +79,8 @@ const PANEL_WIDTH = 320;
 function WorkspacePanels() {
   const { wide, filesOpen, setFilesOpen, calendarOpen, setCalendarOpen } = useWorkspace();
   const { width } = useWindowDimensions();
-  const panelStyle = [styles.panel, { width: Math.min(PANEL_WIDTH, Math.round(width * 0.86)) }];
+  const filesStyle = [styles.panel, { width: Math.min(FILES_WIDTH, Math.round(width * 0.86)) }];
+  const calendarStyle = [styles.panel, { width: Math.min(CALENDAR_WIDTH, Math.round(width * 0.92)) }];
   return (
     <Drawer
       open={filesOpen}
@@ -85,7 +88,7 @@ function WorkspacePanels() {
       onClose={() => setFilesOpen(false)}
       drawerPosition="left"
       drawerType={wide && filesOpen ? 'permanent' : 'front'}
-      drawerStyle={panelStyle}
+      drawerStyle={filesStyle}
       overlayStyle={styles.scrim}
       overlayAccessibilityLabel="Close files"
       swipeEdgeWidth={EDGE_SWIPE}
@@ -101,7 +104,7 @@ function WorkspacePanels() {
         onClose={() => setCalendarOpen(false)}
         drawerPosition="right"
         drawerType={wide && calendarOpen ? 'permanent' : 'front'}
-        drawerStyle={panelStyle}
+        drawerStyle={calendarStyle}
         overlayStyle={styles.scrim}
         overlayAccessibilityLabel="Close calendar"
         swipeEdgeWidth={EDGE_SWIPE}

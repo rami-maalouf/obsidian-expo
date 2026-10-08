@@ -9,6 +9,7 @@ import {
   bold,
   foregroundStyle,
   listStyle,
+  navigationBarTitleDisplayMode,
   navigationTitle,
   padding,
   scrollContentBackground,
@@ -93,7 +94,7 @@ export function NativeSidebar() {
     <Host style={{ flex: 1 }} modifiers={[tint(Accent)]}>
       <NavigationStack>
         <Toolbar>
-          <List modifiers={[listStyle('sidebar'), scrollContentBackground('hidden'), navigationTitle(vault.name)]}>
+          <List modifiers={[listStyle('sidebar'), scrollContentBackground('hidden'), navigationTitle(vault.name), navigationBarTitleDisplayMode('inline')]}>
             {locating ? (
               <Section title="Locate bookmark">
                 <Text>Choose the new location of {locating} in Files.</Text>
