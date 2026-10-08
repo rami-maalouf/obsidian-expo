@@ -1,0 +1,14 @@
+# runs after the folder is writable again (`@unlock-daily`). the journaled edits come before
+# Today (r11), and opening them saves them into the unchanged note.
+appId: com.ramimaalouf.obsidianexpo
+---
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "Unsaved edits"
+    timeout: 30000
+- takeScreenshot: ${OUT}/recovery
+- tapOn: "Open and save"
+- extendedWaitUntil:
+    visible: "Saved locally"
+    timeout: 15000

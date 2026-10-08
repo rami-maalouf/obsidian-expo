@@ -81,11 +81,12 @@ jobs:
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
           ls build/Build/Products/Release-iphonesimulator
-      - name: iphone smoke test with typing, saving, search, background, outside edits, and relaunch
+      - name: iphone smoke test with typing, saving, search, background, outside edits, recovery, and relaunch
         run: |
           scripts/ci/simulator-smoke.sh "iPhone" build/Build/Products/Release-iphonesimulator/*.app smoke/iphone \
             tests/e2e/editor/today-write.yaml tests/e2e/editor/background.yaml @external-edit \
-            tests/e2e/editor/foreground.yaml tests/e2e/daily-notes/relaunch-today.yaml
+            tests/e2e/editor/foreground.yaml @lock-daily tests/e2e/recovery/unsaved-draft.yaml @unlock-daily \
+            tests/e2e/recovery/open-draft.yaml tests/e2e/daily-notes/relaunch-today.yaml
       - name: ipad smoke test with the wide layout
         run: |
           scripts/ci/simulator-smoke.sh "iPad Pro 13" build/Build/Products/Release-iphonesimulator/*.app smoke/ipad \
