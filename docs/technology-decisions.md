@@ -6,6 +6,36 @@ This file records technology choices required by KTD8, following the [technology
 
 The cloud workers that implement this plan run Linux and cannot run Xcode. Native code is compiled and tested by the [ios workflow](../.github/workflows/ios.yml) on GitHub-hosted macOS runners, which are free for this public repository. Observed on October 8, 2026: image `macos-26-arm64` version 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3. The starter was originally verified with Xcode 27.0; the runner image did not offer a stable Xcode 27 at this date. Simulator builds and tests on this runner do not qualify physical-device input, performance, or iCloud behavior.
 
+## T01. Expo, React Native, and their runtime dependencies
+
+**Decided:** October 8, 2026, for U1-U8, within KTD1.
+
+**Choice:** the SDK 58 group from the default template, as resolved in `bun.lock`: `expo@58.0.6`, `react-native@0.88.0-rc.3`, `react@19.3.0`, `expo-router@58.0.16`, `expo-modules-core@58.0.14`, and Hermes (`hermes-compiler@260318099.0.4`). Packages use SDK-compatible ranges; `bunx expo install --check` passes in the `check` workflow. The only runtime dependency added for features is `expo-sqlite@58.0.10` (T06).
+
+**Alternatives:** the stable SDK 57 group (`expo@57.0.27`, `react-native@0.86.3`, `react@19.2.3`); not chosen, because the user asked for SDK 58 (KTD1). Newer standalone React Native, Reanimated, Worklets, or Gesture Handler releases were not substituted.
+
+**Validation:** Release Simulator builds of the full app on M1. On iPhone and iPad Simulators, the JavaScript app called the native vault module (open a vault, list, read, and create notes, read and write app data), mounted the native editor view, received its status events, and ran SQLite FTS5 through `expo-sqlite`; see [validation](validation.md). The Live Markdown Worklets constraint does not apply, because T05 uses a native `UITextView`.
+
+**Limits:** React Native is a release candidate in this SDK, so the group must be rechecked when SDK 58 is final. Device builds are not made (no signing in CI).
+
+## T02. Host tools, Swift, and TypeScript
+
+**Decided:** October 8, 2026, for U1.
+
+**Choice:**
+
+| Tool | Version | Where |
+| --- | --- | --- |
+| Bun | 1.3.14 (`packageManager` in `package.json`) | L1 and both workflows |
+| Node | 24 (`actions/setup-node`) | CI; L1 has 22.22.0 |
+| TypeScript | 6.0.3 (`~6.0.3`) | Type check of the app, tests, and scripts |
+| Xcode and Swift | Xcode 26.6 (17F113), Swift 6.3.3; iOS 26.4 Simulator runtime | M1, the newest stable Xcode on the runner |
+| Vault module Swift settings | Swift tools 6.0, Swift 5 language mode (`Package.swift`); `swift_version` 5.9 (podspec) | `swift test` and the app build |
+
+**Alternatives:** Bun 1.4.2 (the tests also pass on it; not adopted, to keep the lockfile's Bun); TypeScript 7.0.2 (its programmatic compiler API is not provided in 7.0, and Expo tooling was not verified with it); Xcode 27.0, which verified the starter but was not available as a stable Xcode on the runner image.
+
+**Limits:** requalify with Xcode 27 when the runner offers it. Swift 6 language mode was not adopted for the vault module.
+
 ## T03. Native module authoring
 
 **Decided:** October 8, 2026, for U1-U2.
@@ -18,7 +48,9 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Validation:** the ios workflow confirms that `VaultModule` appears in the generated `ExpoModulesProvider.swift` after `expo prebuild`. Core tests pass with `swift test`. Simulator compile evidence is recorded in [validation](validation.md).
 
-**Limits:** no runtime call from JavaScript has been observed in a running app yet. The editor view (T05) is not part of this decision.
+**Limits:** the folder picker has not run in CI; the Simulator tests register the fixture vault through a simulator-only launch argument. The editor view (T05) is not part of this decision.
+
+Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's asynchronous functions and received the editor view's events in the Release app (see [validation](validation.md)).
 
 ## T04. Original-vault and iCloud document access
 
@@ -134,6 +166,37 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Limits:** Bun runs the tests on JavaScriptCore, not Hermes. Logic that depends on engine behavior (dates, `Intl`, regular expressions) must also be checked in the iOS app; see T10.
 
+## T12. End-to-end, native, and performance test tools
+
+**Decided:** October 8, 2026, for U1-U8. The test runner for pure TypeScript is recorded in T12 (part) above.
+
+**Choice:**
+
+| Layer | Tool | Entry point |
+| --- | --- | --- |
+| Native unit and integration tests | Swift Testing through `swift test` on the Foundation-only vault core | `swift test --package-path modules/vault` (ios workflow) |
+| App flows | Maestro CLI against Release Simulator builds; its install script installs the latest release, and the run prints `maestro --version` | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/` |
+| Component and Router tests | Not adopted yet | Logic is kept in pure modules tested by Bun |
+| Performance | Xcode Instruments on a device | Not run; no device is available |
+
+**Alternatives:** Detox 20.51.4, which needs an instrumented test build and runner configuration; Maestro drives the unmodified Release app, its native editor view, and system UI. XCTest UI tests would need a test target in the generated Xcode project, which CNG regenerates (T13). `jest-expo` with React Native Testing Library remains the choice when component tests are added.
+
+**Validation:** 69 Swift tests in 11 suites pass on M1; Maestro flows for typing, saving, search, styling, bookmarks, the calendar, and relaunch pass on iPhone and iPad Simulators (see [validation](validation.md)).
+
+**Limits:** the flows do not open the system folder picker; the Simulator tests register the vault through a simulator-only launch argument. The Maestro version is not pinned yet. Simulator timings do not qualify the performance targets.
+
+## T13. Native generation and builds
+
+**Decided:** October 8, 2026, for U1.
+
+**Choice:** option A, Expo prebuild (CNG) with CocoaPods. The `ios` folder is not committed; the ios workflow runs `bunx expo prebuild --platform ios` and builds with `xcodebuild` (Release, generic iOS Simulator, `CODE_SIGNING_ALLOWED=NO`). Native configuration lives in `app.json` and the local module's podspec; no custom config plugin is needed yet. The workflow checks that `VaultModule` is autolinked and that the generated project targets iPhone and iPad with all orientations.
+
+**Alternatives:** option B, SDK 58's experimental Swift Package Manager build path, not evaluated, because the CocoaPods path already builds every module the app uses. EAS Build was not used; it is billable and was not approved.
+
+**Validation:** Release Simulator builds from a clean prebuild passed on M1 for every recorded commit in [validation](validation.md). CocoaPods comes from the runner image; the workflow prints its version.
+
+**Limits:** no signed device build. The Release build step took 27 and 13 minutes in runs 37751267452 and 37752908876, after a prebuild of about 2 minutes.
+
 ## T10. Dates for the Templater subset
 
 **Decided:** October 8, 2026, for U6.
@@ -158,7 +221,7 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Validation:** `tests/unit/templates.test.ts` covers the six formats, strict reference parsing, leap days (including 1900-style and 2000-style century rules), month and year boundaries, years 1-9999, wall-clock preservation across US DST changes, and `captureClock` in `America/New_York` (before and after the 2026-03-08 change) and `Asia/Tokyo` subprocesses.
 
-**Limits:** the time-zone test runs on Bun (JavaScriptCore). Running the same capture check in the iOS app on Hermes remains open for U7, which owns Today and time-zone changes.
+**Limits:** the time-zone test runs on Bun (JavaScriptCore). In the Release app on Hermes, today's note name and its `Created` line matched the runner's date in its time zone (UTC) on iPhone and iPad Simulators; other time zones and a time zone change while running are not checked on Hermes.
 
 ## Pending decisions
 
@@ -166,10 +229,7 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 
 | Option | Unit | Blocking need |
 | --- | --- | --- |
-| T01-T02 framework group and toolchain | U1 | A native service call in a running app and an editor view mount |
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
 | T08, T09 device qualification | U5, U7 | iPhone and iPad layout, multitasking widths, keyboard focus, and VoiceOver checks |
-| T12 end-to-end and UI test tools | U1-U3 | Xcode scheme inspection and Simulator runs; native unit tests already use Swift Testing through `swift test` |
-| T13 native generation and builds | U1 | Clean prebuild and reproducible Simulator builds |
