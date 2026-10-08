@@ -4,6 +4,7 @@
     "types": ["bun"]
   },
   "include": [
+    "app.config.ts",
     "scripts/**/*.ts",
     "tests/**/*.ts"
   ]

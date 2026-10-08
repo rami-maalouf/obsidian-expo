@@ -1,0 +1,49 @@
+{
+  "fill": {
+    "automatic-gradient": "extended-srgb:0.43137,0.15294,0.03922,1.00000"
+  },
+  "groups": [
+    {
+      "layers": [
+        {
+          "image-name": "facet-1.svg",
+          "name": "facet-1"
+        },
+        {
+          "image-name": "facet-2.svg",
+          "name": "facet-2"
+        },
+        {
+          "image-name": "facet-3.svg",
+          "name": "facet-3"
+        },
+        {
+          "image-name": "facet-4.svg",
+          "name": "facet-4"
+        },
+        {
+          "image-name": "facet-5.svg",
+          "name": "facet-5"
+        },
+        {
+          "image-name": "facet-6.svg",
+          "name": "facet-6"
+        }
+      ],
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": true,
+        "value": 0.4
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}
