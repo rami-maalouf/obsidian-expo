@@ -19,16 +19,16 @@ The example vault is the `obsidian/vault` directory beside this document. All st
 
 Preserve frontmatter, whitespace, wikilinks, embeds, comments, Unicode, unfinished formatting, and the Dataview block unless the user edits them. The unfinished bold prompt is intentional preservation input. These examples are sanitized structural references, not byte-identical copies of the private originals.
 
-The sanitized daily template must be rejected by the first renderer before any file or folder creation:
+The first renderer rejected the sanitized daily template. On October 8, 2026, the user asked for this template to work, so KTD6 was extended; the template files and the profile are unchanged, and the profile's `unsupportedTemplate` name predates the change. The renderer now handles each construct without running JavaScript:
 
-- `<%* ... -%>` executes JavaScript and defines Moment-based variables.
-- `<% prevDay %>` and `<% weekLink %>` depend on that execution. The unused `nextDay` variable is retained as source data.
-- `YYYY-MM-DDTHH:mm:ss` and `YYYY-[W]WW` are outside the initial date-format whitelist.
+- `<%* ... -%>` is read as date definitions (`moment(tp.file.title, 'YYYY-MM-DD')`, `moment(date)`, `.add`/`.subtract` in days, `.format(...)`), and `-%>` removes the line break after it, so the front matter starts the note. Any other script content is still rejected before any file or folder is created.
+- `<% prevDay %>` and `<% weekLink %>` print those definitions. The unused `nextDay` variable is computed and not printed.
+- `YYYY-MM-DDTHH:mm:ss` and `YYYY-[W]WW` are accepted by the extended date patterns; `WW` is the ISO week, printed beside the calendar year as Moment does.
 - Dataview is separate plugin source to preserve, not a query for this app to execute.
 
 The basic template uses only `tp.file.title` and the allowed `tp.date.now("YYYY-MM-DD HH:mm")` call. For a destination title of `2000-01-03` and an injected local creation clock of `2000-01-04 09:30`, its heading must be `# 2000-01-03` and its creation line `Created: 2000-01-04 09:30`. Existing notes must open unchanged even when the configured template is unsupported.
 
-The template renderer in `src/features/templates/` implements this behavior. `bun test` checks both examples: `tests/unit/templates.test.ts` renders the basic template and finds every unsupported construct in the sanitized template, and `tests/unit/daily-resolver.test.ts` confirms that the example note opens unchanged and that nothing is created from the unsupported template. These are logic tests; native file creation is not yet covered.
+The template renderer in `src/features/templates/` implements this behavior. `bun test` checks both examples: `tests/unit/templates.test.ts` renders the basic template and the sanitized daily template exactly, and `tests/unit/daily-resolver.test.ts` confirms that the example note opens unchanged, that a missing day is created from the sanitized daily template, and that nothing is created from a template with an unsupported script. These are logic tests; the Simulator smoke test creates today's note natively from the built-in template only.
 
 ## Authored fixtures and generated vaults
 

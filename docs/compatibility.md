@@ -26,7 +26,7 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 - A missing note is created once from the template. If the note might exist in iCloud but is not downloaded, or its state cannot be checked, nothing is created.
 - The template is checked completely before any file or folder is created. A template with any unsupported syntax creates nothing and shows the line, column, and tag.
 
-The supported template syntax is exactly this subset of Templater, inside ordinary `<% ... %>` tags:
+The supported template syntax is exactly this subset of Templater. Nothing in a template runs as code; the app reads these forms and computes their results itself.
 
 | Syntax | Result |
 | --- | --- |
@@ -36,13 +36,17 @@ The supported template syntax is exactly this subset of Templater, inside ordina
 | `<% tp.date.now("FORMAT", OFFSET) %>` | Shifted by OFFSET whole days, such as `-1` or `+7` |
 | `<% tp.date.now("FORMAT", OFFSET, "DATE", "REF_FORMAT") %>` | OFFSET days from a fixed DATE, at midnight |
 | `<% tp.date.now("FORMAT", OFFSET, tp.file.title, "REF_FORMAT") %>` | OFFSET days from the date in the note's name |
+| `<%* let NAME = ... %>` | Defines dates, as described below; prints nothing |
+| `<% NAME %>` | Prints a date that an earlier script formatted as text |
+| `<%- ... %>`, `<% ... -%>` | Removes one line break before or after the tag |
 
-- FORMAT is one of `YYYY-MM-DD`, `YYYYMMDD`, `YYYY-MM`, `YYYY-MM-DD HH:mm`, `HH:mm`, or `HH:mm:ss`. REF_FORMAT is `YYYY-MM-DD` or `YYYYMMDD`; it is required whenever a reference is given.
+- FORMAT is a Moment pattern made of `YYYY` (year), `MM` (month), `DD` (day), `HH` (hour), `mm` (minute), `ss` (second), and `WW` (ISO week), with `-`, `:`, `/`, `.`, `,`, `_`, spaces, `T`, or `[bracketed text]` between them, for example `YYYY-MM-DDTHH:mm:ss` or `YYYY-[W]WW`. Like Moment, `WW` beside `YYYY` uses the calendar year, so January 1, 2027 prints as `2027-W53`. REF_FORMAT is `YYYY-MM-DD` or `YYYYMMDD`; it is required whenever a reference is given.
+- A script (`<%* ... %>`) may only define dates, separated by `;` or line breaks: `let NAME = moment(tp.file.title, "PATTERN")` (the note's name read with YYYY, MM, and DD), `moment(OTHER)` (a copy of an earlier date), or `moment()` (the creation time), optionally followed by `.add(N, "d")` or `.subtract(N, "d")` (units `d`, `day`, `days`, `w`, `week`, `weeks`), and then optionally `.format("FORMAT")`. `let`, `const`, and `var` are accepted. `.add` and `.subtract` must follow `moment(...)`, because in Templater they would change the date they are called on. Only formatted dates can be printed with `<% NAME %>`.
 - Strings use single or double quotes. Text outside tags is copied exactly.
 - The creation time is the device clock, read once per note. A note created for another calendar day uses that day for its name and title, but `tp.date.now()` still reports the actual creation time.
 - Day offsets are calendar days. Across a daylight-saving change the wall-clock time stays the same; Templater (Moment) would move a time that falls in a skipped hour forward.
 
-Not supported, and rejected before anything is created: execution tags (`<%* %>`), dynamic tags (`<%+ %>`), whitespace-control tags (`<%-`, `-%>`, `<%_`, `_%>`), variables and expressions, every other `tp.*` function, other date formats or Moment tokens, duration-string offsets such as `"P1W"`, and nested calls. Templater JavaScript is never run.
+Not supported, and rejected before anything is created: any other script content (for example `tR`, `await`, `tp.system.prompt`, `if`, comments, or `.startOf(...)`), dynamic tags (`<%+ %>`), `_` whitespace control (`<%_`, `_%>`), month and year units, expressions, every other `tp.*` function, other Moment tokens (such as `dddd`, `MMMM`, `Do`, or `ww`), duration-string offsets such as `"P1W"`, and nested calls. Templater JavaScript is never run.
 
 ## Search
 
@@ -57,4 +61,4 @@ App bookmarks are stored per vault in the app. They are not read from or written
 
 ## Not yet supported
 
-The first release edits Markdown source with light styling and no Live Preview. These are deferred: rendered Markdown, embeds, and images; styling for emphasis, tables, and HTML; graph view; backlinks and link updates on rename; tags and Dataview queries (their source text is kept); community plugins; Templater JavaScript; syncing bookmarks with Obsidian; importing `.obsidian` settings; a custom sync service (iCloud Drive provides syncing); and Mac, Android, and web apps.
+The first release edits Markdown source with light styling and no Live Preview. These are deferred: rendered Markdown, embeds, and images; styling for emphasis, tables, and HTML; graph view; backlinks and link updates on rename; tags and Dataview queries (their source text is kept); community plugins; Templater JavaScript beyond the date definitions above; syncing bookmarks with Obsidian; importing `.obsidian` settings; a custom sync service (iCloud Drive provides syncing); and Mac, Android, and web apps.
