@@ -1,7 +1,7 @@
 /**
  * launch → restore vault access → resolve unsaved drafts → open today → write (flow f2).
  */
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -9,7 +9,9 @@ import { Button } from '@/components/button';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { CalendarPanel } from '@/features/calendar/calendar-panel';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
+import { DEFAULT_DAILY_NOTE_SETTINGS, type DailyNoteSettings } from '@/features/daily-notes/settings';
 import { useBookmarks } from '@/features/bookmarks/use-bookmarks';
 import { NoteEditor } from '@/features/editor/note-editor';
 import { Sidebar } from '@/features/explorer/sidebar';
@@ -18,8 +20,15 @@ import { RecoveryList } from '@/features/recovery/recovery-list';
 import { useDrafts } from '@/features/recovery/use-drafts';
 import { SearchPanel } from '@/features/search/search-panel';
 import { useSearchIndex } from '@/features/search/use-search-index';
+import { DailySettingsForm } from '@/features/settings/daily-settings-form';
+import { useDailySettings } from '@/features/settings/use-daily-settings';
+import type { CivilDate } from '@/features/templates/civil-time';
+import { useCivilToday } from '@/features/today/use-civil-today';
 import { dailyNotes, useTodayNote } from '@/features/today/use-today-note';
+import { dailyNoteVault } from '@/features/vault/daily-note-vault';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
+
+import { VaultNative } from '../../modules/vault/src';
 
 export default function TodayScreen() {
   const { state, choose } = useVault();
@@ -57,30 +66,77 @@ export default function TodayScreen() {
 
 /** at or above this width the sidebar stays beside the editor; below it, it opens as a drawer. */
 const WIDE_LAYOUT = 768;
+/** at or above this width the calendar is a trailing panel; below it, it opens over the editor. */
+const CALENDAR_PANEL_LAYOUT = 1180;
 
-type Overlay = 'none' | 'search' | 'sidebar';
+type Overlay = 'none' | 'search' | 'sidebar' | 'calendar' | 'settings';
 
 function VaultHome({ vault }: { vault: VaultInfo }) {
+  const settingsState = useDailySettings(vault.id);
+  if (settingsState.state.phase === 'loading') {
+    return <Busy label="Loading settings" />;
+  }
+  if (settingsState.state.phase === 'unset') {
+    return (
+      <DailySettingsForm
+        vaultId={vault.id}
+        initial={DEFAULT_DAILY_NOTE_SETTINGS}
+        firstSetup
+        onSave={(settings) => settingsState.save(settings)}
+      />
+    );
+  }
+  return <Workspace vault={vault} settings={settingsState.state.settings} onSaveSettings={settingsState.save} />;
+}
+
+type WorkspaceProps = {
+  vault: VaultInfo;
+  settings: DailyNoteSettings;
+  onSaveSettings: (settings: DailyNoteSettings) => Promise<void>;
+};
+
+function Workspace({ vault, settings, onSaveSettings }: WorkspaceProps) {
   const drafts = useDrafts(vault.id);
   const [selected, setSelected] = useState<string | null>(null);
+  const [selectedDay, setSelectedDay] = useState<CivilDate | null>(null);
+  const [dayProblem, setDayProblem] = useState<{ date: CivilDate; outcome: DailyNoteOutcome } | null>(null);
   const [continued, setContinued] = useState(false);
   const [conflicted, setConflicted] = useState<ReadonlySet<string>>(new Set());
   const [overlay, setOverlay] = useState<Overlay>('none');
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_LAYOUT;
+  const calendarPanel = width >= CALENDAR_PANEL_LAYOUT;
+  const civilToday = useCivilToday();
   const search = useSearchIndex(vault.id);
   const notes = useNoteList(vault.id);
   const bookmarks = useBookmarks(vault.id);
+  const knownPaths = useMemo(() => (notes.listing ? new Set(notes.listing.notes.map((note) => note.path)) : null), [notes.listing]);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
-  const today = useTodayNote(vault.id, pending !== null && !needsRecovery);
+  const today = useTodayNote(vault.id, pending !== null && !needsRecovery, settings);
   const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
 
   const open = (next: string) => {
-    // a deliberate choice wins over a today request that is still running (r15).
+    // a deliberate choice wins over a daily-note request that is still running (r15).
     dailyNotes.navigateAway();
     setSelected(next);
+    setDayProblem(null);
     setOverlay('none');
+  };
+
+  const selectDay = async (date: CivilDate) => {
+    if (!VaultNative) return;
+    setSelectedDay(date);
+    if (!calendarPanel) setOverlay('none');
+    const result = await dailyNotes.open(dailyNoteVault(VaultNative, vault.id), date, settings);
+    if (!result.current) return;
+    if (result.outcome.kind === 'open') {
+      setSelected(result.outcome.path);
+      setDayProblem(null);
+      if (result.outcome.created) notes.refresh();
+    } else {
+      setDayProblem({ date, outcome: result.outcome });
+    }
   };
 
   if (overlay === 'search') {
@@ -94,7 +150,35 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
       />
     );
   }
+  if (overlay === 'settings') {
+    return (
+      <DailySettingsForm
+        vaultId={vault.id}
+        initial={settings}
+        firstSetup={false}
+        onSave={async (next) => {
+          await onSaveSettings(next);
+          setOverlay('none');
+        }}
+        onCancel={() => setOverlay('none')}
+      />
+    );
+  }
 
+  const calendar = (
+    <CalendarPanel
+      today={civilToday}
+      settings={settings}
+      knownPaths={knownPaths}
+      selected={selectedDay}
+      onSelect={selectDay}
+      onEditSettings={() => setOverlay('settings')}
+      onClose={calendarPanel ? undefined : () => setOverlay('none')}
+    />
+  );
+  if (!calendarPanel && overlay === 'calendar') {
+    return calendar;
+  }
   const sidebar = (
     <Sidebar
       vaultId={vault.id}
@@ -129,6 +213,8 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
         onContinue={() => setContinued(true)}
       />
     );
+  } else if (dayProblem) {
+    content = <TodayProblem outcome={dayProblem.outcome} onRetry={() => selectDay(dayProblem.date)} />;
   } else if (path) {
     const marked = bookmarks.list?.items.some((item) => item.path === path) ?? false;
     content = (
@@ -139,6 +225,7 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
         accessory={
           <View style={styles.actions}>
             {!wide && <Button kind="plain" title="Files" onPress={() => setOverlay('sidebar')} />}
+            {!calendarPanel && <Button kind="plain" title="Calendar" onPress={() => setOverlay('calendar')} />}
             <Button
               kind="plain"
               title={marked ? '★' : '☆'}
@@ -172,6 +259,7 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
     <View style={styles.split}>
       <View style={styles.sidebar}>{sidebar}</View>
       <View style={styles.main}>{content}</View>
+      {calendarPanel && <View style={styles.sidebar}>{calendar}</View>}
     </View>
   );
 }

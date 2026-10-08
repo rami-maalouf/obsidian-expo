@@ -200,7 +200,13 @@ public class VaultModule: Module {
         let arguments = ProcessInfo.processInfo.arguments
         if let index = arguments.firstIndex(of: "-VaultTestFolder"), index + 1 < arguments.count {
           let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-          _ = try? self.runtime.registry.add(url: documents.appendingPathComponent(arguments[index + 1]))
+          if let record = try? self.runtime.registry.add(url: documents.appendingPathComponent(arguments[index + 1])) {
+            // skip first setup with the default daily-note settings (a3).
+            let key = "vault:\(record.id):daily-notes"
+            if (try? self.runtime.appData.read(key)) == nil {
+              try? self.runtime.appData.write(key, #"{"folder":"Daily","filenameFormat":"YYYY-MM-DD","templatePath":""}"#)
+            }
+          }
         }
       #endif
     }
