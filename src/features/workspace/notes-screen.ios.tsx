@@ -1,8 +1,8 @@
 /**
  * the note between the two side panels: drafts to recover before today, then the open note
  * (flow f2). the note title is the native navigation title. the toolbar's left group opens the
- * files panel and today's note; the right group opens the calendar panel and the native
- * "more" menu with bookmark, search, and the rest (t08).
+ * files panel and today's note; the right group opens the native "more" menu with bookmark,
+ * search, and the rest, then the calendar panel at the trailing edge (t08).
  */
 import { Stack, useRouter } from 'expo-router';
 import { type ComponentProps, type ReactNode, useEffect } from 'react';
@@ -81,12 +81,6 @@ export function NotesScreen() {
         <Stack.Toolbar.Button icon={todayIcon(workspace.civilToday.day)} accessibilityLabel="Open today's note" onPress={workspace.openToday} />
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          icon="calendar"
-          accessibilityLabel="Calendar"
-          selected={workspace.calendarOpen}
-          onPress={() => workspace.setCalendarOpen(!workspace.calendarOpen)}
-        />
         <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="More">
           <Stack.Toolbar.MenuAction
             icon={marked ? 'bookmark.slash' : 'bookmark'}
@@ -107,6 +101,12 @@ export function NotesScreen() {
             Choose another vault
           </Stack.Toolbar.MenuAction>
         </Stack.Toolbar.Menu>
+        <Stack.Toolbar.Button
+          icon="calendar"
+          accessibilityLabel="Calendar"
+          selected={workspace.calendarOpen}
+          onPress={() => workspace.setCalendarOpen(!workspace.calendarOpen)}
+        />
       </Stack.Toolbar>
       {content}
     </>
