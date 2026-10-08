@@ -20,7 +20,7 @@ It began with the working name Vault Notes and an SDK 57 assumption. The user th
 
 ## Defaults versus requirements
 
-The plan chooses iPhone/iPad first, Markdown source editing with restrained styling, native UITextView and Swift document integration, SQLite FTS5, app-owned bookmarks, and a trailing calendar panel or compact sheet. These are recorded implementation decisions. The starter's Android and web bundles are not evidence that the planned vault features are supported there.
+The user confirmed iOS-only implementation for now, covering iPhone and iPad. Android and web feature work is outside scope. The updated plan delegates library choices to the executor using the [technology options](technology-options-2026-10.md), while retaining native input, lossless source handling, coordinated vault access, SQLite FTS5, and the required sidebar/calendar behavior. Record selections before dependent implementation. The starter's Android and web bundles do not qualify vault features on those platforms.
 
 The default daily-note profile is `Daily/YYYY-MM-DD.md`. Selected calendar dates determine note paths and titles; `tp.date.now()` uses the actual captured creation clock unless given an explicit reference. Existing notes are never templated again. The exact syntax whitelist is KTD6 in the plan.
 
@@ -37,3 +37,7 @@ Vault access, native editor sessions, indexing, file bookmarks, calendar behavio
 The complete product and technical contracts are in the plan. Implement one dependency-ready unit at a time, preserve its invariants, verify its scenarios, and record evidence. Use the unit's file list as a proposal, not as an instruction to load a file from another machine. No local agent memory, custom skill path, or personal vault is required.
 
 Public framework links are supporting documentation and require network access. The repository contains the project-specific requirements and decisions; it is not an offline mirror of Apple, Expo, React Native, or Templater documentation.
+
+## Planning-work transfer
+
+The newer technology research, registry snapshot, and technology-selection gates from the planning project are now included here. See the [transfer inventory](PLANNING_TRANSFER.md) for the mapping of every source file and the repository-specific adaptations. This repository is the destination for further app work.

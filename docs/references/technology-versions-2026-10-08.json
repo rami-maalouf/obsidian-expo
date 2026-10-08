@@ -1,0 +1,764 @@
+{
+  "checkedAt": "2026-10-08T06:07:20.762Z",
+  "packages": [
+    {
+      "name": "expo",
+      "tags": {
+        "sdk-52": "52.0.49",
+        "sdk-53": "53.0.27",
+        "canary-sdk-55": "55.0.3-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.6-canary-20260701-9100865",
+        "sdk-54": "54.0.37",
+        "sdk-55": "55.0.31",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "sdk-56": "56.0.23",
+        "next": "58.0.6",
+        "sdk-57": "57.0.27",
+        "latest": "57.0.27"
+      },
+      "version": "57.0.27",
+      "peers": {
+        "react": "*",
+        "react-dom": "*",
+        "react-native": "*",
+        "react-native-web": "*",
+        "@expo/dom-webview": "*",
+        "@expo/metro-runtime": "*",
+        "react-native-webview": "*"
+      },
+      "url": "https://registry.npmjs.org/expo"
+    },
+    {
+      "name": "expo-template-default",
+      "tags": {
+        "sdk-51": "51.0.54",
+        "beta": "53.0.19",
+        "sdk-52": "52.0.81",
+        "sdk-53": "53.0.43",
+        "canary-sdk-55": "55.1.10-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.20-canary-20260701-9100865",
+        "sdk-54": "54.0.63",
+        "sdk-55": "55.1.39",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "sdk-56": "56.0.37",
+        "sdk-58": "58.0.15",
+        "latest": "57.0.29",
+        "sdk-57": "57.0.29",
+        "next": "58.0.15"
+      },
+      "version": "57.0.29",
+      "dependencies": {
+        "expo": "~57.0.27",
+        "react": "19.2.3",
+        "@expo/ui": "~57.0.22",
+        "expo-font": "~57.0.4",
+        "react-dom": "19.2.3",
+        "expo-image": "~57.0.5",
+        "expo-device": "~57.0.2",
+        "expo-router": "~57.0.25",
+        "expo-linking": "~57.0.12",
+        "expo-symbols": "~57.0.3",
+        "react-native": "0.86.3",
+        "expo-constants": "~57.0.21",
+        "expo-system-ui": "~57.0.4",
+        "expo-status-bar": "~57.0.1",
+        "expo-web-browser": "~57.0.3",
+        "react-native-web": "~0.21.0",
+        "expo-glass-effect": "~57.0.4",
+        "expo-splash-screen": "~57.0.9",
+        "react-native-screens": "~4.26.0",
+        "react-native-worklets": "0.10.1",
+        "react-native-reanimated": "4.5.1",
+        "react-native-gesture-handler": "~2.32.0",
+        "react-native-safe-area-context": "~5.7.0"
+      },
+      "devDependencies": {
+        "typescript": "~6.0.3",
+        "@types/react": "~19.2.2"
+      },
+      "url": "https://registry.npmjs.org/expo-template-default"
+    },
+    {
+      "name": "react",
+      "tags": {
+        "beta": "19.0.0-beta-26f2496093-20240514",
+        "rc": "19.0.0-rc.1",
+        "next": "19.3.0-canary-d5736f09-20260507",
+        "backport": "19.0.8",
+        "latest": "19.3.0",
+        "experimental": "0.0.0-experimental-d75b0697-20261006",
+        "canary": "19.3.0-canary-d75b0697-20261006"
+      },
+      "version": "19.3.0",
+      "engines": {
+        "node": ">=0.10.0"
+      },
+      "url": "https://registry.npmjs.org/react"
+    },
+    {
+      "name": "react-native",
+      "tags": {
+        "0.67-stable": "0.67.5",
+        "0.66-stable": "0.66.5",
+        "0.65-stable": "0.65.3",
+        "0.64-stable": "0.64.4",
+        "0.63-stable": "0.63.5",
+        "0.68-stable": "0.68.7",
+        "0.70-stable": "0.70.15",
+        "0.71-stable": "0.71.19",
+        "0.72-stable": "0.72.17",
+        "0.73-stable": "0.73.11",
+        "0.74-stable": "0.74.7",
+        "0.75-stable": "0.75.5",
+        "0.76-stable": "0.76.9",
+        "0.78-stable": "0.78.3",
+        "0.77-stable": "0.77.3",
+        "0.79-stable": "0.79.7",
+        "0.80-stable": "0.80.3",
+        "0.81-stable": "0.81.6",
+        "0.83-stable": "0.83.10",
+        "0.86-stable": "0.86.3",
+        "latest": "0.87.1",
+        "next": "0.88.0-rc.4",
+        "nightly": "0.89.0-nightly-20261008-be567d270"
+      },
+      "version": "0.87.1",
+      "engines": {
+        "node": "^22.13.0 || ^24.3.0 || >= 26.0.0"
+      },
+      "peers": {
+        "react": "^19.2.3",
+        "@types/react": "^19.1.1"
+      },
+      "url": "https://registry.npmjs.org/react-native"
+    },
+    {
+      "name": "expo-router",
+      "tags": {
+        "sdk-50": "3.4.8",
+        "sdk-52-router-patches": "5.0.0-sdk-52-router-patches",
+        "sdk-52": "4.0.22",
+        "sdk-53": "5.1.11",
+        "canary-sdk-55": "55.0.3-canary-20260429-a5e59cf",
+        "sdk-54": "6.0.24",
+        "canary-sdk-56": "56.2.8-canary-20260701-9100865",
+        "sdk-55": "55.0.18",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "sdk-56": "56.2.21",
+        "next": "58.0.16",
+        "latest": "57.0.25",
+        "sdk-57": "57.0.25"
+      },
+      "version": "57.0.25",
+      "peers": {
+        "expo": "*",
+        "react": "*",
+        "react-dom": "*",
+        "expo-linking": "^57.0.12",
+        "react-native": "*",
+        "@expo/log-box": "^57.0.4",
+        "expo-constants": "^57.0.21",
+        "react-native-web": "*",
+        "@expo/metro-runtime": "^57.0.16",
+        "react-native-screens": "^4.26.0",
+        "react-native-reanimated": "*",
+        "react-server-dom-webpack": "~19.0.4 || ~19.1.5 || ~19.2.4",
+        "react-native-gesture-handler": "*",
+        "@testing-library/react-native": ">= 13.2.0",
+        "react-native-safe-area-context": ">= 5.4.0"
+      },
+      "url": "https://registry.npmjs.org/expo-router"
+    },
+    {
+      "name": "@expo/ui",
+      "tags": {
+        "canary-sdk-55": "55.0.2-canary-20260429-a5e59cf",
+        "sdk-55": "55.0.17",
+        "canary-sdk-56": "56.0.15-canary-20260701-9100865",
+        "sdk-56": "56.0.26",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "next": "58.0.14",
+        "latest": "57.0.22",
+        "sdk-57": "57.0.22"
+      },
+      "version": "57.0.22",
+      "peers": {
+        "expo": "*",
+        "react": "*",
+        "react-dom": "*",
+        "@babel/core": "*",
+        "react-native": "*",
+        "react-native-worklets": "*"
+      },
+      "url": "https://registry.npmjs.org/%40expo%2Fui"
+    },
+    {
+      "name": "expo-modules-core",
+      "tags": {
+        "sdk-50": "1.11.11",
+        "sdk-51": "1.12.11",
+        "sdk-54": "3.0.30",
+        "canary-sdk-55": "55.0.13-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.14-canary-20260701-9100865",
+        "sdk-55": "55.0.26",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "sdk-56": "56.0.27",
+        "next": "58.0.14",
+        "latest": "57.0.21",
+        "sdk-57": "57.0.21"
+      },
+      "version": "57.0.21",
+      "peers": {
+        "react": "*",
+        "react-native": "*",
+        "react-native-worklets": "^0.7.4 || ^0.8.0 || ^0.9.0 || ^0.10.0"
+      },
+      "url": "https://registry.npmjs.org/expo-modules-core"
+    },
+    {
+      "name": "expo-sqlite",
+      "tags": {
+        "sdk-50": "13.3.0",
+        "sdk-51": "14.0.3",
+        "canary-sdk-55": "55.0.11-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.5-canary-20260701-9100865",
+        "sdk-55": "55.0.20",
+        "sdk-56": "56.0.6",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "latest": "57.0.4",
+        "next": "58.0.10",
+        "sdk-57": "57.0.4"
+      },
+      "version": "57.0.4",
+      "peers": {
+        "expo": "*",
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/expo-sqlite"
+    },
+    {
+      "name": "expo-file-system",
+      "tags": {
+        "sdk-50": "16.0.8",
+        "sdk-51": "17.0.1",
+        "canary-sdk-55": "55.0.10-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.8-canary-20260701-9100865",
+        "sdk-54": "19.0.24",
+        "sdk-55": "55.0.26",
+        "sdk-56": "56.0.11",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "sdk-57": "57.0.7",
+        "latest": "57.0.7",
+        "next": "58.0.7"
+      },
+      "version": "57.0.7",
+      "peers": {
+        "expo": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/expo-file-system"
+    },
+    {
+      "name": "expo-dev-client",
+      "tags": {
+        "sdk-50": "3.3.9",
+        "sdk-54": "6.0.21",
+        "canary-sdk-55": "55.0.10-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.17-canary-20260701-9100865",
+        "sdk-55": "55.0.40",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "latest": "57.0.19",
+        "sdk-57": "57.0.19",
+        "sdk-56": "56.0.27",
+        "next": "58.0.11"
+      },
+      "version": "57.0.19",
+      "peers": {
+        "expo": "*"
+      },
+      "url": "https://registry.npmjs.org/expo-dev-client"
+    },
+    {
+      "name": "expo-build-properties",
+      "tags": {
+        "sdk-50": "0.11.1",
+        "sdk-51": "0.12.1",
+        "sdk-52": "0.13.3",
+        "canary-sdk-55": "55.0.10-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.16-canary-20260701-9100865",
+        "sdk-55": "55.0.18",
+        "sdk-56": "56.0.27",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "sdk-57": "57.0.22",
+        "latest": "57.0.22",
+        "next": "58.0.10"
+      },
+      "version": "57.0.22",
+      "peers": {
+        "expo": "*"
+      },
+      "url": "https://registry.npmjs.org/expo-build-properties"
+    },
+    {
+      "name": "react-native-reanimated",
+      "tags": {
+        "reanimated-1": "1.13.4",
+        "reanimated-2": "2.17.0",
+        "reanimated-3": "3.19.5",
+        "latest": "4.7.1",
+        "nightly": "4.8.0-nightly-20261007-a93346850"
+      },
+      "version": "4.7.1",
+      "peers": {
+        "react": "*",
+        "react-native": "0.86 - 0.88",
+        "react-native-worklets": "0.13.x"
+      },
+      "url": "https://registry.npmjs.org/react-native-reanimated"
+    },
+    {
+      "name": "react-native-worklets",
+      "tags": {
+        "legacy": "0.10.4",
+        "latest": "0.13.0",
+        "nightly": "0.14.0-nightly-20261007-a93346850"
+      },
+      "version": "0.13.0",
+      "peers": {
+        "react": "*",
+        "@babel/core": "*",
+        "react-native": "0.86 - 0.88",
+        "@react-native/metro-config": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-worklets"
+    },
+    {
+      "name": "react-native-gesture-handler",
+      "tags": {
+        "latest": "3.3.0",
+        "legacy": "2.33.0",
+        "nightly": "3.4.0-nightly-20261007-a53085973"
+      },
+      "version": "3.3.0",
+      "peers": {
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-gesture-handler"
+    },
+    {
+      "name": "react-native-screens",
+      "tags": {
+        "latest": "4.28.0",
+        "next": "5.0.0-alpha.3",
+        "nightly": "4.29.0-nightly-20261007-43f3784d5"
+      },
+      "version": "4.28.0",
+      "peers": {
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-screens"
+    },
+    {
+      "name": "typescript",
+      "tags": {
+        "dev": "3.9.4",
+        "tag-for-publishing-older-releases": "4.1.6",
+        "insiders": "4.6.2-insiders.20220225",
+        "beta": "6.0.0-beta",
+        "rc": "7.0.1-rc",
+        "latest": "7.0.2",
+        "next": "7.1.0-dev.20261007.1"
+      },
+      "version": "7.0.2",
+      "engines": {
+        "node": ">=16.20.0"
+      },
+      "url": "https://registry.npmjs.org/typescript"
+    },
+    {
+      "name": "bun",
+      "tags": {
+        "latest": "1.4.2",
+        "canary": "1.4.2-canary.20261007.1"
+      },
+      "version": "1.4.2",
+      "url": "https://registry.npmjs.org/bun"
+    },
+    {
+      "name": "@shopify/flash-list",
+      "tags": {
+        "rc": "2.0.2-rc.1",
+        "alpha": "2.0.4-alpha.1",
+        "latest": "2.3.3"
+      },
+      "version": "2.3.3",
+      "peers": {
+        "react": "*",
+        "react-native": "*",
+        "@babel/runtime": "*"
+      },
+      "url": "https://registry.npmjs.org/%40shopify%2Fflash-list"
+    },
+    {
+      "name": "@op-engineering/op-sqlite",
+      "tags": {
+        "beta": "18.0.0-beta.0",
+        "latest": "18.2.5"
+      },
+      "version": "18.2.5",
+      "peers": {
+        "react": "*",
+        "react-native": "*",
+        "@sqlite.org/sqlite-wasm": "*"
+      },
+      "url": "https://registry.npmjs.org/%40op-engineering%2Fop-sqlite"
+    },
+    {
+      "name": "react-native-live-markdown",
+      "tags": {
+        "latest": "0.0.0"
+      },
+      "version": "0.0.0",
+      "url": "https://registry.npmjs.org/react-native-live-markdown"
+    },
+    {
+      "name": "react-native-enriched",
+      "tags": {
+        "nightly": "0.9.0-nightly-20260616-7ce19e4ea",
+        "latest": "0.8.1"
+      },
+      "version": "0.8.1",
+      "peers": {
+        "react": "*",
+        "react-native": "*"
+      },
+      "deprecated": "react-native-enriched has been renamed to react-native-enriched-html.\nThis package will not receive any further updates. Migrate with no breaking changes to https://github.com/software-mansion/react-native-enriched-html/releases/tag/v1.0.0",
+      "url": "https://registry.npmjs.org/react-native-enriched"
+    },
+    {
+      "name": "date-fns",
+      "tags": {
+        "next": "5.0.0-alpha.0",
+        "latest": "4.4.0"
+      },
+      "version": "4.4.0",
+      "url": "https://registry.npmjs.org/date-fns"
+    },
+    {
+      "name": "moment",
+      "tags": {
+        "latest": "2.31.0"
+      },
+      "version": "2.31.0",
+      "engines": {
+        "node": "*"
+      },
+      "url": "https://registry.npmjs.org/moment"
+    },
+    {
+      "name": "@js-temporal/polyfill",
+      "tags": {
+        "latest": "0.5.1"
+      },
+      "version": "0.5.1",
+      "engines": {
+        "node": ">=12"
+      },
+      "url": "https://registry.npmjs.org/%40js-temporal%2Fpolyfill"
+    },
+    {
+      "name": "zustand",
+      "tags": {
+        "latest": "5.0.15"
+      },
+      "version": "5.0.15",
+      "engines": {
+        "node": ">=12.20.0"
+      },
+      "peers": {
+        "immer": ">=9.0.6",
+        "react": ">=18.0.0",
+        "@types/react": ">=18.0.0",
+        "use-sync-external-store": ">=1.2.0"
+      },
+      "url": "https://registry.npmjs.org/zustand"
+    },
+    {
+      "name": "uniwind",
+      "tags": {
+        "beta": "1.6.7-beta.0",
+        "latest": "1.12.2"
+      },
+      "version": "1.12.2",
+      "peers": {
+        "metro": "*",
+        "react": ">=19.0.0",
+        "metro-cache": "*",
+        "tailwindcss": ">=4",
+        "react-native": ">=0.81.0",
+        "@expo/metro-config": "*",
+        "metro-transform-worker": "*"
+      },
+      "url": "https://registry.npmjs.org/uniwind"
+    },
+    {
+      "name": "react-native-calendars",
+      "tags": {
+        "latest": "1.1314.0",
+        "snapshot": "1.1314.0-snapshot.1613"
+      },
+      "version": "1.1314.0",
+      "engines": {
+        "node": ">=18"
+      },
+      "url": "https://registry.npmjs.org/react-native-calendars"
+    },
+    {
+      "name": "jest-expo",
+      "tags": {
+        "sdk-50": "50.0.3",
+        "sdk-51": "51.0.2",
+        "sdk-52": "52.0.6",
+        "sdk-53": "53.0.14",
+        "canary-sdk-55": "55.0.10-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.5-canary-20260701-9100865",
+        "sdk-54": "54.0.18",
+        "sdk-55": "55.0.22",
+        "latest": "57.0.5",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "next": "58.0.8"
+      },
+      "version": "57.0.5",
+      "peers": {
+        "expo": "*",
+        "react-native": "*",
+        "react-server-dom-webpack": "~19.0.4 || ~19.1.5 || ~19.2.4",
+        "@react-native/jest-preset": "^0.86.3"
+      },
+      "url": "https://registry.npmjs.org/jest-expo"
+    },
+    {
+      "name": "@testing-library/react-native",
+      "tags": {
+        "next": "14.0.0-rc.3",
+        "latest": "14.0.1"
+      },
+      "version": "14.0.1",
+      "engines": {
+        "node": "^22.13.0 || >=24"
+      },
+      "peers": {
+        "jest": ">=29.0.0",
+        "react": ">=19.0.0",
+        "react-native": ">=0.78",
+        "test-renderer": "^1.0.0"
+      },
+      "url": "https://registry.npmjs.org/%40testing-library%2Freact-native"
+    },
+    {
+      "name": "detox",
+      "tags": {
+        "genycloud": "17.12.1-genycloud.0",
+        "next": "18.23.2-next.0",
+        "smoke2": "19.3.0-smoke2.0",
+        "smokey": "19.5.4",
+        "improve-apk-install-attempt2": "19.5.11-improve-apk-install-attempt2.0",
+        "build.limit-jest-27": "19.6.7-build.limit-jest-27.0",
+        "breaking.new-global-lifecycle": "20.0.6-breaking.new-global-lifecycle.0",
+        "feature.is-hittable-check": "19.13.0-feature.is-hittable-check.0",
+        "next-is-hittable-check": "20.1.0-next-is-hittable-check.0",
+        "next-is-hittable-check-2": "20.0.14-next-is-hittable-check-2.0",
+        "is-hittable-over-master": "20.0.14-is-hittable-over-master.0",
+        "rc": "21.0.0-rc.11",
+        "prerelease": "20.33.0-prerelease.0",
+        "smoke": "20.51.3-smoke.0",
+        "latest": "20.51.4",
+        "alpha": "21.0.0-alpha.1"
+      },
+      "version": "20.51.4",
+      "engines": {
+        "node": ">=14"
+      },
+      "peers": {
+        "jest": "30.x.x || 29.x.x || 28.x.x || ^27.2.5"
+      },
+      "url": "https://registry.npmjs.org/detox"
+    },
+    {
+      "name": "eslint-config-expo",
+      "tags": {
+        "sdk-51": "7.1.2",
+        "canary-sdk-55": "55.0.1-canary-20260429-a5e59cf",
+        "canary-sdk-56": "56.0.5-canary-20260701-9100865",
+        "latest": "57.0.2",
+        "canary": "58.0.0-canary-20260909-ea7a89a",
+        "next": "58.0.4"
+      },
+      "version": "57.0.2",
+      "peers": {
+        "eslint": ">=8.10"
+      },
+      "url": "https://registry.npmjs.org/eslint-config-expo"
+    },
+    {
+      "name": "create-expo-app",
+      "tags": {
+        "latest": "5.0.0",
+        "shim": "5.0.0"
+      },
+      "version": "5.0.0",
+      "engines": {
+        "node": ">=20.0.0"
+      },
+      "url": "https://registry.npmjs.org/create-expo-app"
+    },
+    {
+      "name": "@expensify/react-native-live-markdown",
+      "version": "0.1.343",
+      "peers": {
+        "react": "*",
+        "react-native": "*",
+        "expensify-common": ">=2.0.207",
+        "react-native-worklets": ">=0.7.0"
+      },
+      "url": "https://registry.npmjs.org/%40expensify%2Freact-native-live-markdown/latest"
+    },
+    {
+      "name": "react-native-enriched-markdown",
+      "version": "1.1.1",
+      "peers": {
+        "katex": ">=0.16.0",
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-enriched-markdown/latest"
+    },
+    {
+      "name": "react-native-enriched-html",
+      "version": "1.1.1",
+      "peers": {
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-enriched-html/latest"
+    },
+    {
+      "name": "react-native-unistyles",
+      "version": "3.5.1",
+      "engines": {
+        "node": ">= 20.18.0"
+      },
+      "peers": {
+        "react": "*",
+        "react-native": ">=0.81.0",
+        "react-native-reanimated": "*",
+        "react-native-edge-to-edge": "*",
+        "react-native-nitro-modules": "*",
+        "@react-native/normalize-colors": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-unistyles/latest"
+    },
+    {
+      "name": "@biomejs/biome",
+      "version": "2.5.15",
+      "engines": {
+        "node": ">=14.21.3"
+      },
+      "url": "https://registry.npmjs.org/%40biomejs%2Fbiome/latest"
+    },
+    {
+      "name": "eslint",
+      "version": "10.12.0",
+      "engines": {
+        "node": "^20.19.0 || ^22.13.0 || >=24"
+      },
+      "peers": {
+        "jiti": "*"
+      },
+      "url": "https://registry.npmjs.org/eslint/latest"
+    },
+    {
+      "name": "prettier",
+      "version": "3.9.9",
+      "engines": {
+        "node": ">=14"
+      },
+      "url": "https://registry.npmjs.org/prettier/latest"
+    },
+    {
+      "name": "@expo/dom-webview",
+      "version": "57.0.1",
+      "peers": {
+        "expo": "*",
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/%40expo%2Fdom-webview/latest"
+    },
+    {
+      "name": "@codemirror/view",
+      "version": "6.43.14",
+      "url": "https://registry.npmjs.org/%40codemirror%2Fview/latest"
+    },
+    {
+      "name": "@codemirror/lang-markdown",
+      "version": "6.5.2",
+      "url": "https://registry.npmjs.org/%40codemirror%2Flang-markdown/latest"
+    },
+    {
+      "name": "jest",
+      "version": "30.5.2",
+      "engines": {
+        "node": "^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0"
+      },
+      "peers": {
+        "node-notifier": "^8.0.1 || ^9.0.0 || ^10.0.0"
+      },
+      "url": "https://registry.npmjs.org/jest/latest"
+    },
+    {
+      "name": "react-native-webview",
+      "version": "14.0.1",
+      "peers": {
+        "react": "*",
+        "react-native": "*"
+      },
+      "url": "https://registry.npmjs.org/react-native-webview/latest"
+    }
+  ],
+  "previewTemplate": {
+    "version": "58.0.15",
+    "dependencies": {
+      "expo": "~58.0.6",
+      "react": "19.3.0",
+      "@expo/ui": "~58.0.14",
+      "expo-font": "~58.0.7",
+      "react-dom": "19.3.0",
+      "expo-image": "~58.0.13",
+      "expo-device": "~58.0.5",
+      "expo-router": "~58.0.16",
+      "expo-linking": "~58.0.11",
+      "expo-symbols": "~58.0.4",
+      "react-native": "0.88.0-rc.3",
+      "expo-constants": "~58.0.10",
+      "expo-system-ui": "~58.0.5",
+      "expo-status-bar": "~58.0.3",
+      "expo-web-browser": "~58.0.6",
+      "react-native-web": "~0.21.3",
+      "expo-glass-effect": "~58.0.3",
+      "expo-splash-screen": "~58.0.6",
+      "react-native-screens": "~4.28.0",
+      "react-native-worklets": "0.13.0",
+      "react-native-reanimated": "4.7.0",
+      "react-native-gesture-handler": "~3.2.1",
+      "react-native-safe-area-context": "~5.9.1"
+    },
+    "devDependencies": {
+      "typescript": "~6.0.3",
+      "@types/react": "~19.3.0"
+    }
+  }
+}

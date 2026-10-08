@@ -10,6 +10,8 @@ For cloud work, start with [agent instructions](AGENTS.md), [project context](do
 
 ## Toolchain
 
+The [technology-options research](docs/technology-options-2026-10.md) and its version snapshot are included alongside the plan. The [transfer inventory](docs/PLANNING_TRANSFER.md) accounts for all material brought over from the planning project. Feature implementation targets iOS (iPhone/iPad) only for now; Android and web starter checks do not expand that scope.
+
 - Expo `58.0.6` and Expo Router `58.0.16`
 - React `19.3.0` and React Native `0.88.0-rc.3`
 - TypeScript with strict checking

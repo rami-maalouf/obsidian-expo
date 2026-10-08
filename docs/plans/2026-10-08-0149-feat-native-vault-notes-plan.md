@@ -23,7 +23,7 @@ The SDK 58 starter, Bun lockfile, type checking, linting, iOS development build,
 
 **Means:** An Expo app with native iOS document access and editing, as specified in KTD1-KTD4.
 
-**Authority:** The user's latest instructions govern scope. Product requirements govern behavior; technical decisions govern implementation within those requirements. Units and examples cannot override either.
+**Authority:** The user's latest instructions govern scope. Product requirements govern behavior; technical decisions govern implementation within those requirements. The executor selects technologies using the [October 2026 options and evidence](../technology-options-2026-10.md), rechecking current compatibility before adoption. Units and examples cannot override the product contract.
 
 **Execution:** Build in this repository, using synthetic and disposable vaults first. The implementing agent owns implementation, local verification, documentation, and feature commits. Distribution, store submission, and changes to the user's personal vault are outside this execution contract.
 
@@ -103,28 +103,32 @@ The first release edits Markdown source with restrained syntax styling. Full Obs
 
 The user approved sanitized examples for this public repository. The [reference inventory](../references/README.md) includes a representative daily note, its linked notes, a sanitized template, a supported basic template, and a vault-relative configuration. Use disposable copies for R2 preservation and R13 unsupported-template checks. No private originals or external local folders are required. Support for execution tags, variable expressions, or date formats outside KTD6 is not implied by compatibility testing.
 
+The [technology options](../technology-options-2026-10.md) and [version snapshot](../references/technology-versions-2026-10-08.json) carry the newer research into this repository. They guide library selection within the user-requested SDK 58 and iOS scope; they do not authorize a downgrade or overwrite of the starter.
+
 ## Planning Contract
 
 ### Assumptions
 
-- A1. Start feature implementation with iPhone/iPad under the user-selected project name `obsidian-expo`. The working product name Vault Notes is provisional; the starter's web and Android bundles do not imply feature qualification on those platforms.
+- A1. Start feature implementation with iPhone/iPad under the user-selected project name `obsidian-expo`. The working product name Vault Notes is provisional; Android and web feature work and acceptance requirements are out of scope for now. The starter's cross-platform bundle checks do not expand this iOS-only scope.
 - A2. Put Files and Bookmarks in the left sidebar. Show Calendar in a trailing panel on wide screens and a sheet on phones; only one navigation overlay is visible at a time.
 - A3. Default daily notes to `Daily/YYYY-MM-DD.md`, with the built-in template described in KTD6. Show these settings on first setup so existing vault conventions can be entered before creation.
 - A4. Performance thresholds below are engineering targets to validate, not observed results or framework guarantees.
+- A5. "Latest" means the newest maintained, compatible choice available when implementation begins. October 8 research is a dated baseline; later October releases require fresh verification. The executor owns routine library choices and records their evidence.
 
 ### Key Technical Decisions
 
-- KTD1. Use the user-requested Expo SDK 58 starter, currently `expo@58.0.6`, `react-native@0.88.0-rc.3`, and `react@19.3.0`, with resolved versions in `bun.lock`. SDK 58 is in beta as of this plan's date; do not silently downgrade to SDK 57. Use Bun, Expo Router, the installed local development build, and SDK-compatible package installation. The starter was built with Xcode 27.0 and run on an iOS 27.0 simulator; requalify the toolchain when versions change. (session-settled: user-directed - Expo SDK 58 and the repository name were explicitly requested.) [Template metadata](https://registry.npmjs.org/expo-template-default/58.0.15), [SDK 58 beta](https://expo.dev/changelog/sdk-58-beta), [development builds](https://docs.expo.dev/develop/development-builds/introduction/).
-- KTD2. Implement a small local Expo Swift module for the original vault and active document sessions. It owns security-scoped folder bookmarks, coordinated I/O, availability, conditional saves, and external-change reconciliation. Prefer `UIDocument` for active-document lifecycle and use background queues for directory work. The general Expo filesystem API is not itself a complete coordinated-vault contract. Supports R1-R4. [Apple directory access](https://developer.apple.com/documentation/uikit/providing-access-to-directories), [file coordination](https://developer.apple.com/documentation/foundation/nsfilecoordinator).
-- KTD3. Expose a native `UITextView` editor through Expo Modules. Native code owns text, selection, composition, undo, and revisioned draft checkpoints; React receives status and bounded snapshots rather than controlling the full string on each keystroke. Preserve source characters and original newline conventions. This avoids requiring a web editor or Markdown dialect conversion for R2 and R5. [Expo native views](https://docs.expo.dev/modules/module-api/).
-- KTD4. Use application-private SQLite FTS5 as a disposable content index and metadata store. Use asynchronous, parameterized queries, bounded indexing batches, and virtualized `FlatList` results/explorer rows. Filename discovery precedes downloading/indexing content; rebuilding an index never rewrites notes. Supports R6-R9 and R16. [Expo SQLite](https://docs.expo.dev/versions/v58.0.0/sdk/sqlite/), [FlatList](https://reactnative.dev/docs/flatlist).
-- KTD5. Use an adaptive Router drawer with a separate calendar panel/sheet. Prefer native controls for settings and small groups. Retain this layout choice and qualify the SDK 58 navigation APIs during U1; do not assume findings about SDK 57's SplitView still describe SDK 58. Supports R8, R10, R17. [Drawer](https://docs.expo.dev/router/advanced/drawer/), [SDK 58 documentation](https://docs.expo.dev/versions/v58.0.0/).
+- KTD1. Use the user-requested Expo SDK 58 starter, currently `expo@58.0.6`, `react-native@0.88.0-rc.3`, and `react@19.3.0`, with resolved versions in `bun.lock`. SDK 58 is in beta as of this plan's date; do not silently downgrade to SDK 57. Use Bun, Expo Router, a project development build, and SDK-compatible package installation. Resolve T01-T03 and T12-T13 from the technology options within this SDK 58 baseline; record compatible versions and validation before dependent work. The starter was built with Xcode 27.0 and run on an iOS 27.0 simulator; requalify the toolchain when versions change. (session-settled: user-directed - Expo SDK 58 and the repository name were explicitly requested.) [Template metadata](https://registry.npmjs.org/expo-template-default/58.0.15), [SDK 58 beta](https://expo.dev/changelog/sdk-58-beta), [development builds](https://docs.expo.dev/develop/development-builds/introduction/).
+- KTD2. Implement a small local Expo Swift module for the original vault and active document sessions. It owns security-scoped folder bookmarks, coordinated I/O, availability, conditional saves, and external-change reconciliation. Compare per-note `UIDocument` with explicit coordinator/presenter ownership, or a composition, using T03-T04. Keep provider I/O off the main thread. The general Expo filesystem API is not itself a complete coordinated-vault contract. Supports R1-R4.
+- KTD3. Choose the source editor through T05: a local TextKit 2 view and Live Markdown are the primary native candidates, with other approaches documented behind explicit fidelity/input gates. Native input behavior, lossless source handling, and revisioned durable checkpoints are required. React receives status and bounded snapshots rather than controlling the full string on each keystroke. Preserve source characters and original newline conventions. Supports R2, R3, R5, R17.
+- KTD4. Use application-private SQLite FTS5 as a disposable content index and metadata store. Choose `expo-sqlite` or OP-SQLite through T06 and `FlatList` or FlashList through T07. Use asynchronous, parameterized queries, bounded indexing batches, and virtualized results/explorer rows. Filename discovery precedes downloading/indexing content; rebuilding an index never rewrites notes. Supports R6-R9 and R16.
+- KTD5. Provide a compact drawer, persistent wide sidebar, and separate calendar panel/sheet. Compare adaptive Router navigation with native split-view candidates through T08; preview APIs require evidence against their documented limitations. Choose native controls or appropriate RN components, a calendar, UI state, and styling through T09/T11. Supports R8, R10, R17. A technology choice cannot remove required navigation or accessibility behavior.
 - KTD6. Parse an explicit Templater-compatible grammar, with no evaluation. Accept only `tp.file.title` and `tp.date.now(format?, offset?, reference?, reference_format?)` inside ordinary `<% ... %>` interpolation tags. Formats are limited to `YYYY-MM-DD`, `YYYYMMDD`, `YYYY-MM`, `YYYY-MM-DD HH:mm`, `HH:mm`, and `HH:mm:ss`; offsets are signed integer calendar days. References may be a strictly parsed quoted date or `tp.file.title`, with explicit `YYYY-MM-DD` or `YYYYMMDD` reference format. Omitted format means `YYYY-MM-DD`; omitted offset means zero. Capture the device clock/timezone once per expansion and use calendar arithmetic across DST. Reject execution/dynamic tags, unsupported arguments, and unknown commands. The built-in template is a heading using `tp.file.title`, a creation timestamp using `tp.date.now("YYYY-MM-DD HH:mm")`, and space to write. Supports R13-R14. [Templater date semantics](https://silentvoid13.github.io/Templater/internal-functions/internal-modules/date-module.html), [file title](https://silentvoid13.github.io/Templater/internal-functions/internal-modules/file-module.html).
 - KTD7. Store app-owned settings and bookmarks per stable vault identity. Allow `YYYY-MM-DD` and `YYYYMMDD` as filename formats and a validated relative folder/template path. Preserve a bookmark's identity across positively observed moves; otherwise offer locate/remove rather than guessing. Defer automatic `.obsidian` settings import because its private JSON is not a versioned integration contract. Supports R9, R12, R16. [Obsidian Daily notes](https://obsidian.md/help/plugins/daily-notes), [Bookmarks](https://obsidian.md/help/plugins/bookmarks).
+- KTD8. The executor records selections in `docs/technology-decisions.md` before dependent work, comparing current documented alternatives and validating compatibility. Use T10 to select the date implementation without expanding KTD6. Apply the same policy to additional dependencies. Performance and correctness evidence take precedence over implementation effort or version numbers; no speed or compatibility claim is established by this plan alone.
 
 ### High-Level Technical Design
 
-These sketches define responsibilities and ordering. File organization and private method signatures may change without changing the product contract.
+These sketches define responsibilities and ordering. File organization and private method signatures may change without changing the product contract. Concrete libraries follow KTD8; the persistence, source-fidelity, and lifecycle protocols remain mandatory with every candidate.
 
 #### Boundaries
 
@@ -230,16 +234,16 @@ Deduplicate by vault and final path. Cancellation before creation begins creates
 
 U1-U4 establish the local editing/search foundation. U5-U7 add the requested navigation and daily-writing experience. U8 qualifies the integrated result. Native file and editor experiments must use disposable fixtures; a visually complete calendar is not evidence of safe vault access.
 
-The repository contains the verified SDK 58 starter. Reuse its app configuration, routes, Bun setup, and checks; do not scaffold over it. Feature paths below are proposed, and there is no existing vault implementation to preserve or migrate. Prefer focused modules for these current responsibilities; do not add plugin, storage-adapter, or cross-platform abstraction frameworks.
+The repository contains the verified SDK 58 starter. Reuse its app configuration, routes, Bun setup, and checks; do not scaffold over it. Feature paths below are proposed, and there is no existing vault implementation to preserve or migrate. Prefer focused modules for these current responsibilities; do not add plugin, storage-adapter, or cross-platform abstraction frameworks. Settle technology choices at the unit boundaries in the [decision handoff](../technology-options-2026-10.md#decision-handoff-by-implementation-unit), recording choices before dependent implementation.
 
 ## Implementation Units
 
 ### U1. Establish the Expo app and test fixtures
 
 - Goal: Produce a bootable development build and reproducible vault fixtures.
-- Requirements: R17-R18. Dependencies: none. Decisions: KTD1, KTD5.
-- Files: `package.json`, `bun.lock`, `app.json`, `src/app/_layout.tsx`, `src/app/index.tsx`, `scripts/generate-vault.ts`, `tests/fixtures/`, `README.md`.
-- Approach: Extend the existing SDK 58 starter, remove demo content when the app shell replaces it, establish local native-module integration, and retain recorded toolchain versions. Reuse type checking and lint scripts; add meaningful unit tests, fixture generation, and reproducible simulator validation. Keep generated native outputs under Expo's documented workflow.
+- Requirements: R17-R18. Dependencies: none. Decisions: KTD1, KTD5, KTD8.
+- Files: `package.json`, `bun.lock`, `app.json`, `src/app/_layout.tsx`, `src/app/index.tsx`, `scripts/generate-vault.ts`, `tests/fixtures/`, `docs/technology-decisions.md`, `README.md`.
+- Approach: Extend the existing SDK 58 starter, remove demo content when the app shell replaces it, establish local native-module integration, and retain recorded toolchain versions. Resolve the testing/build choices using dated evidence and record a provisional editor compatibility check. Reuse type checking and lint scripts; add meaningful unit tests, fixture generation, and reproducible simulator validation. Keep generated native outputs under Expo's documented workflow.
 - Test scenarios: Clean install and iPhone/iPad simulator launch; reproducible 10,000-note fixture, Unicode/frontmatter/wikilink fixtures, and long-note cases.
 - Verification: Bun install, type check, lint, development build, simulator smoke check. Save fixture manifest and build commands in README.
 
@@ -248,7 +252,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Open and safely save fixture-vault files through the native boundary.
 - Requirements: R1-R4, R16. Dependency: U1. Decisions: KTD2.
 - Files: `modules/vault/ios/`, `modules/vault/src/`, `src/features/vault/`, `modules/vault/ios/Tests/`, `tests/integration/vault-session.test.ts`.
-- Approach: Implement folder selection/restoration, incremental enumeration, document identity, availability, coordinated read/conditional save/create, journal storage, and foreground reconciliation. Use the Persistence Protocol and native path containment checks.
+- Approach: Validate and record the T04 document-ownership choice. Implement folder selection/restoration, incremental enumeration, document identity, availability, coordinated read/conditional save/create, journal storage, and foreground reconciliation. Use the Persistence Protocol and native path containment checks.
 - Test scenarios: Denied/stale grant, placeholder vs absence, concurrent create, external edit/rename/delete, failed journal/write, symlink escape, and vault switch during a save.
 - Verification: Swift tests plus integration fixtures establish that no operation overwrites an unrecognized revision or turns an unreadable file into a new note.
 
@@ -257,7 +261,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Type, navigate, and recover without fighting the editor or losing acknowledged saves.
 - Requirements: R2-R5, R17. Dependency: U2. Decisions: KTD3.
 - Files: `modules/vault/ios/Editor/`, `src/features/editor/`, `src/features/recovery/`, `tests/e2e/editor/`, `modules/vault/ios/Tests/EditorTests.swift`.
-- Approach: Connect native revisioned editing to the journal/save lifecycle. Add clear Saving, Saved locally, and Unsaved states, simple note creation, and explicit recovery actions. Introduce basic source styling only after selection/composition/undo work reliably.
+- Approach: Validate T05 candidates against source fidelity, native input, long-note behavior, and the selected SDK; record the editor choice. Connect revisioned editing to the journal/save lifecycle. Add clear Saving, Saved locally, and Unsaved states, simple note creation, and explicit recovery actions. Introduce basic source styling only after selection/composition/undo work reliably.
 - Test scenarios: Unicode/IME, dictation, undo/redo, hardware keyboard, large paste, background/termination after checkpoints, conflicting recovery, and read-only unsupported encodings. Round-trip a synthetic daily-note fixture, preserving its frontmatter and plugin syntax.
 - Verification: Simulator end-to-end writing and recovery checks; native input checks on hardware where simulator input differs. Round-trip fixtures remain unchanged except intended edits.
 
@@ -266,7 +270,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Find and open notes without scanning the vault on every query.
 - Requirements: R6-R7, R18. Dependencies: U2-U3. Decisions: KTD4.
 - Files: `src/features/search/`, `src/storage/`, `tests/integration/search.test.ts`, `scripts/benchmark-search.ts`.
-- Approach: Index available content in bounded batches, rank filename matches first, expose coverage, reconcile changes, and reject stale result generations. Prioritize active-document work over indexing.
+- Approach: Resolve T06 and the search portion of T07, including FTS/query semantics and write scheduling. Index available content in bounded batches, rank filename matches first, expose coverage, reconcile changes, and reject stale result generations. Prioritize active-document work over indexing.
 - Test scenarios: 10,000 files, partial cloud availability, update/delete/rename, cancelled query, vault switch, index rebuild, and typing during index activity.
 - Verification: Deterministic search correctness plus preliminary release-build measurements against the Verification Contract.
 
@@ -275,7 +279,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Browse the vault and return to chosen notes quickly.
 - Requirements: R8-R9, R16-R17. Dependencies: U3-U4. Decisions: KTD4-KTD5, KTD7.
 - Files: `src/features/explorer/`, `src/features/bookmarks/`, `src/components/VaultSidebar.tsx`, `tests/e2e/navigation/`.
-- Approach: Flatten expanded folders into virtualized rows, expose bookmark actions, and adapt the sidebar to available width. Persist per-vault metadata and support explicit missing-bookmark recovery.
+- Approach: Validate T07-T08/T11 for explorer virtualization, navigation, state subscriptions, and styling. Flatten expanded folders into virtualized rows, expose bookmark actions, and adapt the sidebar to available width. Persist per-vault metadata and support explicit missing-bookmark recovery.
 - Test scenarios: Deep folders, duplicate basenames across vaults, observed rename, unresolved deletion, restart persistence, narrow iPad multitasking, and VoiceOver focus.
 - Verification: Bookmark round trip and responsive navigation on iPhone/iPad with the large fixture; no `.obsidian` modifications.
 
@@ -284,7 +288,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Deterministically open or create one daily note using the declared syntax.
 - Requirements: R10, R12-R16. Dependencies: U2-U3. Decisions: KTD6-KTD7.
 - Files: `src/features/daily-notes/`, `src/features/templates/`, `tests/unit/templates.test.ts`, `tests/unit/daily-path.test.ts`, `tests/integration/daily-create.test.ts`.
-- Approach: Build the pure parser/renderer with injected clock and calendar context, settings preview, and the Daily-note Protocol. Validate complete output before requesting any native mutation.
+- Approach: Resolve the T10 date implementation and explicit format adapter without changing KTD6. Build the pure parser/renderer with injected clock and calendar context, settings preview, and the Daily-note Protocol. Validate complete output before requesting any native mutation.
 - Test scenarios: Existing note with broken template, invalid tags/arguments, selected historical date, explicit title reference, DST/leap-day/year rollover, invalid path, repeated taps, and a create collision. Synthetic templates containing unsupported execution tags, variable expressions, and date formats must produce an unsupported-command error with no mutations; the supported starter template must create successfully.
 - Verification: Deterministic unit tests and native create integration confirm expected text, canonical filenames, and zero mutations after template errors.
 
@@ -293,7 +297,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Launch into today's note and begin writing, with other dates one tap away.
 - Requirements: R10-R12, R14-R15, R17. Dependencies: U5-U6. Decisions: KTD5.
 - Files: `src/features/calendar/`, `src/app/index.tsx`, `src/features/settings/`, `tests/e2e/daily-notes/`.
-- Approach: Connect month navigation and Today to the resolver. Respect recovery priority, avoid creating notes while merely paging months, and restore editor focus after deliberate note selection.
+- Approach: Resolve T09 using day-selection and accessibility checks, including a repeated tap on the selected date. Connect month navigation and Today to the resolver. Respect recovery priority, avoid creating notes while merely paging months, and restore editor focus after deliberate note selection.
 - Test scenarios: First setup, relaunch, existing/absent/offline Today, rapid multi-day selection, cancellation, midnight/timezone change, keyboard visible, and accessibility navigation.
 - Verification: End-to-end open Today -> write -> relaunch -> unchanged text, on both phone and tablet layouts.
 
@@ -308,7 +312,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 
 ## Verification Contract
 
-`bun run typecheck` and `bun run lint` are established and passing for the starter. U1 must add meaningful tests runnable through `bun test`, fixture generation, and native-module validation; a test runner with no tests does not qualify. Native XCTest and simulator end-to-end commands must be recorded after inspecting the generated Xcode scheme. Do not invent a passing test or conceal unavailable device coverage.
+`bun run typecheck` and `bun run lint` are established and passing for the starter. U1 must add meaningful tests, fixture generation, and native-module validation; a test runner with no tests does not qualify. Choose runners per T12: Bun may run pure logic, while Expo components need a validated native-component testing setup. Establish `bun run test` when those tests exist. Record Swift Testing/XCTest and simulator end-to-end commands after inspecting the generated Xcode scheme. Run Expo dependency checks for the selected version group. Do not invent a passing test or conceal unavailable device coverage.
 
 Integrity gates are absolute: intended text round-trips, unchanged files remain byte-identical, invalid templates create nothing, local create races never overwrite, conflicts retain both versions, and every Saved locally indication follows a successful coordinated save. Termination before a durable checkpoint can lose the most recent uncheckpointed input; characterize that window rather than promising crash-proof keystrokes.
 
@@ -328,6 +332,7 @@ Accessibility verification covers VoiceOver traversal, labeled calendar days/sel
 
 ## Definition of Done
 
+- `docs/technology-decisions.md` records current-source checks, chosen versions, alternatives, compatibility evidence, and unit-specific validation. The final dependency graph is reproducible from `bun.lock` and the documented native toolchain.
 - Every unit's scenarios pass with evidence in `docs/validation.md`; unavailable checks remain explicit and the affected capability remains unqualified.
 - The user can select a disposable vault, open Today, write, search, browse, bookmark, choose another calendar day, and reopen saved content.
 - Integrity gates and the stated hardware performance targets pass before a completed-app claim.
