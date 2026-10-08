@@ -19,8 +19,8 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 | Pure TypeScript tests | `bun run check` in L1 and CI; 104 tests across 11 files as of `3fbdf82` |
 | Native unit tests | `swift test --package-path modules/vault` on M1; 58 tests in 10 suites passed for `ddcf2fb` |
 | Production JS export | Passes in L1 for web, iOS, and Android bundles |
-| Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), and the JavaScript bridge with the folder picker (`31e091d`). The editor, search, explorer, and calendar commits are built by the run for `3fbdf82` |
-| Simulator interaction | `scripts/ci/simulator-smoke.sh` runs on an iPhone and an iPad Pro 13-inch Simulator: fixture vault → today's note → byte checks → FTS5 index, then Maestro flows for typing, saving, search, bookmarks, and the calendar. First results are pending for `3fbdf82` |
+| Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), the JavaScript bridge with the folder picker (`31e091d`), and the full app with the editor, search, explorer, calendar, and settings (`3fbdf82`) |
+| Simulator interaction | `scripts/ci/simulator-smoke.sh` runs on an iPhone and an iPad Pro 13-inch Simulator: fixture vault → today's note → byte checks → FTS5 index, then Maestro flows for typing, saving, search, bookmarks, and the calendar. First run (`3fbdf82`, iPhone Simulator, October 8, 2026): the Release app opened the fixture vault through the test hook, created `Daily/2026-10-08.md` from the built-in template (`# 2026-10-08`, `Created 2026-10-08 08:00`), left every other fixture file byte-identical, and indexed 26 of 26 notes in its own SQLite build. The step then failed in the harness, because the runner's `sqlite3` tool lacks FTS5; fixed in `51e8518`. Maestro and iPad results are pending |
 | Physical-device input and performance | Not run |
 | Multi-device iCloud | Not run |
 
