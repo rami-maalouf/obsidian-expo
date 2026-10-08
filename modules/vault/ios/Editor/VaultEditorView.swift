@@ -11,6 +11,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   var path: String?
 
   private let textView = UITextView(usingTextLayoutManager: true)
+  private var styler: MarkdownStyler?
   private var document: DocumentSession?
   private var openedTarget: String?
   private var newline = "\n"
@@ -41,6 +42,8 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     textView.accessibilityLabel = "Note text"
     textView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     addSubview(textView)
+    // display-only styling; reading textLayoutManager keeps TextKit 2 (layoutManager would not).
+    styler = MarkdownStyler(contentStorage: textView.textLayoutManager?.textContentManager as? NSTextContentStorage)
 
     let center = NotificationCenter.default
     // these observers are delivered on the main queue.
@@ -164,6 +167,13 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   }
 
   public func textViewDidChange(_ textView: UITextView) {
+    if styler?.staleFrom != nil {
+      // after this edit finishes, and never during a keyboard composition.
+      DispatchQueue.main.async { [weak self] in
+        guard let self, self.textView.markedTextRange == nil else { return }
+        self.styler?.refresh()
+      }
+    }
     guard document != nil else {
       return
     }

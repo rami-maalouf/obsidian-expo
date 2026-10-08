@@ -8,7 +8,8 @@
 #    simulator-only `-VaultTestFolder vault` argument.
 # 3. checks that today's note was created from the built-in template, that every other fixture
 #    file is byte-identical, and that the search index (fts5) found every note.
-# 4. runs each maestro flow, then checks the fixture bytes again. when a flow fails, it prints the
+# 4. runs each maestro flow, checks the typed lines, prints the editor's log (source styling on or
+#    off), then checks the fixture bytes again. when a flow fails, it prints the
 #    on-screen text, whether the app still runs, and the app's errors into the job log, because the
 #    uploaded artifacts are not always reachable.
 set -euo pipefail
@@ -104,6 +105,12 @@ if [ "$#" -gt 0 ]; then
   echo "--- Daily/$today.md after the flows"
   cat "$note"
   grep -q 'Typed in the simulator.' "$note"
+  for line in '## Styled heading' '```' '# Inside code'; do
+    grep -qxF -- "$line" "$note"
+  done
+  echo "--- editor log"
+  xcrun simctl spawn "$udid" log show --last 15m --style compact \
+    --predicate 'subsystem == "com.ramimaalouf.obsidianexpo"' | tail -20 || true
   fixture_hashes "$data/Documents/vault" > "$out/after-flows.txt"
   diff "$out/before.txt" "$out/after-flows.txt"
 fi
