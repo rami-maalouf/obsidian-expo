@@ -175,7 +175,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 | Layer | Tool | Entry point |
 | --- | --- | --- |
 | Native unit and integration tests | Swift Testing through `swift test` on the Foundation-only vault core | `swift test --package-path modules/vault` (ios workflow) |
-| App flows | Maestro CLI 2.11.0 against Release Simulator builds, with a 5-minute driver startup timeout | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/` |
+| App flows | Maestro CLI 2.11.0 against Release Simulator builds, with a 3-minute driver startup timeout and one restart of a driver that did not start | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/` |
 | Component and Router tests | Not adopted yet | Logic is kept in pure modules tested by Bun |
 | Performance | Xcode Instruments on a device | Not run; no device is available |
 

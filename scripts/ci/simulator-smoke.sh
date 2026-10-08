@@ -70,6 +70,24 @@ diagnose() {
   find "$out/maestro" -name 'maestro.log' -exec tail -40 {} \; 2> /dev/null || true
 }
 
+# runs one maestro flow. only a driver that never started is retried, once: no flow command
+# has run at that point. failed assertions are never retried.
+run_flow() {
+  local log
+  log="$out/maestro-$(basename "$1" .yaml).log"
+  for attempt in 1 2; do
+    if maestro --device "$udid" test -e OUT="$out" -e TODAY="$today" --test-output-dir "$out/maestro" "$1" 2>&1 | tee "$log"; then
+      return 0
+    fi
+    if [ "$attempt" = 2 ] || ! grep -q 'iOS driver not ready in time' "$log"; then
+      return 1
+    fi
+    echo "maestro's ios driver did not start; stopping leftover drivers and starting it once more"
+    pkill -f maestro-driver || true
+    sleep 5
+  done
+}
+
 # waits up to 20 seconds for a fixed string in today's note.
 wait_for_note() {
   for _ in $(seq 1 20); do
@@ -110,15 +128,17 @@ grep -qx 'Welcome.md' "$out/fts.txt"
 
 if [ "$#" -gt 0 ]; then
   # maestro 2.11.0 was the release observed in ci on october 8, 2026 (t12); the install script
-  # reads MAESTRO_VERSION. its xctest driver took over two minutes to start on a fresh ipad
-  # simulator, beyond the default startup timeout.
+  # reads MAESTRO_VERSION. its xctest driver sometimes did not start within the default timeout
+  # (runs 37761335047 and 37761485857), and once not within five minutes (run 37775525566), so
+  # the timeout is three minutes and run_flow restarts a driver that did not start.
   export MAESTRO_VERSION=2.11.0
-  export MAESTRO_DRIVER_STARTUP_TIMEOUT=300000
+  export MAESTRO_DRIVER_STARTUP_TIMEOUT=180000
   export PATH="$HOME/.maestro/bin:$PATH"
   if ! command -v maestro > /dev/null; then
     curl -fsSL "https://get.maestro.mobile.dev" | bash
   fi
-  maestro --version
+  # a driver left running by an earlier step can keep this simulator's driver from starting.
+  pkill -f maestro-driver || true
   for flow in "$@"; do
     case "$flow" in
       @external-edit)
@@ -142,7 +162,7 @@ if [ "$#" -gt 0 ]; then
         ;;
     esac
     before_flow=$(shasum -a 256 < "$note")
-    if ! maestro --device "$udid" test -e OUT="$out" -e TODAY="$today" --test-output-dir "$out/maestro" "$flow"; then
+    if ! run_flow "$flow"; then
       diagnose "$flow"
       exit 1
     fi
