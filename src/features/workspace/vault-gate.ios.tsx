@@ -5,7 +5,7 @@
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Slot } from 'expo-router';
 import type { ReactNode } from 'react';
-import { PlatformColor, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { PlatformColor, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { Drawer } from 'react-native-drawer-layout';
 
 import { CalendarInspector } from '@/features/calendar/calendar-inspector';
@@ -67,6 +67,8 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
 
 /** how far from a screen edge a swipe starts opening a panel. */
 const EDGE_SWIPE = 32;
+/** systemGray6 in dark mode (#1C1C1E) at 82% opacity: glass that hides most of the note. */
+const DARK_PANEL_TINT = 'rgba(28, 28, 30, 0.82)';
 /** the files panel's width; it never covers more than 86% of a phone. */
 const FILES_WIDTH = 320;
 /** the calendar panel is a little wider, so the graphical month fits with its margins. */
@@ -122,9 +124,16 @@ function WorkspacePanels() {
 
 /** a panel on liquid glass, or on the grouped background where glass is not available. */
 function Panel({ children }: { children: ReactNode }) {
+  const dark = useColorScheme() === 'dark';
   if (isLiquidGlassAvailable()) {
     return (
-      <GlassView style={styles.fill} glassEffectStyle="regular">
+      // in dark mode plain glass lets too much of the note through, so it is tinted with the
+      // dark grouped background (systemGray6) to stay readable.
+      <GlassView
+        style={styles.fill}
+        glassEffectStyle="regular"
+        colorScheme={dark ? 'dark' : 'auto'}
+        tintColor={dark ? DARK_PANEL_TINT : undefined}>
         {children}
       </GlassView>
     );
