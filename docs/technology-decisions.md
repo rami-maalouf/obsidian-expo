@@ -10,7 +10,7 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Decided:** October 8, 2026, for U1-U8, within KTD1.
 
-**Choice:** the SDK 58 group from the default template, as resolved in `bun.lock`: `expo@58.0.6`, `react-native@0.88.0-rc.3`, `react@19.3.0`, `expo-router@58.0.16`, `expo-modules-core@58.0.14`, and Hermes (`hermes-compiler@260318099.0.4`). Packages use SDK-compatible ranges; `bunx expo install --check` passes in the `check` workflow. The runtime dependencies added since the template are `expo-sqlite@58.0.10` (T06) and `expo-updates@58.0.15` (T14).
+**Choice:** the SDK 58 group from the default template, as resolved in `bun.lock`: `expo@58.0.6`, `react-native@0.88.0-rc.3`, `react@19.3.0`, `expo-router@58.0.16`, `expo-modules-core@58.0.14`, and Hermes (`hermes-compiler@260318099.0.4`). Packages use SDK-compatible ranges; `bunx expo install --check` passes in the `check` workflow. The runtime dependencies added since the template are `expo-sqlite@58.0.10` (T06), `react-native-drawer-layout@4.2.11` (T08), and `expo-updates@58.0.15` (T14).
 
 **Alternatives:** the stable SDK 57 group (`expo@57.0.27`, `react-native@0.86.3`, `react@19.2.3`); not chosen, because the user asked for SDK 58 (KTD1). Newer standalone React Native, Reanimated, Worklets, or Gesture Handler releases were not substituted.
 

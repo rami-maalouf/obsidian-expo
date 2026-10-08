@@ -16,7 +16,7 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Category | Status |
 | --- | --- |
-| Pure TypeScript tests | `bun run check` in L1 and CI; 126 tests across 12 files with the app variant and icon tests |
+| Pure TypeScript tests | `bun run check` in L1 and CI; 130 tests across 13 files, including the app variant and icon tests |
 | Native unit tests | `swift test --package-path modules/vault` on M1; 69 tests in 11 suites passed for `becf682` |
 | Production JS export | Passes in L1 for web, iOS, and Android bundles |
 | Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), the JavaScript bridge with the folder picker (`31e091d`), the full app with the editor, search, explorer, calendar, and settings (`3fbdf82`), the native iPad build with all orientations (`0a1aec2`), and the editor with source styling (`becf682`) |
