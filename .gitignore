@@ -44,3 +44,6 @@ example
 # generated native folders
 /ios
 /android
+
+# synthetic vaults from scripts/generate-vault.ts
+/.fixtures/

@@ -59,7 +59,7 @@ bunx expo-doctor@latest
 bun run export
 ```
 
-`check` validates repository references and runs TypeScript and ESLint with zero warnings allowed. `export` produces production bundles for web, iOS, and Android; it does not compile a native binary. GitHub Actions runs installation, reference checking, type checking, linting, dependency alignment, and production export on pushes and pull requests.
+`check` validates repository references, runs TypeScript and ESLint with zero warnings allowed, and runs `bun test`. TypeScript checks two projects: `tsconfig.json` for app code, which cannot use Bun or Node APIs, and `tsconfig.tools.json` for tests and scripts. `export` produces production bundles for web, iOS, and Android; it does not compile a native binary. GitHub Actions runs installation, reference checking, type checking, linting, tests, dependency alignment, and production export on pushes and pull requests.
 
 For a running iOS development app, Expo's CLI provides a runtime smoke check:
 
@@ -69,6 +69,24 @@ bunx @expo/agent-cli smoke --ios --no-start --port 8098 --window 10s --json
 
 Inspect the screenshot and interact with the screens as well: a successful runtime probe alone does not prove that the UI rendered correctly.
 
+## Test fixtures
+
+`tests/fixtures/vault-basic/` is a small authored vault. It covers frontmatter, wikilinks, embeds, plugin syntax, Unicode (NFC and NFD), CRLF and mixed newlines, a UTF-8 BOM, Latin-1 and UTF-16 files, repeated basenames, daily notes, and supported and unsupported templates. `.gitattributes` stops Git from converting its bytes. `vault-basic.manifest.json` records each file's size and SHA-256, and `bun test` fails if any byte changes:
+
+```sh
+bun scripts/vault-manifest.ts tests/fixtures/vault-basic          # check
+bun scripts/vault-manifest.ts tests/fixtures/vault-basic --write  # only after an intended fixture change
+```
+
+Generate the large synthetic vault in a disposable directory. Inside this repository, only the ignored `.fixtures/` directory is allowed:
+
+```sh
+bun scripts/generate-vault.ts --out /tmp/vault-10k
+bun scripts/generate-vault.ts --out /tmp/vault-10k-stress --stress
+```
+
+The default run (seed 1, generator version 1) writes 10,000 UTF-8 notes of 2-8 KiB: 730 daily notes and 9,270 notes in nested folders, with repeated basenames. Its manifest has 44,317,263 bytes in total and digest `f9d3c347c7910e5a561272cd7a2fbf30bde630e7d12e3df6fe20618732dd80e0`. `--stress` also writes `Stress/Long 100 KiB.md` and `Stress/Long 1 MiB.md`. The manifest is written next to the vault as `<out>.manifest.json`.
+
 ## Layout
 
 - `src/app/`: Expo Router routes
@@ -76,6 +94,8 @@ Inspect the screenshot and interact with the screens as well: a successful runti
 - `src/hooks/`: theme hooks
 - `src/constants/theme.ts`: colors, spacing, and typography
 - `assets/`: starter icons and images
+- `scripts/`: fixture generation and manifests
+- `tests/`: `bun test` suites and fixtures
 
 ## Starter compatibility fixes
 

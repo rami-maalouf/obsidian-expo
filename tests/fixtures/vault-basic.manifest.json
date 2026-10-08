@@ -1,0 +1,148 @@
+{
+  "format": "obsidian-expo-vault-manifest/v1",
+  "fileCount": 28,
+  "totalBytes": 4094,
+  "digest": "e2e6d87e798b2f47bf5756a7eebf1e1fac399271654da17a67a1f892660870f8",
+  "files": [
+    {
+      "path": ".obsidian/app.json",
+      "bytes": 95,
+      "sha256": "278c16a33c37fc1efe4e7a7d1b51500e2c29acd1d265cbb83ec6adb6dfc5a0ed"
+    },
+    {
+      "path": ".obsidian/daily-notes.json",
+      "bytes": 83,
+      "sha256": "4e7f6e4e744de457fc18440e783caf0bc7fc25adc8017ad9aa2eb81a5278889f"
+    },
+    {
+      "path": "Archive/Index.md",
+      "bytes": 58,
+      "sha256": "d0a47619534ed8d572728c9e197ca96d48b9f72f53277ec6c24d6895750b4f49"
+    },
+    {
+      "path": "Daily/2026-10-07.md",
+      "bytes": 138,
+      "sha256": "725066f479db5d061edeea75226064a864e37a17068c22291204ac789bf060a0"
+    },
+    {
+      "path": "Daily/20261006.md",
+      "bytes": 65,
+      "sha256": "67644514f136aa2a20dcb59711b1a75e0e07dec37408609f489f07ba1e160ccd"
+    },
+    {
+      "path": "Encodings/CRLF line endings.md",
+      "bytes": 68,
+      "sha256": "d0a7dcb509e8f2190e70b9ade965789f78348ae019f5df134c58ecc650d800bd"
+    },
+    {
+      "path": "Encodings/Empty.md",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "Encodings/Latin-1.md",
+      "bytes": 30,
+      "sha256": "2491dd70f701526474b8b6e26bc2cc44fe2eb2ce0c9acc07e6429b90bfae0307"
+    },
+    {
+      "path": "Encodings/Mixed line endings.md",
+      "bytes": 75,
+      "sha256": "73e13168bc2de3b06f2903638ce8b2f03ea4f283de5e094939e84f7350d01907"
+    },
+    {
+      "path": "Encodings/No trailing newline.md",
+      "bytes": 49,
+      "sha256": "51a0c1e6ebd4f20e88d55ee3763bdf922ef8eac8f42e49d532b15b54b657b2f3"
+    },
+    {
+      "path": "Encodings/UTF-16LE.md",
+      "bytes": 78,
+      "sha256": "7df82c38597845fbe593a0a44899f2edb8180b7d1185935ce2ed0dc996384d2b"
+    },
+    {
+      "path": "Encodings/UTF-8 BOM.md",
+      "bytes": 52,
+      "sha256": "ada29fe3693f4df4389b1885480561c5042921dea04f57a544e57946c46ee8c1"
+    },
+    {
+      "path": "Projects/Alpha/Index.md",
+      "bytes": 101,
+      "sha256": "6dc4023ceeb55ebaa013e28b2a3c91b3435db925ece786c3d86c29ff7bcd795f"
+    },
+    {
+      "path": "Projects/Beta/Index.md",
+      "bytes": 81,
+      "sha256": "7bbb2b5cdeb5d7c15a73c8a68d39a341b418748368bb9e538c61b4165fcb9b8e"
+    },
+    {
+      "path": "Résumé.md",
+      "bytes": 112,
+      "sha256": "33be538a7191ab505ae9ecc18be74729a4bcb3acd209ac1b6b55c45ee74c042e"
+    },
+    {
+      "path": "Templates/Daily.md",
+      "bytes": 562,
+      "sha256": "18a55defcd8b98239ec30b391f5d4d362c4cd792df20280071917ac3bb768ef3"
+    },
+    {
+      "path": "Templates/Unsupported/Date format.md",
+      "bytes": 42,
+      "sha256": "bf2223c264d193324ceb7c962c65b7fd65879c2f59c8f03cbc47e38aa80b2b01"
+    },
+    {
+      "path": "Templates/Unsupported/Duration offset.md",
+      "bytes": 50,
+      "sha256": "6108587e6be5eddb494909afca234899da95b2a91c18b5af4f872cef8c63a219"
+    },
+    {
+      "path": "Templates/Unsupported/Dynamic tag.md",
+      "bytes": 51,
+      "sha256": "a61faee38b4db5843007a5eb1856684266e19996c4c14b704cd68823ae940d0e"
+    },
+    {
+      "path": "Templates/Unsupported/Execution tag.md",
+      "bytes": 86,
+      "sha256": "fcc8c20a2f73303ea1da275420acc15dae9a71a45e84f707b2f2f7b12739e4b6"
+    },
+    {
+      "path": "Templates/Unsupported/Reference without format.md",
+      "bytes": 50,
+      "sha256": "05f6a970257f99e1f8fbca89f636533d7f1fbb5a48463c8e9e7a026b8f736860"
+    },
+    {
+      "path": "Templates/Unsupported/Unclosed tag.md",
+      "bytes": 19,
+      "sha256": "ceadeda362053c4276e57d9354385b898af82904c3a462ef8f62e360f01d92eb"
+    },
+    {
+      "path": "Templates/Unsupported/Unknown command.md",
+      "bytes": 35,
+      "sha256": "5536e9b33b18a19af90f35ed10f435e2c12e62a000b4404ef82b3b9905d9ea39"
+    },
+    {
+      "path": "Templates/Unsupported/Variable expression.md",
+      "bytes": 51,
+      "sha256": "2865d3d0f13308c86f5e3e4a87c80ac759176fb122de83662b75ef4e97fe8894"
+    },
+    {
+      "path": "Templates/Unsupported/Whitespace control.md",
+      "bytes": 22,
+      "sha256": "6fc472e5e9a53c3e2e19ac2dff274e58cc10dc3604f35de2dbc7e7e13cfa2f1b"
+    },
+    {
+      "path": "Unicode.md",
+      "bytes": 772,
+      "sha256": "de8279b41c850772e3fd53831adf55adc0ec8dcac846d4bd78d3592e2a09d463"
+    },
+    {
+      "path": "Welcome.md",
+      "bytes": 1199,
+      "sha256": "58a1eeda57e06d2a6de2bc2db048552758e7f906cc56c5d98935539f538a49e1"
+    },
+    {
+      "path": "attachments/pixel.png",
+      "bytes": 70,
+      "sha256": "497790947d4666760ce38f3c00e852c71fdb66cae849bae8e9ede352719e1581"
+    }
+  ]
+}
