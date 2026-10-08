@@ -175,7 +175,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 | Layer | Tool | Entry point |
 | --- | --- | --- |
 | Native unit and integration tests | Swift Testing through `swift test` on the Foundation-only vault core | `swift test --package-path modules/vault` (ios workflow) |
-| App flows | Maestro CLI against Release Simulator builds; its install script installs the latest release, and the run prints `maestro --version` | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/` |
+| App flows | Maestro CLI 2.11.0 against Release Simulator builds, with a 5-minute driver startup timeout | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/` |
 | Component and Router tests | Not adopted yet | Logic is kept in pure modules tested by Bun |
 | Performance | Xcode Instruments on a device | Not run; no device is available |
 
@@ -183,7 +183,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Validation:** 69 Swift tests in 11 suites pass on M1; Maestro flows for typing, saving, search, styling, bookmarks, the calendar, and relaunch pass on iPhone and iPad Simulators (see [validation](validation.md)).
 
-**Limits:** the flows do not open the system folder picker; the Simulator tests register the vault through a simulator-only launch argument. The Maestro version is not pinned yet. Simulator timings do not qualify the performance targets.
+**Limits:** the flows do not open the system folder picker; the Simulator tests register the vault through a simulator-only launch argument. Simulator timings do not qualify the performance targets.
 
 ## T13. Native generation and builds
 
