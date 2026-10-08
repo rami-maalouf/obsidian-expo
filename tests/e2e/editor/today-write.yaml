@@ -28,6 +28,7 @@ appId: com.ramimaalouf.obsidianexpo
     visible: "Saved locally"
     timeout: 15000
 - takeScreenshot: ${OUT}/styled
+- tapOn: "More"
 - tapOn: "Search"
 # the native search field takes focus by itself; tapping it is only a fallback.
 - tapOn:

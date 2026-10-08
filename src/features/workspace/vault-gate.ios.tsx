@@ -1,9 +1,12 @@
 /**
- * launch → restore vault access → daily-note settings → the workspace (flow f2). the workspace
- * is a native split view: files on the left, notes in the middle, the calendar on the right (t08).
+ * launch → restore vault access → daily-note settings → the workspace (flow f2): the note in
+ * the middle, files in a panel on the left, the calendar in a panel on the right (t08).
  */
-import { SplitView } from 'expo-router/unstable-split-view';
-import { useWindowDimensions } from 'react-native';
+import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
+import { Slot } from 'expo-router';
+import type { ReactNode } from 'react';
+import { PlatformColor, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Drawer } from 'react-native-drawer-layout';
 
 import { CalendarInspector } from '@/features/calendar/calendar-inspector';
 import { DEFAULT_DAILY_NOTE_SETTINGS } from '@/features/daily-notes/settings';
@@ -14,9 +17,6 @@ import { type VaultInfo, useVault } from '@/features/vault/use-vault';
 
 import { Busy, Notice } from './status-views';
 import { useWorkspace, WorkspaceProvider } from './workspace';
-
-/** below this width the split view starts collapsed, until it reports its own state. */
-const COMPACT_WIDTH = 700;
 
 export function VaultGate() {
   const { state, choose } = useVault();
@@ -60,36 +60,86 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
   }
   return (
     <WorkspaceProvider vault={vault} settings={settings.state.settings} saveSettings={settings.save} chooseVault={chooseVault}>
-      <WorkspaceSplit />
+      <WorkspacePanels />
     </WorkspaceProvider>
   );
 }
 
-function WorkspaceSplit() {
-  const workspace = useWorkspace();
+/** how far from a screen edge a swipe starts opening a panel. */
+const EDGE_SWIPE = 32;
+/** panels never cover more of a phone than this. */
+const PANEL_WIDTH = 320;
+
+/**
+ * the note with a side panel on each edge (t08): files on the left, the calendar on the right.
+ * on a phone each panel slides over the note; on a wide screen an open panel stays beside it.
+ */
+function WorkspacePanels() {
+  const { wide, filesOpen, setFilesOpen, calendarOpen, setCalendarOpen } = useWorkspace();
   const { width } = useWindowDimensions();
-  const { splitRef, setCollapsed, calendarVisible, setCalendarVisible } = workspace;
+  const panelStyle = [styles.panel, { width: Math.min(PANEL_WIDTH, Math.round(width * 0.86)) }];
   return (
-    <SplitView
-      ref={splitRef}
-      primaryBackgroundStyle="sidebar"
-      // like obsidian, the file sidebar stays beside the note whenever there is room.
-      preferredDisplayMode="oneBesideSecondary"
-      preferredSplitBehavior="tile"
-      displayModeButtonVisibility="automatic"
-      topColumnForCollapsing="secondary"
-      showInspector={calendarVisible}
-      onInspectorHide={() => setCalendarVisible(false)}
-      onCollapse={() => setCollapsed(true)}
-      onExpand={() => setCollapsed(false)}
-      onLayout={() => width < COMPACT_WIDTH && setCollapsed(true)}
-      columnMetrics={{ preferredPrimaryColumnWidthOrFraction: 300, preferredInspectorColumnWidthOrFraction: 340 }}>
-      <SplitView.Column>
-        <NativeSidebar />
-      </SplitView.Column>
-      <SplitView.Inspector>
-        <CalendarInspector />
-      </SplitView.Inspector>
-    </SplitView>
+    <Drawer
+      open={filesOpen}
+      onOpen={() => setFilesOpen(true)}
+      onClose={() => setFilesOpen(false)}
+      drawerPosition="left"
+      drawerType={wide && filesOpen ? 'permanent' : 'front'}
+      drawerStyle={panelStyle}
+      overlayStyle={styles.scrim}
+      overlayAccessibilityLabel="Close files"
+      swipeEdgeWidth={EDGE_SWIPE}
+      keyboardDismissMode="on-drag"
+      renderDrawerContent={() => (
+        <Panel>
+          <NativeSidebar />
+        </Panel>
+      )}>
+      <Drawer
+        open={calendarOpen}
+        onOpen={() => setCalendarOpen(true)}
+        onClose={() => setCalendarOpen(false)}
+        drawerPosition="right"
+        drawerType={wide && calendarOpen ? 'permanent' : 'front'}
+        drawerStyle={panelStyle}
+        overlayStyle={styles.scrim}
+        overlayAccessibilityLabel="Close calendar"
+        swipeEdgeWidth={EDGE_SWIPE}
+        keyboardDismissMode="on-drag"
+        renderDrawerContent={() => (
+          <Panel>
+            <CalendarInspector />
+          </Panel>
+        )}>
+        <Slot />
+      </Drawer>
+    </Drawer>
   );
 }
+
+/** a panel on liquid glass, or on the grouped background where glass is not available. */
+function Panel({ children }: { children: ReactNode }) {
+  if (isLiquidGlassAvailable()) {
+    return (
+      <GlassView style={styles.fill} glassEffectStyle="regular">
+        {children}
+      </GlassView>
+    );
+  }
+  return <View style={[styles.fill, styles.opaque]}>{children}</View>;
+}
+
+const styles = StyleSheet.create({
+  panel: {
+    backgroundColor: 'transparent',
+  },
+  scrim: {
+    backgroundColor: 'rgba(0, 0, 0, 0.18)',
+  },
+  fill: {
+    flex: 1,
+  },
+  opaque: {
+    backgroundColor: PlatformColor('secondarySystemBackground'),
+  },
+});

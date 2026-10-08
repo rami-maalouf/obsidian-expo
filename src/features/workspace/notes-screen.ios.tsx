@@ -1,7 +1,8 @@
 /**
- * the middle column: drafts to recover before today, then the open note (flow f2). the note
- * title is the native navigation title; bookmark, search, calendar, and more are native
- * toolbar items (t08).
+ * the note between the two side panels: drafts to recover before today, then the open note
+ * (flow f2). the note title is the native navigation title. the toolbar opens the files
+ * panel, today's note, and the calendar panel; bookmark, search, and the rest are in the
+ * native "more" menu (t08).
  */
 import { Stack, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
@@ -64,31 +65,41 @@ export function NotesScreen() {
     <>
       <Stack.Screen options={{ title }} />
       <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button icon="sidebar.left" accessibilityLabel="Files" hidden={!workspace.collapsed} onPress={workspace.showSidebar} />
+        <Stack.Toolbar.Button
+          icon="sidebar.left"
+          accessibilityLabel="Files"
+          selected={workspace.wide && workspace.filesOpen}
+          onPress={() => workspace.setFilesOpen(!workspace.filesOpen)}
+        />
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Button
-          icon={marked ? 'bookmark.fill' : 'bookmark'}
-          accessibilityLabel={marked ? 'Remove bookmark' : 'Bookmark this note'}
-          hidden={!editing}
-          onPress={() => path && (marked ? bookmarks.remove(path) : bookmarks.add(path))}
-        />
-        <Stack.Toolbar.Button icon="magnifyingglass" accessibilityLabel="Search" onPress={() => router.push('/search')} />
+        <Stack.Toolbar.Button accessibilityLabel="Open today's note" onPress={workspace.openToday}>
+          Today
+        </Stack.Toolbar.Button>
         <Stack.Toolbar.Button
           icon="calendar"
           accessibilityLabel="Calendar"
-          selected={workspace.calendarVisible}
-          onPress={() => workspace.setCalendarVisible(!workspace.calendarVisible)}
+          selected={workspace.calendarOpen}
+          onPress={() => workspace.setCalendarOpen(!workspace.calendarOpen)}
         />
         <Stack.Toolbar.Menu icon="ellipsis.circle" accessibilityLabel="More">
+          <Stack.Toolbar.MenuAction
+            icon={marked ? 'bookmark.slash' : 'bookmark'}
+            hidden={!editing}
+            onPress={() => path && (marked ? bookmarks.remove(path) : bookmarks.add(path))}>
+            {marked ? 'Remove bookmark' : 'Bookmark this note'}
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction icon="magnifyingglass" onPress={() => router.push('/search')}>
+            Search
+          </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="square.and.pencil" onPress={() => workspace.createNote()}>
-            New Note
+            New note
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="calendar.badge.clock" onPress={() => router.push('/settings')}>
-            Daily Note Settings
+            Daily note settings
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="folder" onPress={workspace.chooseVault}>
-            Choose Another Vault
+            Choose another vault
           </Stack.Toolbar.MenuAction>
         </Stack.Toolbar.Menu>
       </Stack.Toolbar>
