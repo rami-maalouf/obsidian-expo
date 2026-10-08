@@ -28,11 +28,11 @@ The sanitized daily template must be rejected by the first renderer before any f
 
 The basic template uses only `tp.file.title` and the allowed `tp.date.now("YYYY-MM-DD HH:mm")` call. For a destination title of `2000-01-03` and an injected local creation clock of `2000-01-04 09:30`, its heading must be `# 2000-01-03` and its creation line `Created: 2000-01-04 09:30`. Existing notes must open unchanged even when the configured template is unsupported.
 
-This describes future renderer behavior; no renderer is implemented yet.
+The template renderer in `src/features/templates/` implements this behavior. `bun test` checks both examples: `tests/unit/templates.test.ts` renders the basic template and finds every unsupported construct in the sanitized template, and `tests/unit/daily-resolver.test.ts` confirms that the example note opens unchanged and that nothing is created from the unsupported template. These are logic tests; native file creation is not yet covered.
 
-## Larger fixtures still to implement
+## Authored fixtures and generated vaults
 
-U1 should create small authored fixtures and a reproducible generator that cover:
+U1 requires small authored fixtures and a reproducible generator that cover:
 
 - UTF-8 Markdown, Unicode, frontmatter, wikilinks, embeds, and unsupported plugin syntax, preserving untouched bytes and newline conventions.
 - Daily notes whose filename date differs from the template expansion clock.
@@ -40,4 +40,4 @@ U1 should create small authored fixtures and a reproducible generator that cover
 - Unsupported Templater execution tags, variable expressions, and date formats, with errors before any filesystem mutation.
 - Duplicate basenames, nested folders, long notes, and a reproducible 10,000-note vault with a manifest.
 
-The small references above exist. A generator, large-vault data, native file-state fixtures, and behavioral tests remain future work. Generate large fixtures in disposable locations and keep them out of version control. Test iCloud behavior with disposable vaults on suitable devices as described in U8.
+The [authored fixture vault](../../tests/fixtures/vault-basic) and the [vault generator](../../scripts/generate-vault.ts) now cover these items; the [root README](../../README.md#test-fixtures) describes them and records the 10,000-note manifest. Native file-state fixtures (cloud placeholders, permission loss) remain future work in U2. Generate large fixtures in disposable locations and keep them out of version control. Test iCloud behavior with disposable vaults on suitable devices as described in U8.
