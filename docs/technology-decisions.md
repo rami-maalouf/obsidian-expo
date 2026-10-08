@@ -36,6 +36,34 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 - File presenters and foreground reconciliation for open documents are not implemented yet; they belong with the editor sessions in U3.
 - The folder picker and bookmark persistence on iOS need a manual or UI-test run in the Simulator.
 
+## T05. Markdown source editor
+
+**Decided provisionally:** October 8, 2026, for U3. Device input trials remain open.
+
+**Choice:** a local `UITextView` created with `UITextView(usingTextLayoutManager: true)` (TextKit 2), exposed as an Expo native view (`VaultEditorView`). UIKit supplies selection, composition, dictation, hardware-keyboard input, and undo. Native code owns the text and hands it to the document session after edits settle for 200 ms; JavaScript receives only status and load events. Smart quotes, smart dashes, and smart insert/delete are off so typing does not rewrite Markdown source. New line breaks follow the file's first line break (`\n`, `\r\n`, or `\r`), and existing bytes are never re-encoded. The code does not touch `layoutManager`, which would force a TextKit 1 fallback.
+
+**Alternatives** (from the dated options research; none was installed, so registry versions were not rechecked):
+
+| Option | Why not chosen now |
+| --- | --- |
+| `@expensify/react-native-live-markdown@0.1.343` | Its compatibility notes cover React Native 0.86, not 0.88, and its Worklets requirement needs reconciling with this SDK. Its parser runs on the UI thread and stops styling above 4,000 characters by default. |
+| Enriched Markdown 1.1.1 | Rich-text editing with Markdown output; lossless source editing is not established. |
+| CodeMirror 6 through Expo DOM | A separate web runtime with an asynchronous bridge; native input and native draft ownership would need proof. |
+
+**Validation:** the document session's persistence rules are covered by `swift test` (see T04). Simulator compile and smoke evidence is recorded in [validation](validation.md).
+
+**Limits:** no release-build input trials with 4 KiB, 100 KiB, and 1 MiB notes on a device; IME, dictation, and hardware-keyboard behavior are unverified; Markdown source styling is not implemented yet (the plan adds it only after input works reliably).
+
+## T11. UI state and styling
+
+**Decided:** October 8, 2026, for the U1-U3 shell.
+
+**Choice:** option A for both layers. UI state uses React state and effects, with asynchronous results keyed to the request that produced them so a stale result is never shown. Editor text stays native. Styling uses React Native `StyleSheet` with the existing theme tokens in `src/constants/theme.ts` and the system light and dark appearance. No dependency was added.
+
+**Alternatives:** `zustand@5.0.15` for shared state; `uniwind@1.12.2` or `react-native-unistyles@3.5.1` for styling. Neither is needed while the shell has one screen; this will be revisited with the sidebar and calendar (U5, U7) if shared state grows.
+
+**Validation:** type check, lint, and production export. Rerender measurements during typing and indexing need a profiler on a device and remain open.
+
 ## T12 (part). Test runner for pure TypeScript logic
 
 **Decided:** October 8, 2026, for U1 and U6.
@@ -90,9 +118,9 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | --- | --- | --- |
 | T01-T02 framework group and toolchain | U1 | A native service call in a running app and an editor view mount |
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
-| T05 source editor | U3 | Release-build input trials on device |
+| T05 final editor qualification | U3 | Release-build input trials on device |
 | T06 SQLite library, T07 list virtualization | U4, U5 | FTS5 in the iOS binary; scrolling and accessibility checks on device |
-| T08 navigation shell, T11 state and styling | U5 | iPhone and iPad layout, keyboard, and VoiceOver checks |
+| T08 navigation shell | U5 | iPhone and iPad layout, keyboard, and VoiceOver checks; the current shell is a single Stack screen |
 | T09 calendar | U7 | Day selection, reselection, and accessibility on iOS |
 | T12 end-to-end and UI test tools | U1-U3 | Xcode scheme inspection and Simulator runs; native unit tests already use Swift Testing through `swift test` |
 | T13 native generation and builds | U1 | Clean prebuild and reproducible Simulator builds |

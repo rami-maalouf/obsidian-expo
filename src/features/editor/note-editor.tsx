@@ -2,7 +2,7 @@
  * the native editor with its save status. the status line is a live region so voiceover
  * announces saves and problems (r17).
  */
-import { useRef, useState } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/button';
@@ -23,6 +23,10 @@ type NoteEditorProps = {
   path: string;
   /** called when a journaled draft no longer matches the file and needs a decision. */
   onRecoveryNeeded: (path: string) => void;
+  /** called after each completed save, for example to refresh the search index. */
+  onSaved?: (path: string) => void;
+  /** extra header controls, such as a search button. */
+  accessory?: ReactNode;
 };
 
 export function noteTitle(path: string) {
@@ -30,7 +34,7 @@ export function noteTitle(path: string) {
   return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name;
 }
 
-export function NoteEditor({ vaultId, path, onRecoveryNeeded }: NoteEditorProps) {
+export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, accessory }: NoteEditorProps) {
   const theme = useTheme();
   const editor = useRef<VaultEditorHandle>(null);
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
@@ -55,6 +59,7 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded }: NoteEditorProps)
           {label.text}
         </ThemedText>
         {label.canRetry && <Button kind="plain" title="Retry" onPress={() => editor.current?.flush()} />}
+        {accessory}
       </View>
       {load?.kind === 'unavailable' && (
         <ThemedText type="small" style={styles.notice}>
@@ -66,7 +71,12 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded }: NoteEditorProps)
         style={[styles.editor, { backgroundColor: theme.background }]}
         vaultId={vaultId}
         path={path}
-        onStatus={(event) => setStatus(event.nativeEvent)}
+        onStatus={(event) => {
+          setStatus(event.nativeEvent);
+          if (event.nativeEvent.status === 'saved') {
+            onSaved?.(path);
+          }
+        }}
         onLoad={(event) => {
           setLoad(event.nativeEvent);
           if (event.nativeEvent.kind === 'recovery-needed') {

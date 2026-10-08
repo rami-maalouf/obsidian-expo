@@ -20,6 +20,12 @@ public class VaultModule: Module {
       VaultCoreInfo.version
     }
 
+    // where the disposable search index lives: app caches, outside every vault and backups.
+    Constant("indexDirectory") {
+      FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+        .appendingPathComponent("vault-index", isDirectory: true).path
+    }
+
     // returns nil for a valid vault-relative path, or the reason it is refused.
     Function("checkRelativePath") { (path: String) -> String? in
       do {

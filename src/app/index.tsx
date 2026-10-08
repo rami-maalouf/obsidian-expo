@@ -13,6 +13,8 @@ import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
 import { NoteEditor } from '@/features/editor/note-editor';
 import { RecoveryList } from '@/features/recovery/recovery-list';
 import { useDrafts } from '@/features/recovery/use-drafts';
+import { SearchPanel } from '@/features/search/search-panel';
+import { useSearchIndex } from '@/features/search/use-search-index';
 import { useTodayNote } from '@/features/today/use-today-note';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
 
@@ -55,6 +57,8 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [continued, setContinued] = useState(false);
   const [conflicted, setConflicted] = useState<ReadonlySet<string>>(new Set());
+  const [searching, setSearching] = useState(false);
+  const search = useSearchIndex(vault.id);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
   const today = useTodayNote(vault.id, pending !== null && !needsRecovery);
@@ -75,6 +79,20 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
       />
     );
   }
+  if (searching) {
+    return (
+      <SearchPanel
+        session={search.phase === 'ready' ? search.session : null}
+        coverage={search.phase === 'ready' ? search.coverage : null}
+        indexing={search.phase !== 'ready' || search.indexing}
+        onOpen={(found) => {
+          setSelected(found);
+          setSearching(false);
+        }}
+        onClose={() => setSearching(false)}
+      />
+    );
+  }
   const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
   if (path) {
     return (
@@ -82,6 +100,10 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
         key={path}
         vaultId={vault.id}
         path={path}
+        accessory={<Button kind="plain" title="Search" onPress={() => setSearching(true)} />}
+        onSaved={(saved) => {
+          if (search.phase === 'ready') search.index.refresh(saved).catch(() => undefined);
+        }}
         onRecoveryNeeded={(conflictPath) => {
           setConflicted((current) => new Set(current).add(conflictPath));
           setSelected(null);
