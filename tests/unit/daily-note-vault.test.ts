@@ -76,3 +76,17 @@ describe('dailyNoteVault', () => {
     ]);
   });
 });
+
+describe('launchVault', () => {
+  test('prefers the last used vault, else the newest', async () => {
+    const { launchVault } = await import('@/features/vault/launch');
+    const vaults = [
+      { id: 'a', name: 'A' },
+      { id: 'b', name: 'B' },
+    ];
+    expect(launchVault(vaults, 'a')?.id).toBe('a');
+    expect(launchVault(vaults, 'gone')?.id).toBe('b');
+    expect(launchVault(vaults, null)?.id).toBe('b');
+    expect(launchVault([], 'a')).toBeUndefined();
+  });
+});

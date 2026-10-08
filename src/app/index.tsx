@@ -58,7 +58,7 @@ export default function TodayScreen() {
             action={{ title: 'Choose Folder', onPress: choose }}
           />
         )}
-        {state.phase === 'ready' && <VaultHome vault={state.vault} />}
+        {state.phase === 'ready' && <VaultHome key={state.vault.id} vault={state.vault} onChooseVault={choose} />}
       </SafeAreaView>
     </ThemedView>
   );
@@ -71,7 +71,7 @@ const CALENDAR_PANEL_LAYOUT = 1180;
 
 type Overlay = 'none' | 'search' | 'sidebar' | 'calendar' | 'settings';
 
-function VaultHome({ vault }: { vault: VaultInfo }) {
+function VaultHome({ vault, onChooseVault }: { vault: VaultInfo; onChooseVault: () => void }) {
   const settingsState = useDailySettings(vault.id);
   if (settingsState.state.phase === 'loading') {
     return <Busy label="Loading settings" />;
@@ -86,16 +86,24 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
       />
     );
   }
-  return <Workspace vault={vault} settings={settingsState.state.settings} onSaveSettings={settingsState.save} />;
+  return (
+    <Workspace
+      vault={vault}
+      settings={settingsState.state.settings}
+      onSaveSettings={settingsState.save}
+      onChooseVault={onChooseVault}
+    />
+  );
 }
 
 type WorkspaceProps = {
   vault: VaultInfo;
   settings: DailyNoteSettings;
   onSaveSettings: (settings: DailyNoteSettings) => Promise<void>;
+  onChooseVault: () => void;
 };
 
-function Workspace({ vault, settings, onSaveSettings }: WorkspaceProps) {
+function Workspace({ vault, settings, onSaveSettings, onChooseVault }: WorkspaceProps) {
   const drafts = useDrafts(vault.id);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<CivilDate | null>(null);
@@ -199,6 +207,7 @@ function Workspace({ vault, settings, onSaveSettings }: WorkspaceProps) {
       activePath={path}
       onOpen={open}
       onCreated={notes.refresh}
+      onChooseVault={onChooseVault}
       onClose={wide ? undefined : () => setOverlay('none')}
     />
   );

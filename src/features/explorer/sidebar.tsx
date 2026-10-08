@@ -25,13 +25,15 @@ type SidebarProps = {
   activePath: string | null;
   onOpen: (path: string) => void;
   onCreated: () => void;
+  /** picks another vault folder; cancelling keeps this one open. */
+  onChooseVault: () => void;
   onClose?: () => void;
 };
 
 type Section = 'files' | 'bookmarks' | 'new';
 
 export function Sidebar(props: SidebarProps) {
-  const { listing, bookmarks, activePath, onOpen, onClose, vaultName } = props;
+  const { listing, bookmarks, activePath, onOpen, onClose, onChooseVault, vaultName } = props;
   const theme = useTheme();
   const [section, setSection] = useState<Section>('files');
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(activePath ? ancestorFolders(activePath) : []));
@@ -66,6 +68,7 @@ export function Sidebar(props: SidebarProps) {
         <ThemedText type="smallBold" numberOfLines={1} style={styles.flex} accessibilityRole="header">
           {vaultName}
         </ThemedText>
+        <Button kind="plain" title="Change" accessibilityLabel="Choose another vault" onPress={onChooseVault} />
         {onClose && <Button kind="plain" title="Close" onPress={onClose} />}
       </View>
       <View style={styles.tabs} accessibilityRole="tablist">
