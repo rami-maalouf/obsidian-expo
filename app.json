@@ -3,11 +3,12 @@
     "name": "obsidian-expo",
     "slug": "obsidian-expo",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "obsidianexpo",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "supportsTablet": true,
       "bundleIdentifier": "com.ramimaalouf.obsidianexpo",
       "icon": "./assets/expo.icon"
     },

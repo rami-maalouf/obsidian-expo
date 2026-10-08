@@ -86,6 +86,8 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Alternatives:** the Expo Router drawer, which needs `@react-navigation/drawer` and adds a gesture drawer; Router SplitView, which its documentation calls alpha and not for production; and `@expo/ui` `NavigationSplitView`, a preview in SDK 58. The current layout keeps the required behavior without a preview API; the gesture drawer can be added later if device testing shows the button-opened drawer is not enough.
 
+**App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode, so the wide layout never appears. All four orientations are needed for rotation (R17) and for iPad multitasking, which iPadOS gives only to apps that support every orientation and do not require full screen. The iOS workflow checks both settings after `expo prebuild`.
+
 **Limits:** no swipe gesture for the drawer; split-screen and Slide Over widths on iPad, state restoration, and keyboard focus after closing overlays are untested.
 
 ## T09. Calendar

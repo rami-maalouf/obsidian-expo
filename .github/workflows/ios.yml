@@ -64,6 +64,13 @@ jobs:
           CI: 1
       - name: confirm the local vault module is autolinked
         run: grep -rl 'VaultModule' ios/Pods/Target\ Support\ Files/*/ExpoModulesProvider.swift
+      - name: confirm the app targets iphone and ipad and rotates
+        run: |
+          grep -q 'TARGETED_DEVICE_FAMILY = "1,2"' ios/*.xcodeproj/project.pbxproj
+          plist=$(ls ios/*/Info.plist | grep -v Pods | head -1)
+          plutil -extract 'UISupportedInterfaceOrientations' json -o - "$plist" | tee orientations.json
+          grep -q LandscapeLeft orientations.json
+          plutil -extract 'UISupportedInterfaceOrientations~ipad' json -o - "$plist" || echo "no ipad-specific orientations"
       - name: build for the simulator
         run: |
           workspace=$(ls -d ios/*.xcworkspace | head -1)

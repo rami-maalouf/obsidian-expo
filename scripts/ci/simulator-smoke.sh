@@ -8,7 +8,9 @@
 #    simulator-only `-VaultTestFolder vault` argument.
 # 3. checks that today's note was created from the built-in template, that every other fixture
 #    file is byte-identical, and that the search index (fts5) found every note.
-# 4. runs each maestro flow, then checks the fixture bytes again.
+# 4. runs each maestro flow, then checks the fixture bytes again. when a flow fails, it prints the
+#    on-screen text, whether the app still runs, and the app's errors into the job log, because the
+#    uploaded artifacts are not always reachable.
 set -euo pipefail
 
 prefix=$1
@@ -43,6 +45,24 @@ cat "$note"
 printf '# %s\n\nCreated %s ' "$today" "$today" > "$out/expected-prefix.txt"
 head -c "$(wc -c < "$out/expected-prefix.txt")" "$note" | cmp - "$out/expected-prefix.txt"
 
+diagnose() {
+  echo "--- diagnostics after $1"
+  xcrun simctl spawn "$udid" launchctl list | grep -i "$bundle" || echo "the app is not running"
+  if maestro --device "$udid" hierarchy > "$out/hierarchy.txt" 2> "$out/hierarchy.err"; then
+    # the hierarchy is json after any progress lines; print each element that has text.
+    sed -n '/^{/,$p' "$out/hierarchy.txt" | jq -r '
+      .. | objects | select(has("attributes")) | .attributes
+      | [.text, .accessibilityText, .title, .value] | map(select(. != null and . != "")) | unique
+      | select(length > 0) | join(" | ")' | head -120 || head -c 20000 "$out/hierarchy.txt"
+  else
+    cat "$out/hierarchy.err"
+  fi
+  xcrun simctl spawn "$udid" log show --last 10m --style compact \
+    --predicate 'process == "obsidianexpo" AND (messageType == error OR messageType == fault OR subsystem == "com.facebook.react.log")' \
+    | tail -80 || true
+  find "$out/maestro" -name 'maestro.log' -exec tail -40 {} \; 2> /dev/null || true
+}
+
 fixture_hashes() {
   (cd "$1" && find . -type f ! -path "./Daily/$today.md" -exec shasum -a 256 {} + | sort -k2)
 }
@@ -71,12 +91,15 @@ sqlite3 "$db" "select n.path from note_text_content c join notes n on n.id = c.i
 grep -qx 'Welcome.md' "$out/fts.txt"
 
 if [ "$#" -gt 0 ]; then
+  export PATH="$HOME/.maestro/bin:$PATH"
   if ! command -v maestro > /dev/null; then
     curl -fsSL "https://get.maestro.mobile.dev" | bash
   fi
-  export PATH="$HOME/.maestro/bin:$PATH"
   for flow in "$@"; do
-    maestro --device "$udid" test -e OUT="$out" --test-output-dir "$out/maestro" "$flow"
+    if ! maestro --device "$udid" test -e OUT="$out" --test-output-dir "$out/maestro" "$flow"; then
+      diagnose "$flow"
+      exit 1
+    fi
   done
   echo "--- Daily/$today.md after the flows"
   cat "$note"
