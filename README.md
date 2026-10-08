@@ -1,6 +1,6 @@
 # obsidian-expo
 
-An Expo SDK 58 starter for a future Markdown notes app. The current app contains Home and Explore screens, native tabs on iOS and Android, web navigation, and light and dark themes. Vault access and note editing are not implemented yet.
+An Expo SDK 58 app, in progress, for writing in an existing Markdown vault on iPhone and iPad. The iOS code opens a vault folder in place, shows unsaved drafts first, opens or creates today's daily note, edits it in a native text view with journaled, conditional saves, and searches the vault. These features are implemented but not yet qualified on devices, and the explorer, bookmarks, and calendar are still to do; [validation](docs/validation.md) lists what is verified and how. Web and Android builds show only the app shell.
 
 ## Specification and implementation plan
 
@@ -71,6 +71,22 @@ bunx @expo/agent-cli smoke --ios --no-start --port 8098 --window 10s --json
 
 Inspect the screenshot and interact with the screens as well: a successful runtime probe alone does not prove that the UI rendered correctly.
 
+## Native tests and builds
+
+On a Mac with Xcode, run the vault core's Swift tests without a Simulator:
+
+```sh
+swift test --package-path modules/vault
+```
+
+The [ios workflow](.github/workflows/ios.yml) runs these tests, generates the iOS project, builds a Release app for the Simulator, and runs a smoke test. The test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes.
+
+A preliminary search benchmark over the generated 10,000-note vault runs on any machine with Bun; it does not qualify device performance:
+
+```sh
+bun scripts/benchmark-search.ts
+```
+
 ## Test fixtures
 
 `tests/fixtures/vault-basic/` is a small authored vault. It covers frontmatter, wikilinks, embeds, plugin syntax, Unicode (NFC and NFD), CRLF and mixed newlines, a UTF-8 BOM, Latin-1 and UTF-16 files, repeated basenames, daily notes, and supported and unsupported templates. `.gitattributes` stops Git from converting its bytes. `vault-basic.manifest.json` records each file's size and SHA-256, and `bun test` fails if any byte changes:
@@ -92,11 +108,13 @@ The default run (seed 1, generator version 1) writes 10,000 UTF-8 notes of 2-8 K
 ## Layout
 
 - `src/app/`: Expo Router routes
-- `src/components/`: starter UI components
+- `src/features/`: daily notes, templates, editor status, recovery, search, and vault hooks
+- `src/components/`: shared UI components
 - `src/hooks/`: theme hooks
 - `src/constants/theme.ts`: colors, spacing, and typography
-- `assets/`: starter icons and images
-- `scripts/`: fixture generation and manifests
+- `modules/vault/`: local Expo module. `ios/Core/` is Foundation-only file and document logic, built by `Package.swift` for `swift test`; `ios/Editor/` is the native editor view; `src/` is the typed JavaScript API
+- `assets/`: app icons and images
+- `scripts/`: fixture generation, manifests, and the search benchmark
 - `tests/`: `bun test` suites and fixtures
 
 ## Starter compatibility fixes

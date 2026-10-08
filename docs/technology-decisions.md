@@ -54,6 +54,30 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Limits:** no release-build input trials with 4 KiB, 100 KiB, and 1 MiB notes on a device; IME, dictation, and hardware-keyboard behavior are unverified; Markdown source styling is not implemented yet (the plan adds it only after input works reliably).
 
+## T06. SQLite index and metadata
+
+**Decided provisionally:** October 8, 2026, for U4. Device indexing and memory measurements remain open.
+
+**Choice:** `expo-sqlite@~58.0.10`, the version SDK 58's `bundledNativeModules.json` lists (58.0.10 was the newest 58.x release on the registry on October 8). Each vault has a disposable index database in the app's Caches folder, outside the vault and backups, opened in WAL mode. The schema version is stored in `PRAGMA user_version`; a mismatch drops and rebuilds the index from the notes. All writes go through one queue, because the options research notes that async transactions on one connection do not isolate unrelated queries. Only an iOS-specific file imports `expo-sqlite`, so the web export does not need SQLite's WebAssembly setup.
+
+**Query semantics:** filenames use a case-insensitive substring match on the note name and rank first. Content uses FTS5 with the `unicode61` tokenizer and `remove_diacritics 2`; each typed term is a quoted token prefix, and all terms must match. Typed quotes and operators are literal text. Scripts written without spaces (for example Japanese) form long tokens, so content search finds them only from the start of a run; filename search still finds any substring. The trigram tokenizer would fix that but needs at least three characters per query; it is a later option.
+
+**Alternatives:** `@op-engineering/op-sqlite@18.2.5`, which needs explicit FTS5 build configuration. Not adopted while the SDK package meets the needs; no comparative speed claim is made.
+
+**Validation:** `tests/integration/search.test.ts` runs the index over `bun:sqlite` 3.53.0 (FTS5): discovery before reads, bounded batches, edits, deletes and renames, cloud placeholders, unreadable folders, a change during indexing, refresh after save, non-UTF-8 notes, Unicode, stale query generations, and the fixture plus a 2,000-note generated vault. The ios workflow's smoke test checks that the app's own SQLite build creates the FTS5 table and indexes the fixture vault. `scripts/benchmark-search.ts` gives a preliminary host measurement only; see [validation](validation.md).
+
+**Limits:** no device measurement of indexing time, memory, or query latency; no lock-recovery or interrupted-rebuild test on iOS yet.
+
+## T07. Explorer and result virtualization
+
+**Decided provisionally:** October 8, 2026, for U4 search results; U5 revisits it for the explorer.
+
+**Choice:** option A, the core `FlatList`, with no extra dependency. Result rows hold no local state, so recycling concerns do not apply.
+
+**Alternatives:** `@shopify/flash-list` (SDK 58 lists 2.3.2). It will be compared on the explorer in U5, where rapid scrolling and expansion matter more.
+
+**Limits:** scrolling, Dynamic Type, and VoiceOver checks on a device are open.
+
 ## T11. UI state and styling
 
 **Decided:** October 8, 2026, for the U1-U3 shell.
@@ -119,7 +143,7 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T01-T02 framework group and toolchain | U1 | A native service call in a running app and an editor view mount |
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 final editor qualification | U3 | Release-build input trials on device |
-| T06 SQLite library, T07 list virtualization | U4, U5 | FTS5 in the iOS binary; scrolling and accessibility checks on device |
+| T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
 | T08 navigation shell | U5 | iPhone and iPad layout, keyboard, and VoiceOver checks; the current shell is a single Stack screen |
 | T09 calendar | U7 | Day selection, reselection, and accessibility on iOS |
 | T12 end-to-end and UI test tools | U1-U3 | Xcode scheme inspection and Simulator runs; native unit tests already use Swift Testing through `swift test` |
