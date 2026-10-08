@@ -9,16 +9,7 @@ final class VaultException: GenericException<String> {
 /// javascript binding for the vault core. it stays thin: path, state, and save rules live in
 /// Core/, which `swift test` covers. javascript passes vault ids and vault-relative paths only.
 public class VaultModule: Module {
-  /// app-private storage for the vault list and drafts, outside every vault (r16).
-  private static let supportDirectory = FileManager.default
-    .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-    .appendingPathComponent("vault", isDirectory: true)
-
-  // async functions run concurrently, so these are created eagerly rather than lazily.
-  private let registry = VaultRegistry(file: VaultModule.supportDirectory.appendingPathComponent("vaults.json"))
-  private let journal: DraftJournal? = try? DraftJournal(directory: VaultModule.supportDirectory.appendingPathComponent("drafts"))
-  private let sessionsLock = NSLock()
-  private var sessions: [String: VaultSession] = [:]
+  private let runtime = VaultRuntime.shared
   /// touched only on the main queue.
   private var pickerDelegate: FolderPickerDelegate?
 
@@ -46,7 +37,7 @@ public class VaultModule: Module {
     }.runOnQueue(.main)
 
     AsyncFunction("listVaults") { () -> [[String: Any]] in
-      try self.registry.records().map { ["id": $0.id, "name": $0.name] }
+      try self.runtime.registry.records().map { ["id": $0.id, "name": $0.name] }
     }
 
     AsyncFunction("openVault") { (id: String) -> [String: Any] in
@@ -54,26 +45,20 @@ public class VaultModule: Module {
     }
 
     AsyncFunction("closeVault") { (id: String) in
-      self.sessionsLock.lock()
-      let session = self.sessions.removeValue(forKey: id)
-      self.sessionsLock.unlock()
-      session?.close()
+      self.runtime.remove(id)?.close()
     }
 
     AsyncFunction("forgetVault") { (id: String) in
-      self.sessionsLock.lock()
-      let session = self.sessions.removeValue(forKey: id)
-      self.sessionsLock.unlock()
-      session?.close()
-      try self.registry.remove(id: id)
+      self.runtime.remove(id)?.close()
+      try self.runtime.registry.remove(id: id)
     }
 
     AsyncFunction("fileState") { (vaultId: String, path: String) -> [String: Any] in
-      try self.withSession(vaultId) { files in VaultModule.encode(try files.state(of: path)) }
+      try self.withFiles(vaultId) { files in VaultModule.encode(try files.state(of: path)) }
     }
 
     AsyncFunction("readText") { (vaultId: String, path: String) -> [String: Any] in
-      try self.withSession(vaultId) { files in
+      try self.withFiles(vaultId) { files in
         switch try files.read(path) {
         case let .unavailable(state):
           return ["kind": "unavailable", "state": VaultModule.encode(state)]
@@ -89,7 +74,7 @@ public class VaultModule: Module {
     }
 
     AsyncFunction("createExclusive") { (vaultId: String, path: String, text: String) -> [String: Any] in
-      try self.withSession(vaultId) { files in
+      try self.withFiles(vaultId) { files in
         switch try files.createExclusive(path, data: TextCodec.encode(text, bom: false)) {
         case let .created(revision):
           return ["kind": "created", "revision": VaultModule.encode(revision)]
@@ -102,7 +87,7 @@ public class VaultModule: Module {
     }
 
     AsyncFunction("saveText") { (vaultId: String, path: String, text: String, bom: Bool, baseSha256: String, baseSize: Int) -> [String: Any] in
-      try self.withSession(vaultId) { files in
+      try self.withFiles(vaultId) { files in
         let base = FileRevision(sha256: baseSha256, size: baseSize)
         switch try files.save(path, data: TextCodec.encode(text, bom: bom), base: base) {
         case let .saved(revision):
@@ -118,7 +103,7 @@ public class VaultModule: Module {
     }
 
     AsyncFunction("listNotes") { (vaultId: String) -> [String: Any] in
-      try self.withSession(vaultId) { files in
+      try self.withFiles(vaultId) { files in
         var notes: [[String: Any]] = []
         let summary = files.enumerateNotes { batch in
           notes.append(contentsOf: batch.map { entry in
@@ -168,51 +153,73 @@ public class VaultModule: Module {
       try self.requireJournal().discard(vaultId: vaultId, path: path, through: sequence)
     }
 
+    View(VaultEditorView.self) {
+      Events("onStatus", "onLoad")
+
+      Prop("vaultId") { (view, vaultId: String?) in
+        view.vaultId = vaultId
+      }
+
+      Prop("path") { (view, path: String?) in
+        view.path = path
+      }
+
+      OnViewDidUpdateProps { view in
+        view.openIfNeeded()
+      }
+
+      // starts writing pending edits to the journal and then the file; status events follow.
+      AsyncFunction("flush") { (view: VaultEditorView) in
+        view.flush()
+      }
+
+      AsyncFunction("focus") { (view: VaultEditorView) in
+        view.focus()
+      }
+    }
+
+    OnCreate {
+      #if targetEnvironment(simulator)
+        // simulator-only test hook: `-VaultTestFolder vault` registers Documents/vault, so
+        // automated runs can open a fixture vault without the system folder picker.
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-VaultTestFolder"), index + 1 < arguments.count {
+          let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+          _ = try? self.runtime.registry.add(url: documents.appendingPathComponent(arguments[index + 1]))
+        }
+      #endif
+    }
+
     OnDestroy {
-      self.sessionsLock.lock()
-      let all = Array(self.sessions.values)
-      self.sessions.removeAll()
-      self.sessionsLock.unlock()
-      all.forEach { $0.close() }
+      self.runtime.removeAll().forEach { $0.close() }
     }
   }
 
   // MARK: - sessions
 
   private func open(id: String) throws -> [String: Any] {
-    sessionsLock.lock()
-    if sessions[id] != nil {
-      sessionsLock.unlock()
+    if runtime.session(id) != nil {
       return ["id": id, "status": "open"]
     }
-    sessionsLock.unlock()
     let resolved: (record: VaultRecord, url: URL, isStale: Bool)
     do {
-      resolved = try registry.resolve(id: id)
+      resolved = try runtime.registry.resolve(id: id)
     } catch {
       throw VaultException("The vault folder is no longer available. Pick it again. (\(error))")
     }
     let session = VaultSession(id: id, url: resolved.url)
     if resolved.isStale {
-      try? registry.refresh(id: id, url: resolved.url)
+      try? runtime.registry.refresh(id: id, url: resolved.url)
     }
-    sessionsLock.lock()
-    let existing = sessions[id]
-    if existing == nil {
-      sessions[id] = session
-    }
-    sessionsLock.unlock()
-    if existing != nil {
+    if runtime.insert(session) !== session {
+      // another call opened the vault first; keep that session.
       session.close()
     }
     return ["id": id, "name": resolved.record.name, "status": "open"]
   }
 
-  private func withSession<T>(_ vaultId: String, _ body: (VaultFiles) throws -> T) throws -> T {
-    sessionsLock.lock()
-    let session = sessions[vaultId]
-    sessionsLock.unlock()
-    guard let session else {
+  private func withFiles<T>(_ vaultId: String, _ body: (VaultFiles) throws -> T) throws -> T {
+    guard let session = runtime.session(vaultId) else {
       throw VaultException("The vault is not open.")
     }
     do {
@@ -223,7 +230,7 @@ public class VaultModule: Module {
   }
 
   private func requireJournal() throws -> DraftJournal {
-    guard let journal else {
+    guard let journal = runtime.journal else {
       throw VaultException("The draft journal could not be created.")
     }
     return journal
@@ -251,7 +258,7 @@ public class VaultModule: Module {
       let accessing = url.startAccessingSecurityScopedResource()
       defer { if accessing { url.stopAccessingSecurityScopedResource() } }
       do {
-        let record = try self.registry.add(url: url)
+        let record = try self.runtime.registry.add(url: url)
         let vault: [String: Any] = ["id": record.id, "name": record.name]
         promise.resolve(vault)
       } catch {

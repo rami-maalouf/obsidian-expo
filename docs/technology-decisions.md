@@ -2,6 +2,40 @@
 
 This file records technology choices required by KTD8, following the [technology options](technology-options-2026-10.md). Each entry gives the option ID, the choice, alternatives, sources, compatibility findings, validation evidence, and open limits. Choices that need macOS, Xcode, or devices are listed as pending.
 
+## Native verification environment
+
+The cloud workers that implement this plan run Linux and cannot run Xcode. Native code is compiled and tested by the [ios workflow](../.github/workflows/ios.yml) on GitHub-hosted macOS runners, which are free for this public repository. Observed on October 8, 2026: image `macos-26-arm64` version 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3. The starter was originally verified with Xcode 27.0; the runner image did not offer a stable Xcode 27 at this date. Simulator builds and tests on this runner do not qualify physical-device input, performance, or iCloud behavior.
+
+## T03. Native module authoring
+
+**Decided:** October 8, 2026, for U1-U2.
+
+**Choice:** option A, the established Expo Modules API (`Module`, `ModuleDefinition`, `AsyncFunction`) from `expo-modules-core@58.0.14`, in a local module at `modules/vault`. Autolinking finds it through the default `./modules` search path; no `package.json` is needed.
+
+**Structure:** all file rules live in a Foundation-only core (`modules/vault/ios/Core`). The Expo binding (`VaultModule.swift`) only converts arguments and results. `modules/vault/Package.swift` builds the core alone, so `swift test` runs it on a Mac without a Simulator. The podspec compiles the same core sources into the app.
+
+**Alternatives:** option B, the Expo Modules 2.0 Swift macros (`@JS`, `@ExpoModule`), which `expo-modules-core@58.0.14` ships. The options research describes them as a preview that does not cover native views. Because the binding is thin, moving the service functions to macros later changes only `VaultModule.swift`.
+
+**Validation:** the ios workflow confirms that `VaultModule` appears in the generated `ExpoModulesProvider.swift` after `expo prebuild`. Core tests pass with `swift test`. Simulator compile evidence is recorded in [validation](validation.md).
+
+**Limits:** no runtime call from JavaScript has been observed in a running app yet. The editor view (T05) is not part of this decision.
+
+## T04. Original-vault and iCloud document access
+
+**Decided provisionally:** October 8, 2026, for U2. iCloud qualification remains open (U8).
+
+**Choice:** an explicit `NSFileCoordinator` service rather than per-note `UIDocument`. Every read, exclusive create, and conditional save runs inside one coordinated access. A save rereads the file inside the coordinated write and replaces it only when the bytes still match the base revision. New files are staged in the system's item-replacement directory and moved into place with `renamex_np(RENAME_EXCL)`, so a create never replaces an existing file. Folder access uses a security-scoped bookmark from the system folder picker, stored with a stable vault ID in app-private storage. A session keeps access until running operations finish.
+
+**Alternatives:** per-note `UIDocument`, or a composition of a directory service with per-note documents. `UIDocument` supplies autosave and conflict-version handling, but its save path writes without exposing a compare-then-replace step inside the same coordinated write. The Persistence Protocol needs that step. A composition remains possible for the editor's document lifecycle in U3.
+
+**Validation:** `swift test` on the macOS runner covers path containment (including dangling and relative symlinks), file states (readable, legacy cloud stub, absent, unlistable folder), exact-byte reads, exclusive create with 16 concurrent writers, conditional save conflicts, deleted and renamed targets, failed writes, the draft journal, enumeration, the bookmark registry, and session release ordering.
+
+**Limits and open work:**
+
+- Not tested with real iCloud Drive. Modern iCloud placeholders are detected through `ubiquitousItemDownloadingStatus`, which cannot be produced on the CI runner; only the legacy `.name.icloud` stub is tested.
+- File presenters and foreground reconciliation for open documents are not implemented yet; they belong with the editor sessions in U3.
+- The folder picker and bookmark persistence on iOS need a manual or UI-test run in the Simulator.
+
 ## T12 (part). Test runner for pure TypeScript logic
 
 **Decided:** October 8, 2026, for U1 and U6.
@@ -54,11 +88,11 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 
 | Option | Unit | Blocking need |
 | --- | --- | --- |
-| T01-T03 framework group, toolchain, native module authoring | U1 | Native development build, a native service call, and an editor view mount |
-| T04 document ownership | U2 | Native file coordination tests with disposable local and iCloud vaults |
+| T01-T02 framework group and toolchain | U1 | A native service call in a running app and an editor view mount |
+| T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 source editor | U3 | Release-build input trials on device |
 | T06 SQLite library, T07 list virtualization | U4, U5 | FTS5 in the iOS binary; scrolling and accessibility checks on device |
 | T08 navigation shell, T11 state and styling | U5 | iPhone and iPad layout, keyboard, and VoiceOver checks |
 | T09 calendar | U7 | Day selection, reselection, and accessibility on iOS |
-| T12 native and end-to-end test tools | U1-U3 | Xcode scheme inspection and Simulator runs |
+| T12 end-to-end and UI test tools | U1-U3 | Xcode scheme inspection and Simulator runs; native unit tests already use Swift Testing through `swift test` |
 | T13 native generation and builds | U1 | Clean prebuild and reproducible Simulator builds |
