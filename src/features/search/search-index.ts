@@ -16,8 +16,10 @@ import {
 import { ensureSchema } from './schema';
 import { type SqlDatabase, type SqlValue, WriteQueue } from './sql';
 
+export type NoteListing = { notes: NativeNote[]; unreadableFolders: string[] };
+
 export type IndexSource = {
-  listNotes(): Promise<{ notes: NativeNote[]; unreadableFolders: string[] }>;
+  listNotes(): Promise<NoteListing>;
   readText(path: string): Promise<NativeReadResult>;
 };
 
@@ -71,6 +73,7 @@ const DEFAULT_OPTIONS: IndexOptions = {
 };
 
 type NoteRow = { id: number; path: string; name: string; folder: string; placeholder: number };
+type KnownRow = { id: number; path: string; size: number | null; modified: number | null; placeholder: number };
 
 /** the folder prefix test for `unreadableFolders` entries. */
 function insideAny(path: string, folders: string[]) {
@@ -98,43 +101,61 @@ export class SearchIndex {
   /**
    * filename discovery. records names, sizes, modified times, and cloud placeholders, and removes
    * notes that disappeared. notes under unreadable folders are kept: unknown is not deleted.
+   *
+   * it compares the listing with the index and writes only new, changed, and removed notes, so
+   * a launch where nothing changed writes nothing. pass a listing the app already has, with the
+   * time it was taken, to avoid a second vault scan.
    */
-  async discover(): Promise<{ notes: number; removed: number }> {
-    const listedAt = this.options.now();
-    const listing = await this.source.listNotes();
+  async discover(given?: { listing: NoteListing; listedAt: number }): Promise<{ notes: number; removed: number }> {
+    const listedAt = given?.listedAt ?? this.options.now();
+    const listing = given?.listing ?? (await this.source.listNotes());
     this.unreadableFolders = listing.unreadableFolders;
-    const passRow = await this.db.getFirstAsync<{ pass: number }>('SELECT COALESCE(MAX(seen), 0) + 1 AS pass FROM notes', []);
-    const pass = passRow?.pass ?? 1;
-    const { discoveryBatchSize } = this.options;
-    for (let start = 0; start < listing.notes.length; start += discoveryBatchSize) {
-      const chunk = listing.notes.slice(start, start + discoveryBatchSize);
+    const known = new Map(
+      (await this.db.getAllAsync<KnownRow>('SELECT id, path, size, modified, placeholder FROM notes', [])).map((row) => [row.path, row]),
+    );
+    const changed = listing.notes.filter((note) => {
+      const row = known.get(note.path);
+      known.delete(note.path);
+      return !row || row.size !== (note.size ?? null) || row.modified !== (note.modified ?? null) || row.placeholder !== (note.placeholder ? 1 : 0);
+    });
+    // what is left in `known` was not listed: deleted or renamed, or in an unreadable folder.
+    const missing = [...known.values()].filter((row) => !insideAny(row.path, this.unreadableFolders));
+    if (changed.length > 0) {
+      const passRow = await this.db.getFirstAsync<{ pass: number }>('SELECT COALESCE(MAX(seen), 0) + 1 AS pass FROM notes', []);
+      const pass = passRow?.pass ?? 1;
+      const { discoveryBatchSize } = this.options;
+      for (let start = 0; start < changed.length; start += discoveryBatchSize) {
+        const chunk = changed.slice(start, start + discoveryBatchSize);
+        await this.write(async () => {
+          for (const note of chunk) {
+            const name = noteName(note.path);
+            await this.db.runAsync(
+              `INSERT INTO notes (path, name, name_key, folder, size, modified, placeholder, seen)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(path) DO UPDATE SET
+                 size = excluded.size, modified = excluded.modified,
+                 placeholder = excluded.placeholder, seen = excluded.seen`,
+              [note.path, name, nameKey(name), noteFolder(note.path), note.size ?? null, note.modified ?? null, note.placeholder ? 1 : 0, pass],
+            );
+          }
+        });
+        await this.options.pause();
+      }
+    }
+    let removed = 0;
+    if (missing.length > 0) {
       await this.write(async () => {
-        for (const note of chunk) {
-          const name = noteName(note.path);
-          await this.db.runAsync(
-            `INSERT INTO notes (path, name, name_key, folder, size, modified, placeholder, seen)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(path) DO UPDATE SET
-               size = excluded.size, modified = excluded.modified,
-               placeholder = excluded.placeholder, seen = excluded.seen`,
-            [note.path, name, nameKey(name), noteFolder(note.path), note.size ?? null, note.modified ?? null, note.placeholder ? 1 : 0, pass],
-          );
+        for (const row of missing) {
+          // a row refreshed after the listing was taken may be newer than the listing knows.
+          const current = await this.db.getFirstAsync<{ refreshed_at: number | null }>('SELECT refreshed_at FROM notes WHERE id = ?', [row.id]);
+          if (current && (current.refreshed_at === null || current.refreshed_at < listedAt)) {
+            await this.removeRow(row.id);
+            removed++;
+          }
         }
       });
-      await this.options.pause();
     }
-    // a row refreshed after the listing was taken may be newer than the listing knows.
-    const stale = await this.db.getAllAsync<{ id: number; path: string }>(
-      'SELECT id, path FROM notes WHERE seen < ? AND (refreshed_at IS NULL OR refreshed_at < ?)',
-      [pass, listedAt],
-    );
-    const removed = stale.filter((row) => !insideAny(row.path, this.unreadableFolders));
-    await this.write(async () => {
-      for (const row of removed) {
-        await this.removeRow(row.id);
-      }
-    });
-    return { notes: listing.notes.length, removed: removed.length };
+    return { notes: listing.notes.length, removed };
   }
 
   /**
@@ -168,9 +189,14 @@ export class SearchIndex {
     return processed;
   }
 
-  /** re-reads one note, for example right after the editor saved it. */
+  /**
+   * re-reads one note, for example right after the editor saved it. without a new `modified`
+   * time the row keeps the time discovery saw: an unchanged note is not read again by the next
+   * pass, and a changed one is, once discovery sees its new time.
+   */
   async refresh(path: string, modified: number | null = null): Promise<void> {
-    const row = await this.db.getFirstAsync<{ id: number }>('SELECT id FROM notes WHERE path = ?', [path]);
+    const row = await this.db.getFirstAsync<{ id: number; modified: number | null }>('SELECT id, modified FROM notes WHERE path = ?', [path]);
+    const based = modified ?? row?.modified ?? null;
     const result = await this.source.readText(path);
     await this.write(async () => {
       let id = row?.id;
@@ -183,9 +209,9 @@ export class SearchIndex {
         );
         id = inserted.lastInsertRowId;
       } else {
-        await this.db.runAsync('UPDATE notes SET modified = ?, refreshed_at = ? WHERE id = ?', [modified, this.options.now(), id]);
+        await this.db.runAsync('UPDATE notes SET modified = COALESCE(?, modified), refreshed_at = ? WHERE id = ?', [modified, this.options.now(), id]);
       }
-      await this.store(id, path, modified, result);
+      await this.store(id, path, based, result);
     });
   }
 

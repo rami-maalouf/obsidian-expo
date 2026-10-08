@@ -54,11 +54,15 @@ public class VaultModule: Module {
     }.runOnQueue(.main)
 
     AsyncFunction("listVaults") { () -> [[String: Any]] in
-      try self.runtime.registry.records().map { ["id": $0.id, "name": $0.name] }
+      // the app's javascript is running: its first call is for the vault list.
+      LaunchTiming.mark("javascript asked for the vaults")
+      return try self.runtime.registry.records().map { ["id": $0.id, "name": $0.name] }
     }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("openVault") { (id: String) -> [String: Any] in
-      try self.open(id: id)
+      let opened = try self.open(id: id)
+      LaunchTiming.mark("vault opened")
+      return opened
     }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("closeVault") { (id: String) in
@@ -71,7 +75,9 @@ public class VaultModule: Module {
     }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("fileState") { (vaultId: String, path: String) -> [String: Any] in
-      try self.withFiles(vaultId) { files in VaultModule.encode(try files.state(of: path)) }
+      // at launch, the first check is for today's note.
+      LaunchTiming.mark("first note state check")
+      return try self.withFiles(vaultId) { files in VaultModule.encode(try files.state(of: path)) }
     }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("readText") { (vaultId: String, path: String) -> [String: Any] in
@@ -132,6 +138,7 @@ public class VaultModule: Module {
           })
           return true
         }
+        LaunchTiming.mark("first vault scan finished", detail: ": \(notes.count) notes")
         return ["notes": notes, "unreadableFolders": summary.unreadableFolders]
       }
     }.runOnQueue(VaultModule.listingQueue)
@@ -164,6 +171,7 @@ public class VaultModule: Module {
         }
         return item
       }
+      LaunchTiming.mark("drafts listed")
       return ["drafts": drafts, "unreadable": listing.unreadable]
     }.runOnQueue(VaultModule.fileQueue)
 
@@ -207,6 +215,7 @@ public class VaultModule: Module {
     }
 
     OnCreate {
+      LaunchTiming.mark("vault module created")
       self.menuObserver = NotificationCenter.default.addObserver(forName: VaultMenu.notification, object: nil, queue: .main) { [weak self] note in
         guard let command = note.userInfo?["command"] as? String else { return }
         self?.sendEvent("onMenuCommand", ["command": command])

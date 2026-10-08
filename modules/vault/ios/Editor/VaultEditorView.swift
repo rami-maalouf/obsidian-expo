@@ -96,6 +96,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     textView.isEditable = false
     textView.text = ""
     emit(["status": "loading"])
+    LaunchTiming.mark("first note load started")
 
     guard let session = VaultRuntime.shared.session(vaultId), let journal = VaultRuntime.shared.journal else {
       onLoad(["kind": "unavailable", "reason": "The vault is not open."])

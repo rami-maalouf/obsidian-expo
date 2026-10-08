@@ -64,8 +64,8 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     const timer = setTimeout(() => setFirstScreenShown(true), BACKGROUND_START_LIMIT_MS);
     return () => clearTimeout(timer);
   }, []);
-  const search = useSearchIndex(vault.id, firstScreenShown);
   const notes = useNoteList(vault.id, firstScreenShown);
+  const search = useSearchIndex(vault.id, notes.listing);
   const bookmarks = useBookmarks(vault.id, notes.listing?.notes ?? null);
   const knownPaths = useMemo(() => (notes.listing ? new Set(notes.listing.notes.map((note) => note.path)) : null), [notes.listing]);
   const pending = drafts.drafts;

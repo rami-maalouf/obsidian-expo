@@ -1,11 +1,17 @@
 /**
- * the vault's markdown files for the explorer. the listing is metadata only; no content is read.
+ * the vault's markdown files for the explorer and the search index. the listing is metadata
+ * only; no content is read. one scan serves both.
  */
 import { useCallback, useEffect, useState } from 'react';
 
 import { type NativeNote, VaultNative } from '../../../modules/vault/src';
 
-export type NoteListing = { notes: NativeNote[]; unreadableFolders: string[] };
+export type NoteListing = {
+  notes: NativeNote[];
+  unreadableFolders: string[];
+  /** when the scan started (ms): a note refreshed later is newer than this listing knows. */
+  listedAt: number;
+};
 
 /** `enabled` false holds the scan back, for example until the first note is on screen. */
 export function useNoteList(vaultId: string, enabled = true) {
@@ -17,8 +23,9 @@ export function useNoteList(vaultId: string, enabled = true) {
   useEffect(() => {
     if (!VaultNative || !enabled) return;
     let cancelled = false;
+    const listedAt = Date.now();
     VaultNative.listNotes(vaultId).then(
-      (next) => !cancelled && setListing(next),
+      (next) => !cancelled && setListing({ ...next, listedAt }),
       (reason: unknown) => !cancelled && setError(String(reason)),
     );
     return () => {

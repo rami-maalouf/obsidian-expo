@@ -209,6 +209,61 @@ describe('SearchIndex', () => {
     expect((await index.discover()).removed).toBe(1);
   });
 
+  test('a discovery where nothing changed writes nothing', async () => {
+    const vault = new MemoryVault();
+    for (let i = 0; i < 300; i++) vault.set(`Notes/${i}.md`, `note ${i}`, i);
+    const sql = bunSqlDatabase();
+    let writes = 0;
+    const counted = { ...sql, runAsync: (source: string, params: (string | number | null)[]) => (writes++, sql.runAsync(source, params)) };
+    const index = await SearchIndex.open(counted, vault, { pause: immediate });
+    await index.discover();
+    await index.indexContents();
+    writes = 0;
+    expect(await index.discover()).toEqual({ notes: 300, removed: 0 });
+    expect(writes).toBe(0);
+    // one edit, one new note, one deletion: three rows change.
+    vault.set('Notes/1.md', 'edited', 1000);
+    vault.set('Notes/new.md', 'new', 1001);
+    vault.files.delete('Notes/2.md');
+    expect(await index.discover()).toEqual({ notes: 300, removed: 1 });
+    expect(writes).toBe(4); // two upserts, then the deleted note's text and row
+    vault.reads = [];
+    await index.indexContents();
+    expect(vault.reads.sort()).toEqual(['Notes/1.md', 'Notes/new.md']);
+  });
+
+  test('discovery can use a listing the app already took, without a second scan', async () => {
+    const vault = new MemoryVault();
+    vault.set('A.md', 'apple', 1);
+    const index = await openIndex(vault);
+    const listing = await vault.listNotes();
+    vault.listNotes = async () => {
+      throw new Error('no second scan');
+    };
+    expect(await index.discover({ listing, listedAt: 0 })).toEqual({ notes: 1, removed: 0 });
+    await index.indexContents();
+    expect((await index.search('apple')).hits.map((hit) => hit.path)).toEqual(['A.md']);
+  });
+
+  test('opening an unchanged note does not make the next pass read it again', async () => {
+    const vault = new MemoryVault();
+    vault.set('Daily/2026-10-08.md', 'morning', 5);
+    const index = await openIndex(vault);
+    await index.discover();
+    await index.indexContents();
+    vault.reads = [];
+    // the workspace refreshes the open note without knowing its modified time.
+    await index.refresh('Daily/2026-10-08.md');
+    await index.discover();
+    await index.indexContents();
+    expect(vault.reads).toEqual(['Daily/2026-10-08.md']);
+    // a later change is still found by discovery and indexed.
+    vault.set('Daily/2026-10-08.md', 'morning and evening', 6);
+    await index.discover();
+    await index.indexContents();
+    expect((await index.search('evening')).hits.map((hit) => hit.path)).toEqual(['Daily/2026-10-08.md']);
+  });
+
   test('non-utf-8 notes are found by name; rebuild never writes notes', async () => {
     const vault = new MemoryVault();
     vault.set('Encodings/Latin-1.md', null, 1);

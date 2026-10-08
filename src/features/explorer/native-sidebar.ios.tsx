@@ -30,7 +30,7 @@ const secondary = foregroundStyle({ type: 'hierarchical', style: 'secondary' });
 export function NativeSidebar() {
   const workspace = useWorkspace();
   const router = useRouter();
-  const { notes, bookmarks, path: activePath, open, vault } = workspace;
+  const { notes, bookmarks, path: activePath, open, vault, knownPaths: known } = workspace;
   const listing = notes.listing;
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(activePath ? ancestorFolders(activePath) : []));
   const [locating, setLocating] = useState<string | null>(null);
@@ -38,7 +38,6 @@ export function NativeSidebar() {
 
   const tree = useMemo(() => (listing ? buildTree(listing.notes) : null), [listing]);
   const rows = useMemo(() => (tree ? flattenTree(tree, expanded) : []), [tree, expanded]);
-  const known = useMemo(() => (listing ? new Set(listing.notes.map((note) => note.path)) : null), [listing]);
   const marks = bookmarks.list ? viewBookmarks(bookmarks.list, known) : [];
 
   const toggle = useCallback(

@@ -1,7 +1,11 @@
 /**
  * keeps the open vault's search index current: names first, then content in the background.
+ * it uses the explorer's listing, so a launch scans the vault once, and each new listing (for
+ * example after a note is created) brings the index up to date with it.
  */
 import { useEffect, useState } from 'react';
+
+import type { NoteListing } from '@/features/explorer/use-note-list';
 
 import { VaultNative } from '../../../modules/vault/src';
 import { openIndexDatabase } from './open-index';
@@ -12,13 +16,15 @@ export type IndexState =
   | { phase: 'opening' }
   | { phase: 'ready'; session: SearchSession; index: SearchIndex; indexing: boolean; coverage: Coverage | null };
 
-/** `enabled` false holds indexing back, for example until the first note is on screen. */
-export function useSearchIndex(vaultId: string, enabled = true) {
+/** the index opens with the first listing; until then, nothing is read or written. */
+export function useSearchIndex(vaultId: string, listing: NoteListing | null) {
   const [state, setState] = useState<IndexState>(VaultNative ? { phase: 'opening' } : { phase: 'unavailable' });
+  const [opened, setOpened] = useState<{ index: SearchIndex; session: SearchSession } | null>(null);
+  const listed = listing !== null;
 
   useEffect(() => {
     const native = VaultNative;
-    if (!native || !enabled) return;
+    if (!native || !listed) return;
     let cancelled = false;
     (async () => {
       const db = await openIndexDatabase(vaultId);
@@ -27,13 +33,26 @@ export function useSearchIndex(vaultId: string, enabled = true) {
         listNotes: () => native.listNotes(vaultId),
         readText: (path) => native.readText(vaultId, path),
       });
-      const session = new SearchSession(index);
-      const publish = async (indexing: boolean) => {
-        const coverage = await index.coverage();
-        if (!cancelled) setState({ phase: 'ready', session, index, indexing, coverage });
-      };
+      if (!cancelled) setOpened({ index, session: new SearchSession(index) });
+    })().catch(() => {
+      if (!cancelled) setState({ phase: 'unavailable' });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [listed, vaultId]);
+
+  useEffect(() => {
+    if (!opened || !listing) return;
+    let cancelled = false;
+    const { index, session } = opened;
+    const publish = async (indexing: boolean) => {
+      const coverage = await index.coverage();
+      if (!cancelled) setState({ phase: 'ready', session, index, indexing, coverage });
+    };
+    (async () => {
       await publish(true);
-      await index.discover();
+      await index.discover({ listing, listedAt: listing.listedAt });
       await publish(true);
       await index.indexContents(() => cancelled);
       await publish(false);
@@ -43,7 +62,7 @@ export function useSearchIndex(vaultId: string, enabled = true) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, vaultId]);
+  }, [opened, listing]);
 
   return state;
 }
