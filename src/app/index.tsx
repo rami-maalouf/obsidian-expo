@@ -1,7 +1,7 @@
 /**
  * launch → restore vault access → resolve unsaved drafts → open today → write (flow f2).
  */
-import { type ReactNode, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -115,6 +115,17 @@ function Workspace({ vault, settings, onSaveSettings }: WorkspaceProps) {
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
   const today = useTodayNote(vault.id, pending !== null && !needsRecovery, settings);
   const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
+  const todayCreated = today.state.phase === 'done' && today.state.outcome.kind === 'open' && today.state.outcome.created;
+  const searchIndex = search.phase === 'ready' ? search.index : null;
+  const refreshNotes = notes.refresh;
+
+  // an opened note is searchable right away, even if discovery ran before it was created.
+  useEffect(() => {
+    if (path && searchIndex) searchIndex.refresh(path).catch(() => undefined);
+  }, [path, searchIndex]);
+  useEffect(() => {
+    if (todayCreated) refreshNotes();
+  }, [todayCreated, refreshNotes]);
 
   const open = (next: string) => {
     // a deliberate choice wins over a daily-note request that is still running (r15).
