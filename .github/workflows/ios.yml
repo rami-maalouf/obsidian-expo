@@ -14,9 +14,11 @@ on:
 permissions:
   contents: read
 
+# a new push waits for the running simulator job instead of cancelling it, so every finished
+# run still reports its result; only the newest waiting run is kept.
 concurrency:
   group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 defaults:
   run:
