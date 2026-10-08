@@ -1,6 +1,6 @@
 # relaunches the app on a fixture vault that scripts/ci/simulator-smoke.sh registered, types into today's
-# note, waits for the save, then searches and opens another note. the workflow then checks the
-# typed text on disk and that every other fixture file is unchanged.
+# note, waits for the save, types a styled heading and a code fence, then searches and opens another
+# note. the script then checks the typed lines on disk and that every other fixture file is unchanged.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -14,6 +14,20 @@ appId: com.ramimaalouf.obsidianexpo
     visible: "Saved locally"
     timeout: 15000
 - takeScreenshot: ${OUT}/after-typing
+# source styling is display-only, so these lines must reach the file exactly as typed.
+- pressKey: Enter
+- inputText: "## Styled heading"
+- pressKey: Enter
+- inputText: "```"
+- pressKey: Enter
+- inputText: "# Inside code"
+- pressKey: Enter
+- inputText: "```"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Saved locally"
+    timeout: 15000
+- takeScreenshot: ${OUT}/styled
 - tapOn: "Search"
 - inputText: "callout"
 - extendedWaitUntil:

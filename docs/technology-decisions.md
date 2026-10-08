@@ -50,9 +50,11 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 | Enriched Markdown 1.1.1 | Rich-text editing with Markdown output; lossless source editing is not established. |
 | CodeMirror 6 through Expo DOM | A separate web runtime with an asynchronous bridge; native input and native draft ownership would need proof. |
 
-**Validation:** the document session's persistence rules are covered by `swift test` (see T04). Simulator compile and smoke evidence is recorded in [validation](validation.md).
+**Source styling:** display-only. A `NSTextContentStorageDelegate` (`modules/vault/ios/Editor/MarkdownStyler.swift`) gives TextKit 2 a styled copy of each paragraph it displays; the text storage keeps plain text. So styling cannot change the saved bytes, the selection, keyboard composition (marked text), or the undo stack, which are the usual ways syntax styling breaks input. The styling is restrained: headings are bold and slightly larger; heading hashes, quote markers, list bullets, task boxes, code fences, and front matter use the secondary label color; inline code and fenced blocks use the monospaced system font; wikilinks and embeds use the link color. Fonts derive from the stored body font, so Dynamic Type still applies. Front matter and fenced code are found by one linear scan per edit (`modules/vault/ios/Core/MarkdownStyle.swift`). When an edit opens, closes, or removes a block, the paragraphs after it are rebuilt with an attribute-only edit after the keystroke finishes, and never during composition. Inline styling stops on paragraphs longer than 10,000 UTF-16 units. If UIKit already uses the content storage's delegate, styling turns itself off and logs that.
 
-**Limits:** no release-build input trials with 4 KiB, 100 KiB, and 1 MiB notes on a device; IME, dictation, and hardware-keyboard behavior are unverified; Markdown source styling is not implemented yet (the plan adds it only after input works reliably).
+**Validation:** the document session's persistence rules are covered by `swift test` (see T04), and so are the styling rules (headings, markers, inline code, links, blocks, and block changes after edits). The Simulator flow types a heading and a code fence and checks the exact lines on disk. Simulator compile and smoke evidence is recorded in [validation](validation.md).
+
+**Limits:** no release-build input trials with 4 KiB, 100 KiB, and 1 MiB notes on a device; IME, dictation, hardware-keyboard, and undo behavior with styling on are unverified on a device; the styling has not been inspected visually, because Simulator screenshots are not reachable from the cloud environment.
 
 ## T06. SQLite index and metadata
 
