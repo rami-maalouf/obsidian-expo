@@ -16,7 +16,7 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Category | Status |
 | --- | --- |
-| Pure TypeScript tests | `bun run check` in L1 and CI; 130 tests across 13 files, including the app variant and icon tests |
+| Pure TypeScript tests | `bun run check` in L1 and CI; 133 tests across 14 files, including the app variant, icon, and launch screen tests |
 | Native unit tests | `swift test --package-path modules/vault` on M1; 69 tests in 11 suites passed for `becf682` |
 | Production JS export | Passes in L1 for web, iOS, and Android bundles |
 | Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), the JavaScript bridge with the folder picker (`31e091d`), the full app with the editor, search, explorer, calendar, and settings (`3fbdf82`), the native iPad build with all orientations (`0a1aec2`), and the editor with source styling (`becf682`) |
@@ -56,6 +56,20 @@ The resolver is tested against an in-memory vault implementing `DailyNoteVault` 
 | Create collision | A racing writer's file is opened, not overwritten |
 | Cancellation and late completion | Selecting another day before creation creates nothing; navigating away after commit keeps the note without taking focus |
 | Cloud placeholder or unknown state | Shows unavailable and creates nothing; an unavailable or non-UTF-8 template also blocks creation |
+
+## Launch order (October 8, 2026)
+
+A returning launch took a few seconds to show the note. Code reading found the cause: every vault call, the full vault scan included, ran on Expo's default async queue, one serial queue that all modules share. The scan of the whole vault started before the check for today's note, so the note waited for it. The editor's `focus` call also waited on that queue, and it ran UIKit code off the main thread.
+
+Changes:
+
+- Vault calls run on their own serial queue (`vault.files`). The vault scan has a lower-priority queue (`vault.listing`). `flush` and `focus` run on the main queue.
+- The vault scan and the search index start when the first screen shows (the note, the recovery list, or a problem), or 1 second after the workspace opens at the latest.
+- The launch screen stays up until that first screen shows, or 2 seconds at the latest. A screen that needs the user, such as the folder picker prompt or first setup, takes it down at once.
+- The app no longer rewrites the last-vault record on each launch when it did not change.
+- The editor logs `first note <kind> <n> ms after process start` (subsystem `com.ramimaalouf.obsidianexpo`, category `launch`) once per process. The smoke script prints this subsystem's log.
+
+Evidence on L1: `bun run check` (133 tests) and `bun run export` pass. `bunx expo install --check` could not reach the Expo API through the L1 network policy (HTTP 403); no dependency changed. The Swift changes have not been compiled on L1, which has no Swift toolchain; M1 compiles them on push. No launch time has been measured yet: a Release build on a physical iPhone with a large vault is still needed for the plan's cold-launch target.
 
 ## Preliminary search benchmark
 
