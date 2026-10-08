@@ -2,6 +2,10 @@
 
 An Expo SDK 58 starter for a future Markdown notes app. The current app contains Home and Explore screens, native tabs on iOS and Android, web navigation, and light and dark themes. Vault access and note editing are not implemented yet.
 
+## Specification and implementation plan
+
+The [combined specification and plan](docs/plans/2026-10-08-0149-feat-native-vault-notes-plan.md) covers vault access, native editing, search, bookmarks, calendar daily notes, templates, and verification gates. It is aligned with this SDK 58 starter and distinguishes completed setup from the feature work still to do. [Fixture requirements](docs/references/README.md) describe synthetic test data; personal vault snapshots are not included.
+
 ## Toolchain
 
 - Expo `58.0.6` and Expo Router `58.0.16`
