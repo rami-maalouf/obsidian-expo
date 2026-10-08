@@ -1,4 +1,4 @@
-# relaunches the app on a fixture vault that the ios workflow registered, types into today's
+# relaunches the app on a fixture vault that scripts/ci/simulator-smoke.sh registered, types into today's
 # note, waits for the save, then searches and opens another note. the workflow then checks the
 # typed text on disk and that every other fixture file is unchanged.
 appId: com.ramimaalouf.obsidianexpo
@@ -13,15 +13,15 @@ appId: com.ramimaalouf.obsidianexpo
 - extendedWaitUntil:
     visible: "Saved locally"
     timeout: 15000
-- takeScreenshot: smoke/after-typing
+- takeScreenshot: ${OUT}/after-typing
 - tapOn: "Search"
 - inputText: "callout"
 - extendedWaitUntil:
     visible: "Welcome"
     timeout: 20000
-- takeScreenshot: smoke/search
+- takeScreenshot: ${OUT}/search
 - tapOn: "Welcome"
 - extendedWaitUntil:
     visible: "No unsaved changes"
     timeout: 15000
-- takeScreenshot: smoke/welcome
+- takeScreenshot: ${OUT}/welcome
