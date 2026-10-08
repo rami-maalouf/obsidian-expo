@@ -1,0 +1,13 @@
+# types into today's note and sends the app to the background at once. the editor must save
+# before the app is suspended; scripts/ci/simulator-smoke.sh then checks the file and, for the
+# `@external-edit` step, appends a line as another app would.
+appId: com.ramimaalouf.obsidianexpo
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "No unsaved changes"
+    timeout: 30000
+- inputText: " Before background."
+- pressKey: Home

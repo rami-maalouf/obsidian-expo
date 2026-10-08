@@ -1,0 +1,16 @@
+# brings the app back after another app changed today's note. the editor reloads the file
+# because it had no unsaved edits, so the next typing saves on top of the outside change
+# instead of reporting a conflict. the smoke script checks that the file has both.
+appId: com.ramimaalouf.obsidianexpo
+---
+- launchApp:
+    stopApp: false
+# "No unsaved changes" appears instead if the system ended the app while it was in the background.
+- extendedWaitUntil:
+    visible: "(Saved locally|No unsaved changes)"
+    timeout: 15000
+- inputText: " After foreground."
+- extendedWaitUntil:
+    visible: "Saved locally"
+    timeout: 15000
+- takeScreenshot: ${OUT}/foreground
