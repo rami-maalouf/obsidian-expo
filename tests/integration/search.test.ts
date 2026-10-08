@@ -181,6 +181,32 @@ describe('SearchIndex', () => {
     expect((await index.search('editor')).hits.map((hit) => hit.path)).toEqual(['New.md']);
   });
 
+  test('a note refreshed while discovery is running is not removed by that pass', async () => {
+    const vault = new MemoryVault();
+    vault.set('Daily/2026-10-07.md', 'yesterday', 1);
+    let clock = 100;
+    const index = await SearchIndex.open(bunSqlDatabase(), vault, { pause: immediate, now: () => clock });
+    await index.discover();
+    const originalList = vault.listNotes.bind(vault);
+    vault.listNotes = async () => {
+      const listing = await originalList();
+      // today's note is created and refreshed after the listing was taken.
+      clock = 200;
+      vault.set('Daily/2026-10-08.md', 'today', 2);
+      await index.refresh('Daily/2026-10-08.md', 2);
+      return listing;
+    };
+    expect((await index.discover()).removed).toBe(0);
+    vault.listNotes = originalList;
+    expect((await index.search('today')).hits.map((hit) => hit.path)).toEqual(['Daily/2026-10-08.md']);
+    // the next discovery sees the file and keeps it; a later deletion is still detected.
+    clock = 300;
+    await index.discover();
+    vault.files.delete('Daily/2026-10-08.md');
+    clock = 400;
+    expect((await index.discover()).removed).toBe(1);
+  });
+
   test('non-utf-8 notes are found by name; rebuild never writes notes', async () => {
     const vault = new MemoryVault();
     vault.set('Encodings/Latin-1.md', null, 1);

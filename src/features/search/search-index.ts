@@ -59,12 +59,15 @@ export type IndexOptions = {
   discoveryBatchSize: number;
   /** yields between batches so typing and scrolling stay responsive. */
   pause: () => Promise<void>;
+  /** the clock for ordering refreshes against discovery listings. */
+  now: () => number;
 };
 
 const DEFAULT_OPTIONS: IndexOptions = {
   batchSize: 25,
   discoveryBatchSize: 500,
   pause: () => new Promise((resolve) => setTimeout(resolve, 0)),
+  now: () => Date.now(),
 };
 
 type NoteRow = { id: number; path: string; name: string; folder: string; placeholder: number };
@@ -97,6 +100,7 @@ export class SearchIndex {
    * notes that disappeared. notes under unreadable folders are kept: unknown is not deleted.
    */
   async discover(): Promise<{ notes: number; removed: number }> {
+    const listedAt = this.options.now();
     const listing = await this.source.listNotes();
     this.unreadableFolders = listing.unreadableFolders;
     const passRow = await this.db.getFirstAsync<{ pass: number }>('SELECT COALESCE(MAX(seen), 0) + 1 AS pass FROM notes', []);
@@ -119,7 +123,11 @@ export class SearchIndex {
       });
       await this.options.pause();
     }
-    const stale = await this.db.getAllAsync<{ id: number; path: string }>('SELECT id, path FROM notes WHERE seen < ?', [pass]);
+    // a row refreshed after the listing was taken may be newer than the listing knows.
+    const stale = await this.db.getAllAsync<{ id: number; path: string }>(
+      'SELECT id, path FROM notes WHERE seen < ? AND (refreshed_at IS NULL OR refreshed_at < ?)',
+      [pass, listedAt],
+    );
     const removed = stale.filter((row) => !insideAny(row.path, this.unreadableFolders));
     await this.write(async () => {
       for (const row of removed) {
@@ -170,12 +178,12 @@ export class SearchIndex {
         if (result.kind === 'unavailable') return;
         const name = noteName(path);
         const inserted = await this.db.runAsync(
-          'INSERT INTO notes (path, name, name_key, folder, modified, placeholder, seen) VALUES (?, ?, ?, ?, ?, 0, 0)',
-          [path, name, nameKey(name), noteFolder(path), modified],
+          'INSERT INTO notes (path, name, name_key, folder, modified, placeholder, seen, refreshed_at) VALUES (?, ?, ?, ?, ?, 0, 0, ?)',
+          [path, name, nameKey(name), noteFolder(path), modified, this.options.now()],
         );
         id = inserted.lastInsertRowId;
       } else {
-        await this.db.runAsync('UPDATE notes SET modified = ? WHERE id = ?', [modified, id]);
+        await this.db.runAsync('UPDATE notes SET modified = ?, refreshed_at = ? WHERE id = ?', [modified, this.options.now(), id]);
       }
       await this.store(id, path, modified, result);
     });

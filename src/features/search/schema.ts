@@ -4,7 +4,7 @@
  */
 import type { SqlDatabase } from './sql';
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const CREATE = `
 CREATE TABLE IF NOT EXISTS notes (
@@ -20,7 +20,10 @@ CREATE TABLE IF NOT EXISTS notes (
   indexed_modified REAL,
   indexed_revision TEXT,
   -- the discovery pass that last saw this path; older rows were deleted or renamed.
-  seen INTEGER NOT NULL
+  seen INTEGER NOT NULL,
+  -- when a single-note refresh last wrote this row (ms); a discovery whose listing is older
+  -- than that must not remove it.
+  refreshed_at REAL
 );
 CREATE INDEX IF NOT EXISTS notes_name_key ON notes(name_key);
 CREATE VIRTUAL TABLE IF NOT EXISTS note_text USING fts5(
