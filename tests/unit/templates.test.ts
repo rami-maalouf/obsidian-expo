@@ -119,6 +119,126 @@ Text with a stray %> and 100% kept verbatim.
   });
 });
 
+describe('date patterns', () => {
+  test('Moment tokens, separators, T, and bracketed text', () => {
+    const cases: [string, string][] = [
+      ['YYYY-MM-DDTHH:mm:ss', '2026-10-08T00:15:42'],
+      ['YYYY-[W]WW', '2026-W41'],
+      ['DD/MM/YYYY', '08/10/2026'],
+      ['YYYY.MM.DD', '2026.10.08'],
+      ['[Week] WW, YYYY', 'Week 41, 2026'],
+      ['YYYY_MM_DD', '2026_10_08'],
+      ['YYYY-MM-DD ', '2026-10-08 '],
+    ];
+    for (const [format, expected] of cases) {
+      expect({ format, value: expand(`<% tp.date.now("${format}") %>`) }).toEqual({ format, value: expected });
+    }
+  });
+
+  test('WW is the ISO week, printed beside the calendar year as Moment does', () => {
+    const week = (date: string) => expand(`<% tp.date.now("YYYY-[W]WW", 0, "${date}", "YYYY-MM-DD") %>`);
+    expect(week('2026-01-01')).toBe('2026-W01');
+    expect(week('2025-12-29')).toBe('2025-W01');
+    expect(week('2027-01-01')).toBe('2027-W53');
+    expect(week('2020-12-31')).toBe('2020-W53');
+    expect(week('2021-01-03')).toBe('2021-W53');
+    expect(week('2021-01-04')).toBe('2021-W01');
+    expect(week('2026-10-04')).toBe('2026-W40');
+    expect(week('2026-10-05')).toBe('2026-W41');
+  });
+});
+
+describe('line-break trims', () => {
+  test('-%> removes one line break after the tag and <%- one before it', () => {
+    expect(expand('<% tp.file.title -%>\nnext', 'T')).toBe('Tnext');
+    expect(expand('<% tp.file.title -%>\r\nnext', 'T')).toBe('Tnext');
+    expect(expand('<% tp.file.title -%>\n\nnext', 'T')).toBe('T\nnext');
+    expect(expand('before\n<%- tp.file.title %>', 'T')).toBe('beforeT');
+    expect(expand('before\r\n<%- tp.file.title %>', 'T')).toBe('beforeT');
+    expect(expand('<% tp.file.title -%>', 'T')).toBe('T');
+    expect(expand('<%- tp.file.title %>', 'T')).toBe('T');
+  });
+});
+
+describe('date scripts', () => {
+  const TITLE = '2026-10-08';
+
+  test('definitions from the note name, copies, offsets, and formats', () => {
+    const script = [
+      "<%* var fileDate = moment(tp.file.title,'YYYY-MM-DD');",
+      "let prevDay = moment(fileDate).subtract(1, 'd').format('YYYY-MM-DD');",
+      "const nextWeek = moment(fileDate).add(1, 'w').format('YYYY-MM-DD');",
+      "let weekLink = fileDate.format('YYYY-[W]WW'); -%>",
+    ].join(' ');
+    expect(expand(`${script}\n<% prevDay %> <% nextWeek %> <% weekLink %>`, TITLE)).toBe('2026-10-07 2026-10-15 2026-W41');
+  });
+
+  test('units, chained moves, the clock, and definitions across scripts', () => {
+    const source = [
+      '<%* let day = moment(tp.file.title, "YYYY-MM-DD") %>',
+      '<%* let a = moment(day).add(2, "days").subtract(1, "day").format("YYYY-MM-DD"); let b = moment(day).add(-1, "weeks").format("YYYY-MM-DD") %>',
+      '<%* let now = moment().format("YYYY-MM-DD HH:mm"); let stamp = moment(tp.file.title).format("YYYYMMDD") %>',
+      '<% a %>|<% b %>|<% now %>|<% stamp %>',
+    ].join('');
+    expect(expand(source, TITLE)).toBe('2026-10-09|2026-10-01|2026-10-08 00:15|20261008');
+  });
+
+  test('a line break or a semicolon ends a definition, as in JavaScript', () => {
+    const source = '<%* let a = moment(tp.file.title, "YYYY-MM-DD")\nlet b = moment(a).add(1, "d").format("YYYY-MM-DD") -%>\n<% b %>';
+    expect(expand(source, TITLE)).toBe('2026-10-09');
+  });
+
+  test('a copied date keeps the clock time, and the note name reads at midnight', () => {
+    const source = '<%* let t = moment(); let later = moment(t).add(1, "d").format("YYYY-MM-DD HH:mm:ss"); let day = moment(tp.file.title, "YYYYMMDD").format("HH:mm") %><% later %> <% day %>';
+    expect(expand(source, '20261008')).toBe('2026-10-09 00:15:42 00:00');
+  });
+
+  test('scripts that do anything else are rejected before anything is created', () => {
+    const cases: [string, TemplateErrorCode][] = [
+      ['<%* tR += "x" %>', 'execution-tag'],
+      ['<%* %>', 'execution-tag'],
+      ['<%* const mood = await tp.system.prompt("Mood?") %>', 'execution-tag'],
+      ['<%* let a = moment(); a.add(1, "d") %>', 'execution-tag'],
+      ['<%* let a = moment(); let b = a.add(1, "d") %>', 'execution-tag'],
+      ['<%* let a = moment().add(1, "M") %>', 'execution-tag'],
+      ['<%* let a = moment().add("1", "d") %>', 'execution-tag'],
+      ['<%* let a = moment().add(1.5, "d") %>', 'execution-tag'],
+      ['<%* let a = moment().format("YYYY").add(1, "d") %>', 'execution-tag'],
+      ['<%* let a = moment().startOf("week") %>', 'execution-tag'],
+      ['<%* let a = moment(); let a = moment() %>', 'execution-tag'],
+      ['<%* let tp = moment() %>', 'execution-tag'],
+      ['<%* let a = moment(tp.file.path) %>', 'execution-tag'],
+      ['<%* let a = moment("2026-10-08") %>', 'execution-tag'],
+      ['<%* let a = moment() let b = moment() %>', 'execution-tag'],
+      ['<%* let a = moment() b %>', 'execution-tag'],
+      ['<%* let a = moment(); // note %>', 'execution-tag'],
+      ['<%* let a = window.moment() %>', 'execution-tag'],
+      ['<%* let a = moment().format("dddd") %>', 'unsupported-format'],
+      ['<%* let a = moment(tp.file.title, "HH:mm") %>', 'unsupported-format'],
+      ['<%* let a = moment(tp.file.title, "YYYY-MM") %>', 'unsupported-format'],
+      ['<%* let a = moment(tp.file.title, "YYYY-MM-DD") %><% a %>', 'unsupported-command'],
+      ['<% a %><%* let a = moment().format("YYYY") %>', 'unsupported-command'],
+      ['<%* let a = moment().format("YYYY") %><% a.length %>', 'unsupported-command'],
+      ['<%* let a = moment().format("YYYY") %><% a + 1 %>', 'unsupported-command'],
+      ['<%* let a = moment(tp.file.title, "YYYY-MM-DD").format("YYYY") %>', 'invalid-reference'],
+      ['<%* let a = moment(tp.file.title, "YYYY-MM-DD").add(99999999, "d").format("YYYY") %>', 'date-out-of-range'],
+    ];
+    for (const [source, code] of cases) {
+      const expected = code === 'date-out-of-range' ? 'invalid-reference' : code;
+      expect({ source, code: errorCode(source, code === 'invalid-reference' ? 'Meeting' : TITLE) }).toEqual({ source, code: expected });
+    }
+  });
+
+  test('script errors point at the script tag', () => {
+    const source = 'a\n<% tp.file.title %>\n<%* let x = moment().add(1, "M") %>';
+    const result = expandTemplate(source, { title: TITLE, now: NOW });
+    expect(result).toMatchObject({ ok: false, error: { code: 'execution-tag', line: 3, column: 1 } });
+    if (!result.ok) {
+      expect(result.error.message).toStartWith('Line 3: This script is not supported. Unit "M" is not supported.');
+    }
+  });
+});
+
 describe('rejected syntax', () => {
   test('each unsupported fixture template fails with a specific code', () => {
     const expected: Record<string, TemplateErrorCode> = {
@@ -145,9 +265,9 @@ describe('rejected syntax', () => {
     const cases: [string, TemplateErrorCode][] = [
       ['<%* tR += "x" %>', 'execution-tag'],
       ['<%+ tp.file.title %>', 'dynamic-tag'],
-      ['<%- tp.file.title %>', 'whitespace-control'],
-      ['<% tp.file.title -%>', 'whitespace-control'],
       ['<%_ tp.file.title %>', 'whitespace-control'],
+      ['<% tp.file.title _%>', 'whitespace-control'],
+      ['<%*_ let a = moment() _%>', 'whitespace-control'],
       ['<% tp.file.title', 'unclosed-tag'],
       ['<% %>', 'unsupported-command'],
       ['<% tp.file.title() %>', 'unsupported-command'],
@@ -162,8 +282,13 @@ describe('rejected syntax', () => {
       ['<% await tp.system.prompt("x") %>', 'unsupported-command'],
       ['<% `x` %>', 'unsupported-command'],
       ['<% tp.date.now("dddd") %>', 'unsupported-format'],
-      ['<% tp.date.now("YYYY-MM-DD ") %>', 'unsupported-format'],
       ['<% tp.date.now("yyyy-MM-dd") %>', 'unsupported-format'],
+      ['<% tp.date.now("DDDD") %>', 'unsupported-format'],
+      ['<% tp.date.now("Do MMMM") %>', 'unsupported-format'],
+      ['<% tp.date.now("gggg-[W]ww") %>', 'unsupported-format'],
+      ['<% tp.date.now("YYYY-[W") %>', 'unsupported-format'],
+      ['<% tp.date.now("[only text]") %>', 'unsupported-format'],
+      ['<% tp.date.now("") %>', 'unsupported-format'],
       ['<% tp.date.now(YYYY) %>', 'unsupported-argument'],
       ['<% tp.date.now("YYYY-MM-DD", "P1D") %>', 'unsupported-argument'],
       ['<% tp.date.now("YYYY-MM-DD", 1.5) %>', 'unsupported-argument'],
@@ -271,33 +396,26 @@ describe('sanitized references', () => {
     );
   });
 
-  test('the sanitized daily template is rejected at its execution tag', () => {
-    const parsed = parseTemplate(readFileSync(join(REFERENCES, 'Daily Template.md'), 'utf8'));
-    expect(parsed.ok).toBe(false);
-    if (!parsed.ok) {
-      expect(parsed.error).toMatchObject({ code: 'execution-tag', line: 1, column: 1 });
-    }
+  test('the sanitized daily template renders exactly, with its date script', () => {
+    const source = readFileSync(join(REFERENCES, 'Daily Template.md'), 'utf8');
+    const firstLineEnd = source.indexOf('\n') + 1;
+    const now: CivilDateTime = { year: 2026, month: 10, day: 8, hour: 7, minute: 5, second: 9 };
+    const rendered = expand(source, '2026-10-08', now);
+    // the script line and its line break (-%>) are removed, so the front matter starts the note.
+    expect(rendered).toStartWith('---\ntags:\n  - reviews/daily\nCreated: 2026-10-08T07:05:09\n');
+    expect(rendered).toBe(
+      source
+        .slice(firstLineEnd)
+        .replace('<% tp.date.now("YYYY-MM-DDTHH:mm:ss") %>', '2026-10-08T07:05:09')
+        .replaceAll('<%tp.file.title%>', '2026-10-08')
+        .replaceAll('<% weekLink %>', '2026-W41')
+        .replace('<% prevDay %>', '2026-10-07'),
+    );
   });
 
-  test('every unsupported construct in the sanitized template is caught, not only the first', () => {
-    let source = readFileSync(join(REFERENCES, 'Daily Template.md'), 'utf8');
-    const found: string[] = [];
-    for (let parsed = parseTemplate(source); !parsed.ok; parsed = parseTemplate(source)) {
-      found.push(`${parsed.error.code} ${parsed.error.tag}`);
-      source = source.slice(0, parsed.error.start) + source.slice(parsed.error.end);
-    }
-    expect(found.map((entry) => entry.slice(0, entry.indexOf(' ')))).toEqual([
-      'execution-tag',
-      'unsupported-format',
-      'unsupported-command',
-      'unsupported-command',
-      'unsupported-command',
-    ]);
-    expect(found.slice(1)).toEqual([
-      'unsupported-format <% tp.date.now("YYYY-MM-DDTHH:mm:ss") %>',
-      'unsupported-command <% weekLink %>',
-      'unsupported-command <% weekLink %>',
-      'unsupported-command <% prevDay %>',
-    ]);
+  test('the sanitized daily template needs a dated note name', () => {
+    const source = readFileSync(join(REFERENCES, 'Daily Template.md'), 'utf8');
+    const result = expandTemplate(source, { title: 'Meeting', now: NOW });
+    expect(result).toMatchObject({ ok: false, error: { code: 'invalid-reference', line: 1, column: 1 } });
   });
 });

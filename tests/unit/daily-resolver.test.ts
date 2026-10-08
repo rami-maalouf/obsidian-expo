@@ -176,30 +176,49 @@ describe('sanitized references', () => {
   ) as { dailyNotesFolder: string; filenameFormat: 'YYYY-MM-DD'; supportedTemplate: string; unsupportedTemplate: string; exampleNote: string };
   const JAN_3 = { year: 2000, month: 1, day: 3 };
 
+  // the profile still names the sanitized daily template "unsupportedTemplate"; since the date
+  // script extension of KTD6 (october 8, 2026) it is supported. a script that does more than
+  // define dates stands in for an unsupported template.
+  const UNSUPPORTED = 'Templates/Unsupported/Execution tag.md';
+
   function referenceVault() {
     const vault = new FakeVault();
     for (const path of [profile.exampleNote, profile.supportedTemplate, profile.unsupportedTemplate]) {
       vault.files.set(path, readFileSync(join(VAULT, path), 'utf8'));
     }
+    vault.files.set(UNSUPPORTED, readFileSync(join(TEMPLATES, 'Unsupported', 'Execution tag.md'), 'utf8'));
     return vault;
   }
 
-  test('the example note opens unchanged while the unsupported template is configured', async () => {
+  test('the example note opens unchanged while an unsupported template is configured', async () => {
     const vault = referenceVault();
     const before = vault.files.get(profile.exampleNote);
-    const settings = { folder: profile.dailyNotesFolder, filenameFormat: profile.filenameFormat, templatePath: profile.unsupportedTemplate };
+    const settings = { folder: profile.dailyNotesFolder, filenameFormat: profile.filenameFormat, templatePath: UNSUPPORTED };
     const { outcome } = await new DailyNoteResolver(() => NOW).open(vault, JAN_3, settings);
     expect(outcome).toEqual({ kind: 'open', path: profile.exampleNote, created: false });
     expect(vault.files.get(profile.exampleNote)).toBe(before);
     expect(vault.createCalls).toEqual([]);
   });
 
-  test('a missing day with the unsupported template creates nothing', async () => {
+  test('a missing day with an unsupported template creates nothing', async () => {
     const vault = referenceVault();
-    const settings = { folder: profile.dailyNotesFolder, filenameFormat: profile.filenameFormat, templatePath: profile.unsupportedTemplate };
+    const settings = { folder: profile.dailyNotesFolder, filenameFormat: profile.filenameFormat, templatePath: UNSUPPORTED };
     const { outcome } = await new DailyNoteResolver(() => NOW).open(vault, { year: 2000, month: 1, day: 5 }, settings);
     expect(outcome).toMatchObject({ kind: 'template-error', error: { code: 'execution-tag' } });
     expect(vault.createCalls).toEqual([]);
+  });
+
+  test('a missing day with the sanitized daily template is created with its date script', async () => {
+    const vault = referenceVault();
+    const settings = { folder: profile.dailyNotesFolder, filenameFormat: profile.filenameFormat, templatePath: profile.unsupportedTemplate };
+    const clock = () => ({ year: 2000, month: 1, day: 5, hour: 6, minute: 45, second: 0 });
+    const { outcome } = await new DailyNoteResolver(clock).open(vault, { year: 2000, month: 1, day: 5 }, settings);
+    expect(outcome).toEqual({ kind: 'open', path: 'Daily/2000-01-05.md', created: true });
+    const created = vault.files.get('Daily/2000-01-05.md') ?? '';
+    expect(created).toStartWith('---\ntags:\n  - reviews/daily\nCreated: 2000-01-05T06:45:00\n');
+    expect(created).toContain('Parent: "[[Weekly/2000-W01|2000-W01]]"');
+    expect(created).toContain('Remember ![[2000-01-04#Improvements]]');
+    expect(created).not.toContain('<%');
   });
 
   test('a missing day with the supported template is created from the documented example', async () => {
