@@ -72,63 +72,14 @@ jobs:
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
           ls build/Build/Products/Release-iphonesimulator
-      - name: open today's note from a fixture vault in the simulator
+      - name: iphone smoke test with typing, saving, and search
         run: |
-          bundle=com.ramimaalouf.obsidianexpo
-          udid=$(xcrun simctl list devices available -j | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid')
-          xcrun simctl list devices available | grep "$udid"
-          xcrun simctl boot "$udid"
-          xcrun simctl bootstatus "$udid" -b
-          xcrun simctl install "$udid" build/Build/Products/Release-iphonesimulator/*.app
-          data=$(xcrun simctl get_app_container "$udid" "$bundle" data)
-          mkdir -p "$data/Documents/vault"
-          cp -R tests/fixtures/vault-basic/. "$data/Documents/vault/"
-          xcrun simctl launch "$udid" "$bundle" -VaultTestFolder vault
-          today=$(date +%Y-%m-%d)
-          for _ in $(seq 1 60); do
-            [ -f "$data/Documents/vault/Daily/$today.md" ] && break
-            sleep 1
-          done
-          sleep 5
-          mkdir -p smoke
-          xcrun simctl io "$udid" screenshot smoke/today.png
-          xcrun simctl spawn "$udid" log show --last 3m --style compact --predicate "process == \"obsidianexpo\" AND messageType == error" > smoke/errors.log || true
-          echo "--- Daily/$today.md"
-          cat "$data/Documents/vault/Daily/$today.md"
-          printf '# %s\n\nCreated %s ' "$today" "$today" > smoke/expected-prefix.txt
-          head -c "$(wc -c < smoke/expected-prefix.txt)" "$data/Documents/vault/Daily/$today.md" | cmp - smoke/expected-prefix.txt
-          # every fixture file other than the new note must be byte-identical.
-          (cd tests/fixtures/vault-basic && find . -type f -exec shasum -a 256 {} + | sort -k2) > smoke/before.txt
-          (cd "$data/Documents/vault" && find . -type f ! -path "./Daily/$today.md" -exec shasum -a 256 {} + | sort -k2) > smoke/after.txt
-          diff smoke/before.txt smoke/after.txt
-          # the app indexes the vault with fts5 in its own sqlite build.
-          expected=$(cd "$data/Documents/vault" && find . -type f -name '*.md' -not -path '*/.*' | wc -l | tr -d ' ')
-          for _ in $(seq 1 60); do
-            db=$(ls "$data"/Library/Caches/vault-index/index-*.db 2>/dev/null | head -1 || true)
-            if [ -n "$db" ]; then
-              indexed=$(sqlite3 "$db" "select count(*) from notes where indexed_modified is not null" 2>/dev/null || echo 0)
-              [ "$indexed" = "$expected" ] && break
-            fi
-            sleep 1
-          done
-          echo "index: $db, $indexed of $expected notes indexed"
-          [ "$indexed" = "$expected" ]
-          sqlite3 "$db" "select n.path from note_text join notes n on n.id = note_text.rowid where note_text match '\"callout\"*'" | tee smoke/fts.txt
-          grep -qx 'Welcome.md' smoke/fts.txt
-          echo "udid=$udid" >> "$GITHUB_ENV"
-          echo "app_data=$data" >> "$GITHUB_ENV"
-          echo "today=$today" >> "$GITHUB_ENV"
-      - name: type, save, and search with maestro
+          scripts/ci/simulator-smoke.sh "iPhone" build/Build/Products/Release-iphonesimulator/*.app smoke/iphone \
+            tests/e2e/editor/today-write.yaml
+      - name: ipad smoke test with the wide layout
         run: |
-          curl -fsSL "https://get.maestro.mobile.dev" | bash
-          export PATH="$HOME/.maestro/bin:$PATH"
-          maestro --version
-          maestro --device "$udid" test tests/e2e/editor/today-write.yaml
-          echo "--- Daily/$today.md after typing"
-          cat "$app_data/Documents/vault/Daily/$today.md"
-          grep -q 'Typed in the simulator.' "$app_data/Documents/vault/Daily/$today.md"
-          (cd "$app_data/Documents/vault" && find . -type f ! -path "./Daily/$today.md" -exec shasum -a 256 {} + | sort -k2) > smoke/after-maestro.txt
-          diff smoke/before.txt smoke/after-maestro.txt
+          scripts/ci/simulator-smoke.sh "iPad Pro 13" build/Build/Products/Release-iphonesimulator/*.app smoke/ipad \
+            tests/e2e/editor/today-write.yaml tests/e2e/navigation/ipad-layout.yaml
       - uses: actions/upload-artifact@v4
         if: always()
         with:

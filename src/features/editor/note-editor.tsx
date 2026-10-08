@@ -50,16 +50,17 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, accessory
         <ThemedText type="smallBold" numberOfLines={1} style={styles.title} accessibilityRole="header">
           {noteTitle(path)}
         </ThemedText>
+        {accessory}
+      </View>
+      <View style={styles.statusRow}>
         <ThemedText
           type="small"
           themeColor={label.tone === 'quiet' ? 'textSecondary' : 'text'}
           accessibilityLiveRegion="polite"
-          numberOfLines={2}
           style={styles.status}>
           {label.text}
         </ThemedText>
         {label.canRetry && <Button kind="plain" title="Retry" onPress={() => editor.current?.flush()} />}
-        {accessory}
       </View>
       {load?.kind === 'unavailable' && (
         <ThemedText type="small" style={styles.notice}>
@@ -103,11 +104,17 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   title: {
-    flexShrink: 1,
+    flex: 1,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    paddingBottom: Spacing.one,
   },
   status: {
     flex: 1,
-    textAlign: 'right',
   },
   notice: {
     paddingHorizontal: Spacing.three,
