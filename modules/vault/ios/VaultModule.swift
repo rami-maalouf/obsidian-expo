@@ -12,9 +12,13 @@ public class VaultModule: Module {
   private let runtime = VaultRuntime.shared
   /// touched only on the main queue.
   private var pickerDelegate: FolderPickerDelegate?
+  private var menuObserver: NSObjectProtocol?
 
   public func definition() -> ModuleDefinition {
     Name("Vault")
+
+    // commands chosen in the ipad menu bar (MainMenu.swift).
+    Events("onMenuCommand")
 
     Constant("coreVersion") {
       VaultCoreInfo.version
@@ -195,6 +199,13 @@ public class VaultModule: Module {
     }
 
     OnCreate {
+      self.menuObserver = NotificationCenter.default.addObserver(forName: VaultMenu.notification, object: nil, queue: .main) { [weak self] note in
+        guard let command = note.userInfo?["command"] as? String else { return }
+        self?.sendEvent("onMenuCommand", ["command": command])
+      }
+      DispatchQueue.main.async {
+        MainActor.assumeIsolated { VaultMenu.install() }
+      }
       #if targetEnvironment(simulator)
         // simulator-only test hook: `-VaultTestFolder vault` registers Documents/vault, so
         // automated runs can open a fixture vault without the system folder picker.
@@ -214,6 +225,9 @@ public class VaultModule: Module {
 
     OnDestroy {
       self.runtime.removeAll().forEach { $0.close() }
+      if let observer = self.menuObserver {
+        NotificationCenter.default.removeObserver(observer)
+      }
     }
   }
 

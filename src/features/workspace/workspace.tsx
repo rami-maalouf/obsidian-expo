@@ -2,6 +2,7 @@
  * the open vault's state, shared by the sidebar, the editor, and the calendar (t11). it keeps
  * the launch order of flow f2: restore vault access → resolve unsaved drafts → open today → write.
  */
+import { router } from 'expo-router';
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 
@@ -94,6 +95,8 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     [refreshNotes, settings, vault.id, wide],
   );
 
+  const openToday = useCallback(() => selectDay(civilToday), [civilToday, selectDay]);
+
   /** creates "Untitled.md" (or the next free number) beside the open note and opens it. */
   const createNote = useCallback(async (): Promise<boolean> => {
     const native = VaultNative;
@@ -107,6 +110,33 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     open(created);
     return true;
   }, [open, path, refreshNotes, vault.id]);
+
+  // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
+  useEffect(() => {
+    const subscription = VaultNative?.addListener('onMenuCommand', ({ command }) => {
+      switch (command) {
+        case 'new-note':
+          createNote();
+          break;
+        case 'today':
+          openToday();
+          break;
+        case 'search':
+          router.push('/search');
+          break;
+        case 'settings':
+          router.push('/settings');
+          break;
+        case 'toggle-files':
+          setFilesOpen((open) => !open);
+          break;
+        case 'toggle-calendar':
+          setCalendarOpen((open) => !open);
+          break;
+      }
+    });
+    return () => subscription?.remove();
+  }, [createNote, openToday]);
 
   return {
     vault,
@@ -133,7 +163,7 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     setCalendarOpen,
     open,
     selectDay,
-    openToday: () => selectDay(civilToday),
+    openToday,
     retryDay: () => (dayProblem ? selectDay(dayProblem.date) : today.retry()),
     continueToToday: () => setContinued(true),
     onSaved: (saved: string) => {

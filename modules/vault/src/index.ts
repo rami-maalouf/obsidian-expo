@@ -45,8 +45,12 @@ export type NativeDraft = {
   bom?: boolean;
 };
 
+/** commands from the ipad menu bar; names match `VaultMenu.Command` in ios/MainMenu.swift. */
+export type MenuCommand = 'new-note' | 'today' | 'search' | 'toggle-files' | 'toggle-calendar' | 'settings';
+
 /** the native vault module. it exists only in ios builds; web and expo go return null. */
 export type VaultNativeModule = {
+  addListener(eventName: 'onMenuCommand', listener: (event: { command: MenuCommand }) => void): { remove(): void };
   readonly coreVersion: string;
   /** app caches folder for the disposable search index. */
   readonly indexDirectory: string;

@@ -122,7 +122,9 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The iOS workflow checks both settings after `expo prebuild`.
 
-**Limits:** VoiceOver order with open panels, keyboard focus, Stage Manager window sizes, and the iPadOS menu bar have not been checked on a device. iPadOS menu-bar commands are not implemented yet.
+**Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Daily Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Today's Note (⌘T) and Search Notes (⇧⌘F). The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
+
+**Limits:** VoiceOver order with open panels, keyboard focus, Stage Manager window sizes, and the menu bar and its shortcuts have not been checked on a device; the Simulator tests do not open the menu bar.
 
 ## T09. Calendar
 
@@ -232,4 +234,4 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
-| T08, T09 device qualification | U5, U7 | Side panels on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar |
+| T08, T09 device qualification | U5, U7 | Side panels on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar and shortcuts |
