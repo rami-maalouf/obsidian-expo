@@ -52,6 +52,34 @@ bun run web --port 8099
 
 The native application identifier is `com.ramimaalouf.obsidianexpo`. Native projects are generated from `app.json` and dependencies when needed; `ios/` and `android/` stay out of version control. Web uses static output because this starter has no server routes or server rendering requirement.
 
+## Run on an iPhone
+
+`eas.json` defines two builds for a physical iPhone. Both use internal distribution: you install them from a link, without the App Store. Each has its own bundle identifier, so both can be on the phone at the same time.
+
+| Build | Command | Bundle identifier | Icon | JavaScript |
+| --- | --- | --- | --- | --- |
+| Development | `bun run build:dev` | `com.ramimaalouf.obsidianexpo.dev` | Amber shard | From Metro (`bun run dev`), or an EAS update chosen in the dev client's Extensions tab |
+| Preview | `bun run build:preview` | `com.ramimaalouf.obsidianexpo.preview` | Violet shard | The embedded bundle, then updates from the `preview` channel |
+
+Do these steps one time, on a computer with access to the Expo account and an Apple Developer account:
+
+```sh
+bun add --global eas-cli   # or prefix each eas command with bunx eas-cli@latest
+eas login
+eas init                   # links @ramimaalouf/obsidian-expo and writes extra.eas.projectId to app.json
+eas device:create          # registers the iPhone for ad hoc builds
+```
+
+Commit the project ID that `eas init` writes to `app.json`. The update URL comes from it; until it exists, builds have updates turned off.
+
+Then start the builds. The first build asks for Apple credentials and creates the provisioning profiles. Open the build link on the iPhone to install the app. iOS requires Developer Mode (Settings > Privacy & Security) for these builds.
+
+To develop, run `bun run dev` and open the server from the development build.
+
+To send JavaScript and asset changes to the preview build without a new build, run `bun run update:preview`. The preview app downloads the update in the background when it opens and uses it at the next launch. An update reaches only builds with the same runtime fingerprint, so native or app config changes need a new build. The script sets `APP_VARIANT=preview` because the variant is part of the fingerprint.
+
+`app.config.ts` applies the variants on top of `app.json`; without `APP_VARIANT`, the config describes the release app, as in CI. `bun run icons` regenerates every icon from `scripts/generate-icons.ts`. [Technology decisions](docs/technology-decisions.md) (T14 and T15) records these choices.
+
 ## Checks
 
 ```sh
@@ -113,8 +141,8 @@ The default run (seed 1, generator version 1) writes 10,000 UTF-8 notes of 2-8 K
 - `src/hooks/`: theme hooks
 - `src/constants/theme.ts`: colors, spacing, and typography
 - `modules/vault/`: local Expo module. `ios/Core/` is Foundation-only file and document logic, built by `Package.swift` for `swift test`; `ios/Editor/` is the native editor view; `src/` is the typed JavaScript API
-- `assets/`: app icons and images
-- `scripts/`: fixture generation, manifests, and the search benchmark
+- `assets/`: app icons and images. `assets/icons/` holds the Icon Composer bundles for iOS; `scripts/generate-icons.ts` writes them and the PNG icons
+- `scripts/`: fixture generation, manifests, icon generation, and the search benchmark
 - `tests/`: `bun test` suites and fixtures
 
 ## Starter compatibility fixes

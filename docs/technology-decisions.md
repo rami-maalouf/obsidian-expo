@@ -10,7 +10,7 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Decided:** October 8, 2026, for U1-U8, within KTD1.
 
-**Choice:** the SDK 58 group from the default template, as resolved in `bun.lock`: `expo@58.0.6`, `react-native@0.88.0-rc.3`, `react@19.3.0`, `expo-router@58.0.16`, `expo-modules-core@58.0.14`, and Hermes (`hermes-compiler@260318099.0.4`). Packages use SDK-compatible ranges; `bunx expo install --check` passes in the `check` workflow. The only runtime dependency added for features is `expo-sqlite@58.0.10` (T06).
+**Choice:** the SDK 58 group from the default template, as resolved in `bun.lock`: `expo@58.0.6`, `react-native@0.88.0-rc.3`, `react@19.3.0`, `expo-router@58.0.16`, `expo-modules-core@58.0.14`, and Hermes (`hermes-compiler@260318099.0.4`). Packages use SDK-compatible ranges; `bunx expo install --check` passes in the `check` workflow. The runtime dependencies added since the template are `expo-sqlite@58.0.10` (T06) and `expo-updates@58.0.15` (T14).
 
 **Alternatives:** the stable SDK 57 group (`expo@57.0.27`, `react-native@0.86.3`, `react@19.2.3`); not chosen, because the user asked for SDK 58 (KTD1). Newer standalone React Native, Reanimated, Worklets, or Gesture Handler releases were not substituted.
 
@@ -191,7 +191,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Choice:** option A, Expo prebuild (CNG) with CocoaPods. The `ios` folder is not committed; the ios workflow runs `bunx expo prebuild --platform ios` and builds with `xcodebuild` (Release, generic iOS Simulator, `CODE_SIGNING_ALLOWED=NO`). Native configuration lives in `app.json` and the local module's podspec; no custom config plugin is needed yet. The workflow checks that `VaultModule` is autolinked and that the generated project targets iPhone and iPad with all orientations.
 
-**Alternatives:** option B, SDK 58's experimental Swift Package Manager build path, not evaluated, because the CocoaPods path already builds every module the app uses. EAS Build was not used; it is billable and was not approved.
+**Alternatives:** option B, SDK 58's experimental Swift Package Manager build path, not evaluated, because the CocoaPods path already builds every module the app uses. CI does not use EAS Build. On October 8, 2026, the user asked for iPhone development and preview builds; T14 records that setup.
 
 **Validation:** Release Simulator builds from a clean prebuild passed on M1 for every recorded commit in [validation](validation.md). CocoaPods comes from the runner image; the workflow prints its version.
 
@@ -224,6 +224,46 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 **Extension (October 8, 2026, user request):** date patterns replaced the six fixed formats. `parseDatePattern` accepts Moment's `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, and `WW` with separators, `T`, and bracketed text, and rejects any other run of letters (such as `DDDD`, `Do`, or `ww`) instead of printing it differently from Moment. `WW` is the ISO 8601 week, computed from the Thursday of the week; like Moment, `YYYY-[W]WW` pairs it with the calendar year. Date scripts (`<%* let x = moment(...) %>`) are parsed into definitions and computed with the same calendar arithmetic; still no date library and no JavaScript evaluation.
 
 **Limits:** the time-zone test runs on Bun (JavaScriptCore). In the Release app on Hermes, today's note name and its `Created` line matched the runner's date in its time zone (UTC) on iPhone and iPad Simulators; other time zones and a time zone change while running are not checked on Hermes.
+
+## T14. Device builds, app variants, and over-the-air updates
+
+**Decided:** October 8, 2026, at the user's request: a development build and a preview build on an iPhone, with over-the-air updates.
+
+**Choice:**
+
+- EAS Build with internal (ad hoc) distribution for the `development` and `preview` profiles in `eas.json`. A `production` profile is defined for later store builds. Builds use Bun 1.3.14 from `packageManager` and the image that EAS selects for SDK 58. On October 8, 2026, that image was `macos-tahoe-26.6-xcode-27.0`, with Node 22.23.2. This is in the `^22.13.0` engine range of `expo` and `react-native`.
+- EAS Update through `expo-updates@58.0.15`, the version in SDK 58's `bundledNativeModules.json`. The preview build reads the `preview` channel. The development build loads any update from the dev client's Extensions tab. The runtime version uses the `fingerprint` policy, so an update reaches only builds with the same native code and app config.
+- App variants in `app.config.ts`, applied on top of `app.json`. `APP_VARIANT=development` or `preview` adds `.dev` or `.preview` to the bundle identifier, `Dev` or `Preview` to the name, and `-dev` or `-preview` to the URL scheme. Without `APP_VARIANT`, the config is the release app, so CI and `bun run ios` are unchanged. The development variant has its own icon (T15). Only the preview variant leaves out the dev client's `exp+obsidian-expo` scheme, so QR codes from `expo start` open the development build.
+- The update URL comes from `extra.eas.projectId` in `app.json`. `app.json` stays static so that `eas init` can write the project ID there. Until it does, prebuild sets `EXUpdatesEnabled` to false.
+
+**Alternatives:**
+
+| Option | Why not chosen |
+| --- | --- |
+| Local builds on a Mac (`expo run:ios --device`) | No hosted install link and no update channel; every install needs the Mac. They remain available for local work. |
+| Runtime version policy `appVersion` | Simpler, and the same for every variant, but an update can reach a build with different native code unless someone changes the version by hand. |
+| One bundle identifier for every build | The preview build would replace the development build on the phone. |
+
+**Compatibility:** with the `fingerprint` policy, the app config is part of the runtime version. So `eas update` must run with the same `APP_VARIANT` as the build; `bun run update:preview` sets it.
+
+**Validation (L1):** `expo config` resolves the three variants. `expo prebuild --platform ios --no-install` with `APP_VARIANT=development` generated the bundle identifier `com.ramimaalouf.obsidianexpo.dev`, the display name `obsidian-expo Dev`, `ASSETCATALOG_COMPILER_APPICON_NAME = app-dev` with the `.icon` folder copied into the project, the schemes `obsidianexpo-dev` and `exp+obsidian-expo`, and an `Expo.plist` with `EXUpdatesRuntimeVersion` set to `file:fingerprint` and `EXUpdatesEnabled` set to false. Without `APP_VARIANT`, prebuild generated the release identifier and the `app` icon. `tests/unit/app-config.test.ts` covers the variants and the update URL.
+
+**Limits:** no EAS build, device installation, or update delivery has run. The L1 egress policy blocks `api.expo.dev`, so EAS CLI commands run on a contributor's computer. Ad hoc builds install only on devices registered with `eas device:create`, and iOS requires Developer Mode for them.
+
+## T15. App icon
+
+**Decided:** October 8, 2026, at the user's request: an icon that resembles Obsidian in a Liquid Glass style, and a different version for the development build.
+
+**Choice:** a faceted glass shard (obsidian is volcanic glass). The release icon is violet; the development icon is the same shard in amber. One committed script, `scripts/generate-icons.ts` (`bun run icons`), draws the shard and writes every icon file:
+
+- Icon Composer bundles for `ios.icon`: `assets/icons/app.icon` and `assets/icons/app-dev.icon`. Each has six flat facet layers in one translucent group on an automatic gradient fill. iOS 26 adds the Liquid Glass lighting. Expo copies the folder into the native project (SDK 54 and later), and Xcode compiles it.
+- Flattened PNGs with a drawn glass look for the top-level `icon`, the splash image, the web favicon, and the Android adaptive icon layers. They are rendered with `@resvg/resvg-js@2.6.2`, a development dependency (the newest release on October 8, 2026).
+
+**Alternatives:** `sharp@0.35.5`, a larger native dependency for one rendering task; a headless browser screenshot, which needs a browser that is not a project dependency; drawing the bundle in Apple's Icon Composer, which runs only on macOS and cannot be regenerated from this repository.
+
+**Validation:** `tests/unit/app-config.test.ts` regenerates the icons in a temporary folder, compares the bundles byte for byte, checks that every layer exists, and checks the PNG sizes. The flattened PNGs were inspected visually on L1.
+
+**Limits:** the script writes the `icon.json` files, not Icon Composer. They use only keys that the SDK 58 template's icon used. No Xcode has compiled them yet; the ios workflow compiles `app.icon` for the release variant, and `app-dev.icon` compiles only in a development build. The Liquid Glass rendering on iOS 26 has not been seen.
 
 ## Pending decisions
 
