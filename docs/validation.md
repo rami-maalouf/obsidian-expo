@@ -1,24 +1,26 @@
 # Validation
 
-This ledger records evidence for each implementation unit in the [plan](plans/2026-10-08-0149-feat-native-vault-notes-plan.md). A capability is qualified only by the evidence category the plan names. JS bundle export does not prove native compilation, Simulator results do not prove device behavior, and single-device results do not prove iCloud behavior. Starter evidence is in [starter verification](../VERIFICATION.md).
+This ledger records evidence for each implementation unit in the [plan](plans/2026-10-08-0149-feat-native-vault-notes-plan.md). A capability is qualified only by the evidence category the plan names. JS bundle export does not prove native compilation, Simulator results do not prove device behavior, and single-device results do not prove iCloud behavior. Starter evidence is in [starter verification](../VERIFICATION.md); technology choices are in [technology decisions](technology-decisions.md).
 
 ## Environments
 
 | ID | Environment | Used for |
 | --- | --- | --- |
-| L1 | Linux x86_64 cloud container, Bun 1.3.14 (Bun 1.4.2 also installed), Node 22.22.0, TypeScript 6.0.3, ESLint 9.39.5 | Reference check, type check, lint, `bun test`, production JS export |
-| CI | GitHub Actions, Ubuntu 24.04, Node 24, Bun 1.3.14 | The same checks plus `bunx expo install --check` |
+| L1 | Linux x86_64 cloud container, Bun 1.3.14 (Bun 1.4.2 also installed), Node 22.22.0, TypeScript 6.0.3, ESLint 9.39.5, SQLite 3.53.0 in `bun:sqlite` | Reference check, type check, lint, `bun test`, production JS export, preliminary search benchmark |
+| CI | GitHub Actions `check` workflow: Ubuntu 24.04, Node 24, Bun 1.3.14 | The same checks plus `bunx expo install --check` |
+| M1 | GitHub Actions `ios` workflow: image `macos-26-arm64` 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3 | `swift test` for the vault core; `expo prebuild`; Release build for the iOS Simulator; Simulator smoke test |
 
-L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24. The L1 egress policy blocks `api.expo.dev`, so `bunx expo install --check` and `expo-doctor` cannot run there. No macOS, Xcode, iOS Simulator, or physical device has been used for feature work yet.
+L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24. The L1 egress policy blocks `api.expo.dev`, so `bunx expo install --check` and `expo-doctor` run only in CI. M1 runs Xcode 26.6 because the runner image had no stable Xcode 27 on October 8, 2026; the starter was first verified with Xcode 27.0. No physical device has been used.
 
 ## Evidence categories
 
 | Category | Status |
 | --- | --- |
-| Pure TypeScript unit tests | Running in L1 and CI through `bun run check` |
-| Production JS export (`bun run export`) | Passed in L1 after U1 and after U6. No route imports the U6 modules yet, so the export does not bundle them |
-| Native iOS compilation | Not run for any feature unit |
-| Simulator interaction | Not run for any feature unit |
+| Pure TypeScript tests | `bun run check` in L1 and CI; 82 tests across 8 files as of the search commit |
+| Native unit tests | `swift test --package-path modules/vault` on M1; 42 tests in 8 suites passed for the vault bridge commit (`31e091d`) |
+| Production JS export | Passes in L1 for web, iOS, and Android bundles |
+| Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), and the journal and enumeration core (`e52e9ea`) |
+| Simulator interaction | The smoke test (fixture vault → today's note → index) is added; results are recorded below once it runs |
 | Physical-device input and performance | Not run |
 | Multi-device iCloud | Not run |
 
@@ -26,18 +28,18 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Unit | Status | Evidence | Open gaps |
 | --- | --- | --- | --- |
-| U1 | Partial | Bun test runner; [authored fixture vault](../tests/fixtures/vault-basic) with a byte manifest; deterministic 10,000-note generator; tests in `tests/unit/fixtures.test.ts` and `tests/unit/vault-generator.test.ts` | Local native module integration, iPhone/iPad development builds, Simulator smoke checks, and the T01-T03, T08, T11-T13 decisions need macOS |
-| U2 | Not started | None | Needs Swift, Xcode, and disposable local and iCloud vaults |
-| U3 | Not started | None | Needs U2 and native editor work |
-| U4 | Not started | None | Index logic can start on Linux; FTS5 in the iOS binary needs macOS |
-| U5 | Not started | None | Pure models can start on Linux; layout and accessibility need iOS |
-| U6 | Logic complete; native create integration open | See below | Native `createExclusive` integration test (`tests/integration/daily-create.test.ts` in the plan) needs U2; Hermes date check |
-| U7 | Not started | None | Needs U5-U6 and iOS |
-| U8 | Not started | None | Needs devices and iCloud |
+| U1 | Mostly done | Bun tests, [authored fixture vault](../tests/fixtures/vault-basic) with a byte manifest, deterministic 10,000-note generator, local Expo module autolinked and compiled in Release Simulator builds, demo screens replaced by the app shell | iPad Simulator run; toolchain requalification with Xcode 27 when available; T01-T02, T08, T12 UI-test and T13 records |
+| U2 | Core done; device qualification open | `swift test`: path containment with symlinks, file states, exact-byte reads, exclusive create under 16 concurrent writers, conditional save conflicts, deleted and renamed targets, failed writes, unreadable files never replaced, journal, enumeration, bookmark registry, session release ordering | Folder picker and bookmark restore on iOS; modern iCloud placeholders; external rename identity; presenter-based change events |
+| U3 | Native editor and writing flow implemented; device qualification open | `swift test` for the document session: save round trip, restart recovery, conflict and missing states that keep drafts, foreground reconcile, read-only encodings, checkpoint failure, newline convention | Simulator typing tests; IME, dictation, hardware keyboard, and long notes on a device; source styling |
+| U4 | Index and search implemented; device qualification open | `tests/integration/search.test.ts` (13 tests); preliminary host benchmark below | Device timing and memory; typing during indexing trace |
+| U5 | Not started | None | Explorer, bookmarks, sidebar |
+| U6 | Logic complete | See below | Native `createExclusive` path is covered by the smoke test once it runs; Hermes date check |
+| U7 | Not started | None | Calendar, settings, date rollover |
+| U8 | Not started | None | Devices and iCloud |
 
 ## U6 scenarios
 
-The resolver is tested against an in-memory vault that implements the same interface the native vault service must provide (`DailyNoteVault` in `src/features/daily-notes/resolver.ts`). These are unit tests of the protocol, not native integration tests.
+The resolver is tested against an in-memory vault implementing `DailyNoteVault` (`src/features/daily-notes/resolver.ts`), and through the adapter to the native module's API shape (`tests/unit/daily-note-vault.test.ts`).
 
 | Plan scenario | Evidence |
 | --- | --- |
@@ -53,4 +55,6 @@ The resolver is tested against an in-memory vault that implements the same inter
 | Cancellation and late completion | Selecting another day before creation creates nothing; navigating away after commit keeps the note without taking focus |
 | Cloud placeholder or unknown state | Shows unavailable and creates nothing; an unavailable or non-UTF-8 template also blocks creation |
 
-**Commands:** `bun run check` in L1 with Bun 1.3.14 on October 8, 2026: reference check passed, both TypeScript projects passed, ESLint reported no warnings, and 62 tests passed across 5 files. `bun test` with Bun 1.4.2 also passed 62 tests. `CI=1 bun run export` passed.
+## Preliminary search benchmark
+
+`bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.
