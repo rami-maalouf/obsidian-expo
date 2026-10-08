@@ -97,8 +97,14 @@ if [ "$#" -gt 0 ]; then
     curl -fsSL "https://get.maestro.mobile.dev" | bash
   fi
   for flow in "$@"; do
-    if ! maestro --device "$udid" test -e OUT="$out" --test-output-dir "$out/maestro" "$flow"; then
+    before_flow=$(shasum -a 256 < "$note")
+    if ! maestro --device "$udid" test -e OUT="$out" -e TODAY="$today" --test-output-dir "$out/maestro" "$flow"; then
       diagnose "$flow"
+      exit 1
+    fi
+    # daily-notes flows only reopen today's note, so its bytes must not change.
+    if [[ "$flow" == */daily-notes/* ]] && [ "$(shasum -a 256 < "$note")" != "$before_flow" ]; then
+      echo "today's note changed during $flow"
       exit 1
     fi
   done

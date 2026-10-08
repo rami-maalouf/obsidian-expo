@@ -79,14 +79,14 @@ jobs:
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
           ls build/Build/Products/Release-iphonesimulator
-      - name: iphone smoke test with typing, saving, and search
+      - name: iphone smoke test with typing, saving, search, and relaunch
         run: |
           scripts/ci/simulator-smoke.sh "iPhone" build/Build/Products/Release-iphonesimulator/*.app smoke/iphone \
-            tests/e2e/editor/today-write.yaml
+            tests/e2e/editor/today-write.yaml tests/e2e/daily-notes/relaunch-today.yaml
       - name: ipad smoke test with the wide layout
         run: |
           scripts/ci/simulator-smoke.sh "iPad Pro 13" build/Build/Products/Release-iphonesimulator/*.app smoke/ipad \
-            tests/e2e/editor/today-write.yaml tests/e2e/navigation/ipad-layout.yaml
+            tests/e2e/editor/today-write.yaml tests/e2e/navigation/ipad-layout.yaml tests/e2e/daily-notes/relaunch-today.yaml
       - uses: actions/upload-artifact@v4
         if: always()
         with:
