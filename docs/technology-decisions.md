@@ -183,6 +183,8 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Validation:** 69 Swift tests in 11 suites pass on M1; Maestro flows for typing, saving, search, styling, bookmarks, the calendar, and relaunch pass on iPhone and iPad Simulators (see [validation](validation.md)).
 
+**Simulator settings:** before the app is installed, the smoke script turns off the Simulator keyboard's autocorrection, predictions, spell checking, and auto-capitalization. These are test-environment settings; the app's own text input settings are unchanged, so keyboard behavior with them on is part of device qualification.
+
 **Limits:** the flows do not open the system folder picker; the Simulator tests register the vault through a simulator-only launch argument. Simulator timings do not qualify the performance targets.
 
 ## T13. Native generation and builds
