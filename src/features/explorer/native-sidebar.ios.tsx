@@ -11,6 +11,7 @@ import {
   listStyle,
   navigationTitle,
   padding,
+  scrollContentBackground,
   tint,
 } from '@expo/ui/swift-ui/modifiers';
 import { useRouter } from 'expo-router';
@@ -92,7 +93,7 @@ export function NativeSidebar() {
     <Host style={{ flex: 1 }} modifiers={[tint(Accent)]}>
       <NavigationStack>
         <Toolbar>
-          <List modifiers={[listStyle('sidebar'), navigationTitle(vault.name)]}>
+          <List modifiers={[listStyle('sidebar'), scrollContentBackground('hidden'), navigationTitle(vault.name)]}>
             {locating ? (
               <Section title="Locate bookmark">
                 <Text>Choose the new location of {locating} in Files.</Text>
@@ -135,6 +136,9 @@ export function NativeSidebar() {
             </Section>
           </List>
           <Toolbar.Content>
+            <ToolbarItem placement="topBarLeading">
+              <Button label="Close Files" systemImage="sidebar.left" onPress={() => workspace.setFilesOpen(false)} />
+            </ToolbarItem>
             <ToolbarItem placement="topBarTrailing">
               <Button label="New Note" systemImage="square.and.pencil" onPress={newNote} />
             </ToolbarItem>

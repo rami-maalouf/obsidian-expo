@@ -114,23 +114,21 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 ## T08. Navigation shell
 
-**Decided:** October 8, 2026, at the user's direction, replacing the provisional layout built from React Native views. The user asked for native sidebars and menus with Liquid Glass, a theme that follows the phone, and an Obsidian-like layout: files on the left, calendar on the right.
+**Decided:** October 8, 2026, at the user's direction, in two steps. The user first asked for native sidebars and menus with Liquid Glass, a theme that follows the phone, and an Obsidian-like layout: files on the left, calendar on the right. After trying the first native version on a phone, the user asked for side panels that slide over the note in both directions, as in Obsidian, with one header and no stack of routes between the files and the note.
 
-**Choice:** a native `UISplitViewController` through Expo Router's `SplitView` (`expo-router/unstable-split-view`, from `expo-router@58.0.16`, built on `react-native-screens@4.28.0`). The root layout renders `SplitView.Column` with the file sidebar, the detail column with the notes stack, and `SplitView.Inspector` (iOS 26) with the calendar. On iPad, the sidebar and the inspector sit beside the editor and use the system's Liquid Glass sidebar style; on iPhone, the split view collapses to the editor, the sidebar opens from a toolbar button, and the inspector opens as a sheet. The detail column is an Expo Router native `Stack`: the note title is the navigation title, and `Stack.Toolbar` gives native bar buttons and menus (sidebar, bookmark, search, calendar, more). Search and daily-note settings open as native form sheets. The split view needs `RNS_GAMMA_ENABLED=1`, which the `expo-router` config plugin always writes to the Podfile.
+**Choice:** the note is one native `Stack` screen with one navigation bar. Two side panels from `react-native-drawer-layout@4.2.11` (the drawer that Expo Router's own drawer uses; Reanimated and Gesture Handler run its gestures on the UI thread) hold the files on the left and the calendar on the right. On a phone, each panel slides over the note from its edge with a swipe or a toolbar button and closes with a swipe, a tap outside, or a choice. At 768 points and wider, the files panel is pinned beside the note by default and the calendar can be pinned on the right. Panel contents are native SwiftUI views from `@expo/ui` on a Liquid Glass background (`expo-glass-effect` `GlassView`). The navigation bar has the files button on the left and Today, Calendar, and a "More" menu (bookmark, search, new note, settings, vault) on the right, as native `Stack.Toolbar` items.
+
+**Alternatives:** Expo Router's `SplitView` (a native `UISplitViewController`, the first native version): on iPhone it collapses into a navigation stack with a second bar and a back button, which the user rejected; `@expo/ui` `NavigationSplitView`, which collapses the same way and has no right-hand column; Expo Router's drawer navigator, which would add drawer routes and headers that the controlled panels do not need.
 
 **App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The iOS workflow checks both settings after `expo prebuild`.
 
-**Alternatives:** `@expo/ui` `NavigationSplitView` (SwiftUI) has a sidebar and detail but no inspector column, so the calendar could not sit on the right; the earlier React Native panes (not native, the reason for this change).
-
-**Risks:** the router's split view is marked unstable (alpha) in its documentation. Its column API is small, and changing the number of columns remounts it, so the app always renders both the sidebar and the inspector.
-
-**Limits:** VoiceOver, keyboard focus, Stage Manager window sizes, and the iPadOS menu bar have not been checked on a device. iPadOS menu-bar commands are not implemented yet.
+**Limits:** VoiceOver order with open panels, keyboard focus, Stage Manager window sizes, and the iPadOS menu bar have not been checked on a device. iPadOS menu-bar commands are not implemented yet.
 
 ## T09. Calendar
 
 **Decided:** October 8, 2026, at the user's direction, replacing the React Native month grid.
 
-**Choice:** the native SwiftUI graphical `DatePicker` from `@expo/ui@58.0.14` in the inspector column, with a Today button and the daily-note settings in the inspector's toolbar. A picked day opens or creates that day's note through the existing daily-note resolver.
+**Choice:** the native SwiftUI graphical `DatePicker` from `@expo/ui@58.0.14` in the right-hand panel, with the daily-note settings in the panel's toolbar; Today is a button in the note's navigation bar. A picked day opens or creates that day's note through the existing daily-note resolver.
 
 **Trade-offs:** the native picker cannot mark days that have a note, and picking the already selected day sends no change, so Today is a separate button. The pure month-grid code (`src/features/calendar/month.ts`) and its tests remain for these labels and for a later marked-day view.
 
@@ -234,4 +232,4 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
-| T08, T09 device qualification | U5, U7 | Native split view and inspector on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar |
+| T08, T09 device qualification | U5, U7 | Side panels on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar |

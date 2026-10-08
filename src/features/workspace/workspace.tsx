@@ -2,7 +2,8 @@
  * the open vault's state, shared by the sidebar, the editor, and the calendar (t11). it keeps
  * the launch order of flow f2: restore vault access → resolve unsaved drafts → open today → write.
  */
-import { createContext, type ReactNode, type RefObject, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { useWindowDimensions } from 'react-native';
 
 import { useBookmarks } from '@/features/bookmarks/use-bookmarks';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
@@ -19,8 +20,8 @@ import type { VaultInfo } from '@/features/vault/use-vault';
 
 import { VaultNative } from '../../../modules/vault/src';
 
-/** commands of the native split view (react-native-screens `SplitHostCommands`). */
-export type SplitCommands = { show: (column: 'primary' | 'supplementary' | 'secondary') => void };
+/** at this width and wider the side panels can stay pinned beside the note (t08). */
+export const PINNED_PANELS_WIDTH = 768;
 
 type WorkspaceProps = {
   vault: VaultInfo;
@@ -37,10 +38,11 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
   const [dayProblem, setDayProblem] = useState<{ date: CivilDate; outcome: DailyNoteOutcome } | null>(null);
   const [continued, setContinued] = useState(false);
   const [conflicted, setConflicted] = useState<ReadonlySet<string>>(new Set());
-  const [calendarVisible, setCalendarVisible] = useState(false);
-  /** true when the split view shows one column, as on iPhone or in a narrow iPad window. */
-  const [collapsed, setCollapsed] = useState(false);
-  const splitRef = useRef<SplitCommands | null>(null);
+  const { width } = useWindowDimensions();
+  /** on a wide screen the panels sit beside the note; otherwise they slide over it. */
+  const wide = width >= PINNED_PANELS_WIDTH;
+  const [filesOpen, setFilesOpen] = useState(wide);
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const civilToday = useCivilToday();
   const search = useSearchIndex(vault.id);
   const notes = useNoteList(vault.id);
@@ -68,16 +70,17 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
       dailyNotes.navigateAway();
       setSelected(next);
       setDayProblem(null);
-      if (collapsed) splitRef.current?.show('secondary');
+      // on a phone the panel slid over the note; choosing a note brings the note back.
+      if (!wide) setFilesOpen(false);
     },
-    [collapsed],
+    [wide],
   );
 
   const selectDay = useCallback(
     async (date: CivilDate) => {
       if (!VaultNative) return;
       setSelectedDay(date);
-      if (collapsed) setCalendarVisible(false);
+      if (!wide) setCalendarOpen(false);
       const result = await dailyNotes.open(dailyNoteVault(VaultNative, vault.id), date, settings);
       if (!result.current) return;
       if (result.outcome.kind === 'open') {
@@ -88,7 +91,7 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
         setDayProblem({ date, outcome: result.outcome });
       }
     },
-    [collapsed, refreshNotes, settings, vault.id],
+    [refreshNotes, settings, vault.id, wide],
   );
 
   /** creates "Untitled.md" (or the next free number) beside the open note and opens it. */
@@ -123,16 +126,16 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     dayProblem,
     needsRecovery,
     conflicted,
-    calendarVisible,
-    setCalendarVisible,
-    collapsed,
-    setCollapsed,
-    splitRef: splitRef as RefObject<SplitCommands | null>,
+    wide,
+    filesOpen,
+    setFilesOpen,
+    calendarOpen,
+    setCalendarOpen,
     open,
     selectDay,
+    openToday: () => selectDay(civilToday),
     retryDay: () => (dayProblem ? selectDay(dayProblem.date) : today.retry()),
     continueToToday: () => setContinued(true),
-    showSidebar: () => splitRef.current?.show('primary'),
     onSaved: (saved: string) => {
       if (searchIndex) searchIndex.refresh(saved).catch(() => undefined);
     },

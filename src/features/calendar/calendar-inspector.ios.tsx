@@ -1,10 +1,10 @@
 /**
- * the right-hand inspector: a native graphical calendar that opens or creates a day's note
+ * the right-hand panel: a native graphical calendar that opens or creates a day's note
  * (r10, t09). picking a day goes through the daily-note resolver, so paging months creates
  * nothing.
  */
 import { Button, DatePicker, Form, Host, NavigationStack, Section, Text, Toolbar, ToolbarItem } from '@expo/ui/swift-ui';
-import { datePickerStyle, foregroundStyle, navigationTitle, tint } from '@expo/ui/swift-ui/modifiers';
+import { datePickerStyle, foregroundStyle, navigationTitle, scrollContentBackground, tint } from '@expo/ui/swift-ui/modifiers';
 import { useRouter } from 'expo-router';
 
 import { Accent } from '@/constants/theme';
@@ -33,7 +33,7 @@ export function CalendarInspector() {
     <Host style={{ flex: 1 }} modifiers={[tint(Accent)]}>
       <NavigationStack>
         <Toolbar>
-          <Form modifiers={[navigationTitle('Calendar')]}>
+          <Form modifiers={[navigationTitle('Calendar'), scrollContentBackground('hidden')]}>
             <Section>
               <DatePicker
                 title="Daily note"
@@ -44,7 +44,6 @@ export function CalendarInspector() {
               />
             </Section>
             <Section footer={<Text>{exists === null ? ' ' : exists ? 'This day has a note.' : 'This day has no note yet; opening it creates one from the template.'}</Text>}>
-              <Button label="Today" systemImage="sun.max" onPress={() => workspace.selectDay(civilToday)} />
               <Text modifiers={[foregroundStyle({ type: 'hierarchical', style: 'secondary' })]}>{shownPath}</Text>
             </Section>
           </Form>
@@ -52,11 +51,9 @@ export function CalendarInspector() {
             <ToolbarItem placement="topBarTrailing">
               <Button label="Daily Note Settings" systemImage="gearshape" onPress={() => router.push('/settings')} />
             </ToolbarItem>
-            {workspace.collapsed ? (
-              <ToolbarItem placement="topBarLeading">
-                <Button label="Close" systemImage="xmark" onPress={() => workspace.setCalendarVisible(false)} />
-              </ToolbarItem>
-            ) : null}
+            <ToolbarItem placement="topBarLeading">
+              <Button label="Close Calendar" systemImage="sidebar.right" onPress={() => workspace.setCalendarOpen(false)} />
+            </ToolbarItem>
           </Toolbar.Content>
         </Toolbar>
       </NavigationStack>
