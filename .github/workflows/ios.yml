@@ -115,6 +115,20 @@ jobs:
           [ "$indexed" = "$expected" ]
           sqlite3 "$db" "select n.path from note_text join notes n on n.id = note_text.rowid where note_text match '\"callout\"*'" | tee smoke/fts.txt
           grep -qx 'Welcome.md' smoke/fts.txt
+          echo "udid=$udid" >> "$GITHUB_ENV"
+          echo "app_data=$data" >> "$GITHUB_ENV"
+          echo "today=$today" >> "$GITHUB_ENV"
+      - name: type, save, and search with maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          export PATH="$HOME/.maestro/bin:$PATH"
+          maestro --version
+          maestro --device "$udid" test tests/e2e/editor/today-write.yaml
+          echo "--- Daily/$today.md after typing"
+          cat "$app_data/Documents/vault/Daily/$today.md"
+          grep -q 'Typed in the simulator.' "$app_data/Documents/vault/Daily/$today.md"
+          (cd "$app_data/Documents/vault" && find . -type f ! -path "./Daily/$today.md" -exec shasum -a 256 {} + | sort -k2) > smoke/after-maestro.txt
+          diff smoke/before.txt smoke/after-maestro.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

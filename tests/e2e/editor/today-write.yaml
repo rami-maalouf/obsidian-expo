@@ -1,0 +1,27 @@
+# relaunches the app on a fixture vault that the ios workflow registered, types into today's
+# note, waits for the save, then searches and opens another note. the workflow then checks the
+# typed text on disk and that every other fixture file is unchanged.
+appId: com.ramimaalouf.obsidianexpo
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "No unsaved changes"
+    timeout: 30000
+- inputText: "Typed in the simulator."
+- extendedWaitUntil:
+    visible: "Saved locally"
+    timeout: 15000
+- takeScreenshot: smoke/after-typing
+- tapOn: "Search"
+- inputText: "callout"
+- extendedWaitUntil:
+    visible: "Welcome"
+    timeout: 20000
+- takeScreenshot: smoke/search
+- tapOn: "Welcome"
+- extendedWaitUntil:
+    visible: "No unsaved changes"
+    timeout: 15000
+- takeScreenshot: smoke/welcome
