@@ -11,10 +11,15 @@ type Folder = { folders: Map<string, Folder>; notes: { name: string; path: strin
 
 export type ExplorerNote = { path: string; placeholder?: boolean };
 
-const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+// natural, case-insensitive order; plain lowercase comparison if the engine lacks Intl.Collator.
+const collator =
+  typeof Intl !== 'undefined' && typeof Intl.Collator === 'function'
+    ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
+    : null;
 
 function compareNames(a: string, b: string) {
-  return collator.compare(a, b) || (a < b ? -1 : a > b ? 1 : 0);
+  const primary = collator ? collator.compare(a, b) : a.toLowerCase().localeCompare(b.toLowerCase());
+  return primary || (a < b ? -1 : a > b ? 1 : 0);
 }
 
 function displayName(file: string) {
