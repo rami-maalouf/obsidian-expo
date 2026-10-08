@@ -44,7 +44,7 @@ The initial SDK 58 Expo Go attempt failed to load ExpoAsset, so use the project'
 
 Read the [reference inventory](references/README.md). Use committed examples as immutable inputs and copy them into disposable test directories before writing to them. The small examples provide the necessary Markdown and template shapes without access to a real vault.
 
-The 10,000-note generator, native module tests, and feature E2E suites are future implementation tasks in U1-U8. They are not prerequisites stored elsewhere. Implement and commit their source when reaching those units; keep generated large data and build outputs ignored.
+The 10,000-note generator is in [scripts/generate-vault.ts](../scripts/generate-vault.ts); see the [root README](../README.md#test-fixtures) for its commands. Native module tests and feature E2E suites are future implementation tasks in U1-U8. They are not prerequisites stored elsewhere. Implement and commit their source when reaching those units; keep generated large data and build outputs ignored. [Technology decisions](technology-decisions.md) and [validation](validation.md) record the choices made and the evidence collected so far.
 
 ## Plan and workflow entry points
 

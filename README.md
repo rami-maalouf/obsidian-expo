@@ -6,6 +6,8 @@ An Expo SDK 58 starter for a future Markdown notes app. The current app contains
 
 The [combined specification and plan](docs/plans/2026-10-08-0149-feat-native-vault-notes-plan.md) covers vault access, native editing, search, bookmarks, calendar daily notes, templates, and verification gates. It is aligned with this SDK 58 starter and distinguishes completed setup from the feature work still to do. The [reference inventory](docs/references/README.md) links committed sanitized notes, templates, their linked notes, and an example configuration; private originals are not included.
 
+[Technology decisions](docs/technology-decisions.md) records library choices made so far, and [validation](docs/validation.md) records evidence and open gaps for each implementation unit.
+
 For cloud work, start with [agent instructions](AGENTS.md), [project context](docs/PROJECT_CONTEXT.md), and the [cloud development guide](docs/CLOUD_DEVELOPMENT.md). They include the user request summary, Compound Engineering plan provenance, setup commands, reference inventory, and platform limits. No local folder or previous conversation is required.
 
 ## Toolchain

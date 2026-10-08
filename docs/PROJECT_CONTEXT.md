@@ -30,7 +30,7 @@ The Expo starter runs on web and in an iOS development build. Bun installation, 
 
 The plan, this context, [cloud guide](CLOUD_DEVELOPMENT.md), [reference inventory](references/README.md), and all starter assets are committed. The reference inventory identifies which examples are synthetic and what they test.
 
-Vault access, native editor sessions, indexing, file bookmarks, calendar behavior, and template rendering are still planned. File paths listed under U1-U8 describe future implementation work unless they already exist in Git. Do not create empty placeholder implementations just to make every proposed path exist.
+The template renderer and the daily-note resolution logic (U6) exist as tested TypeScript, together with U1's fixtures, generator, and `bun test` setup. [Validation](validation.md) records what that evidence covers and what is still open. Vault access, native editor sessions, indexing, file bookmarks, and calendar behavior are still planned. File paths listed under U1-U8 describe future implementation work unless they already exist in Git. Do not create empty placeholder implementations just to make every proposed path exist.
 
 ## Working without local plugins or history
 
