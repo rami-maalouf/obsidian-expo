@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # runs the app on one simulator with the fixture vault and checks what it wrote.
 #
-#   scripts/ci/simulator-smoke.sh <device name prefix> <app bundle> <output dir> [maestro flow | @external-edit ...]
+#   scripts/ci/simulator-smoke.sh <device name prefix> <app bundle> <output dir> [maestro flow | @external-edit | @lock-daily | @unlock-daily ...]
 #
 # 1. boots the first available simulator whose name starts with the prefix and installs the app.
 # 2. copies tests/fixtures/vault-basic to the app's documents and launches it with the
@@ -110,12 +110,27 @@ if [ "$#" -gt 0 ]; then
   fi
   maestro --version
   for flow in "$@"; do
-    if [ "$flow" = "@external-edit" ]; then
-      # the background flow's text was saved before suspension; now another app appends a line.
-      wait_for_note 'Before background.'
-      printf '\nExternal line from another app.\n' >> "$note"
-      continue
-    fi
+    case "$flow" in
+      @external-edit)
+        # the background flow's text was saved before suspension; now another app appends a line.
+        wait_for_note 'Before background.'
+        printf '\nExternal line from another app.\n' >> "$note"
+        continue
+        ;;
+      @lock-daily)
+        # saves into the daily folder now fail, as they would on a read-only or full volume.
+        chmod 555 "$(dirname "$note")"
+        continue
+        ;;
+      @unlock-daily)
+        chmod 755 "$(dirname "$note")"
+        if grep -qF 'Kept as a draft.' "$note"; then
+          echo "the save into the read-only folder should have failed"
+          exit 1
+        fi
+        continue
+        ;;
+    esac
     before_flow=$(shasum -a 256 < "$note")
     if ! maestro --device "$udid" test -e OUT="$out" -e TODAY="$today" --test-output-dir "$out/maestro" "$flow"; then
       diagnose "$flow"
@@ -137,6 +152,10 @@ if [ "$#" -gt 0 ]; then
     # the outside change was reloaded, and typing afterwards saved on top of it.
     wait_for_note 'External line from another app.'
     wait_for_note 'After foreground.'
+  fi
+  if [[ " $* " == *" @unlock-daily "* ]]; then
+    # the journaled draft was saved from the recovery list.
+    wait_for_note 'Kept as a draft.'
   fi
   echo "--- editor log"
   xcrun simctl spawn "$udid" log show --last 15m --style compact \
