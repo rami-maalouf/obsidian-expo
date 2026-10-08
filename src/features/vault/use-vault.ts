@@ -4,8 +4,10 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { VaultNative } from '../../../modules/vault/src';
+import { LAST_VAULT_KEY, launchVault, type VaultInfo } from './launch';
 
-export type VaultInfo = { id: string; name: string };
+export type { VaultInfo };
+
 
 export type VaultState =
   | { phase: 'unsupported' }
@@ -27,6 +29,7 @@ export function useVault() {
     try {
       await VaultNative.openVault(vault.id);
       setState({ phase: 'ready', vault });
+      VaultNative.writeAppData(LAST_VAULT_KEY, vault.id).catch(() => undefined);
     } catch (error) {
       setState({ phase: 'unavailable', vault, error: message(error) });
     }
@@ -35,11 +38,11 @@ export function useVault() {
   useEffect(() => {
     if (!VaultNative) return;
     let cancelled = false;
-    VaultNative.listVaults().then(
-      (vaults) => {
+    const native = VaultNative;
+    Promise.all([native.listVaults(), native.readAppData(LAST_VAULT_KEY).catch(() => null)]).then(
+      ([vaults, lastId]) => {
         if (cancelled) return;
-        // the most recently added vault is the current one until vault switching exists (u5).
-        const vault = vaults.at(-1);
+        const vault = launchVault(vaults, lastId);
         if (vault) {
           open(vault);
         } else {
