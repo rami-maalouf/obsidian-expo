@@ -142,6 +142,35 @@ import Testing
     #expect(before == after)
   }
 
+  @Test func anUnreadableExistingFileIsNeverReplacedByANewNote() throws {
+    let vault = try TestVault()
+    let target = try vault.write("Daily/2026-10-08.md", Data("private"))
+    try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: target.path)
+    let result = try vault.files.createExclusive("Daily/2026-10-08.md", data: Data("template"))
+    if case .unavailable(.unknown) = result {} else { Issue.record("expected unavailable, got \(result)") }
+    try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: target.path)
+    #expect(try vault.bytes("Daily/2026-10-08.md") == Data("private"))
+  }
+
+  @Test func aFailedWriteThrowsAndLeavesTheFileUnchanged() throws {
+    let vault = try TestVault()
+    try vault.write("Locked/Note.md", Data("original"))
+    try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: vault.url("Locked").path)
+    #expect(throws: (any Error).self) {
+      try vault.files.save("Locked/Note.md", data: Data("edit"), base: FileRevision(data: Data("original")))
+    }
+    #expect(try vault.bytes("Locked/Note.md") == Data("original"))
+  }
+
+  @Test func aRenamedFileIsMissingAtItsOldPath() throws {
+    let vault = try TestVault()
+    try vault.write("Old.md", Data("text"))
+    try FileManager.default.moveItem(at: vault.url("Old.md"), to: vault.url("New.md"))
+    #expect(try vault.files.save("Old.md", data: Data("edit"), base: FileRevision(data: Data("text"))) == .missing)
+    #expect(!vault.exists("Old.md"))
+    #expect(try vault.bytes("New.md") == Data("text"))
+  }
+
   @Test func untouchedSiblingsStayByteIdentical() throws {
     let vault = try TestVault()
     try vault.write("A.md", Self.crlfWithBom)

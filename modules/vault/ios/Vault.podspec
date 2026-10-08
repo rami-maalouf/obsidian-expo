@@ -14,7 +14,7 @@ Pod::Spec.new do |s|
   s.dependency 'ExpoModulesCore'
 
   # Core/ is foundation-only and is also built by ../Package.swift for `swift test`.
-  s.source_files = 'VaultModule.swift', 'Core/**/*.swift'
+  s.source_files = '*.swift', 'Core/**/*.swift', 'Editor/**/*.swift'
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
     'SWIFT_COMPILATION_MODE' => 'wholemodule'
