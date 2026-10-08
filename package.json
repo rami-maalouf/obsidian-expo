@@ -43,7 +43,8 @@
     "web": "expo start --web",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
-    "check": "bun run typecheck && bun run lint",
+    "check:references": "bun scripts/check-references.mjs",
+    "check": "bun run check:references && bun run typecheck && bun run lint",
     "export": "expo export --platform all"
   },
   "private": true

@@ -11,6 +11,8 @@ execution: code
 
 This document combines the product specification and implementation plan, copied from the original Vault Notes planning project. It is adapted to this repository's user-requested Expo SDK 58 starter. The product requirements remain unchanged.
 
+For cloud execution, read the committed [project context](../PROJECT_CONTEXT.md), [cloud development guide](../CLOUD_DEVELOPMENT.md), and [reference inventory](../references/README.md). No original conversation, sibling project, personal vault, or local Compound Engineering installation is required. Paths under the implementation units describe future work where files do not yet exist.
+
 ## Current Repository Status
 
 The SDK 58 starter, Bun lockfile, type checking, linting, iOS development build, web starter, and CI are present. See [starter verification](../../VERIFICATION.md) for the evidence and its limits. U1 is partially complete: native vault-module integration, reproducible fixtures, meaningful unit tests, and iPad qualification remain. U2-U8 have not been implemented. Starter checks do not qualify the editor, vault safety, iCloud support, or performance targets below.
@@ -99,7 +101,7 @@ The first release edits Markdown source with restrained syntax styling. Full Obs
 
 ### Repository References
 
-Personal daily notes, templates, vault settings, and source paths from the original planning project are not included in this public repository. Use the [synthetic fixture requirements](../references/README.md) for R2 preservation checks and R13 unsupported-template checks. Support for execution tags, variable expressions, or date formats outside KTD6 is not implied by compatibility testing.
+The user approved sanitized examples for this public repository. The [reference inventory](../references/README.md) includes a representative daily note, its linked notes, a sanitized template, a supported basic template, and a vault-relative configuration. Use disposable copies for R2 preservation and R13 unsupported-template checks. No private originals or external local folders are required. Support for execution tags, variable expressions, or date formats outside KTD6 is not implied by compatibility testing.
 
 ## Planning Contract
 
@@ -331,4 +333,4 @@ Accessibility verification covers VoiceOver traversal, labeled calendar days/sel
 - Integrity gates and the stated hardware performance targets pass before a completed-app claim.
 - iCloud support is demonstrated with disposable vaults on real devices, including conflicting external changes.
 - Compatibility documentation states the exact supported template syntax and deferred Obsidian features.
-- Changes are committed by completed unit with conventional lowercase messages. No personal vault contents, templates, settings, credentials, generated large-vault fixtures, or discarded experiments are committed to this public repository. Small authored synthetic fixtures and their generation scripts may be committed; copying the plan does not authorize publication of the original private references.
+- Changes are committed by completed unit with conventional lowercase messages. The approved sanitized examples and small authored synthetic fixtures may be committed along with their generation scripts. Do not publish the private originals, real journal contents, credentials, generated large-vault data, or discarded experiments.

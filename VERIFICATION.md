@@ -18,6 +18,10 @@ Verified on October 8, 2026 with Expo 58.0.6, React Native 0.88.0-rc.3, Bun 1.3.
 | Web browser console | No errors recorded during the final interaction check |
 | Visual inspection | Home and Explore rendered correctly; app title fits on one line |
 
+## Committed visual evidence
+
+The setup session's Home screenshots are included for reviewers working from a fresh checkout: [web starter](docs/validation/starter-web.png) and [iOS development build](docs/validation/starter-ios.png). These show the starter only. They do not demonstrate the planned editor or vault features, and are not substitutes for rerunning interaction checks after code changes.
+
 ## Limits
 
 - Android passed production JS bundling but was not compiled or run on an emulator.

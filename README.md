@@ -4,7 +4,9 @@ An Expo SDK 58 starter for a future Markdown notes app. The current app contains
 
 ## Specification and implementation plan
 
-The [combined specification and plan](docs/plans/2026-10-08-0149-feat-native-vault-notes-plan.md) covers vault access, native editing, search, bookmarks, calendar daily notes, templates, and verification gates. It is aligned with this SDK 58 starter and distinguishes completed setup from the feature work still to do. [Fixture requirements](docs/references/README.md) describe synthetic test data; personal vault snapshots are not included.
+The [combined specification and plan](docs/plans/2026-10-08-0149-feat-native-vault-notes-plan.md) covers vault access, native editing, search, bookmarks, calendar daily notes, templates, and verification gates. It is aligned with this SDK 58 starter and distinguishes completed setup from the feature work still to do. The [reference inventory](docs/references/README.md) links committed sanitized notes, templates, their linked notes, and an example configuration; private originals are not included.
+
+For cloud work, start with [agent instructions](AGENTS.md), [project context](docs/PROJECT_CONTEXT.md), and the [cloud development guide](docs/CLOUD_DEVELOPMENT.md). They include the user request summary, Compound Engineering plan provenance, setup commands, reference inventory, and platform limits. No local folder or previous conversation is required.
 
 ## Toolchain
 
@@ -55,7 +57,7 @@ bunx expo-doctor@latest
 bun run export
 ```
 
-`check` runs TypeScript and ESLint with zero warnings allowed. `export` produces production bundles for web, iOS, and Android; it does not compile a native binary. GitHub Actions runs installation, type checking, linting, dependency alignment, and production export on pushes and pull requests.
+`check` validates repository references and runs TypeScript and ESLint with zero warnings allowed. `export` produces production bundles for web, iOS, and Android; it does not compile a native binary. GitHub Actions runs installation, reference checking, type checking, linting, dependency alignment, and production export on pushes and pull requests.
 
 For a running iOS development app, Expo's CLI provides a runtime smoke check:
 

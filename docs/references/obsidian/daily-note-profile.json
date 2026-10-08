@@ -1,0 +1,9 @@
+{
+  "vaultRoot": "vault",
+  "dailyNotesFolder": "Daily",
+  "filenameFormat": "YYYY-MM-DD",
+  "supportedTemplate": "Templates/Daily Basic.md",
+  "unsupportedTemplate": "Templates/Daily Template.md",
+  "exampleNote": "Daily/2000-01-03.md",
+  "description": "sanitized example profile; all paths are relative to the example vault"
+}
