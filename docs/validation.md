@@ -16,7 +16,7 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Category | Status |
 | --- | --- |
-| Pure TypeScript tests | `bun run check` in L1 and CI; 107 tests across 11 files as of `01a3a36` |
+| Pure TypeScript tests | `bun run check` in L1 and CI; 117 tests across 11 files with the date-script extension |
 | Native unit tests | `swift test --package-path modules/vault` on M1; 69 tests in 11 suites passed for `becf682` |
 | Production JS export | Passes in L1 for web, iOS, and Android bundles |
 | Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), the JavaScript bridge with the folder picker (`31e091d`), the full app with the editor, search, explorer, calendar, and settings (`3fbdf82`), the native iPad build with all orientations (`0a1aec2`), and the editor with source styling (`becf682`) |
@@ -43,9 +43,10 @@ The resolver is tested against an in-memory vault implementing `DailyNoteVault` 
 
 | Plan scenario | Evidence |
 | --- | --- |
-| Existing note with a broken template opens unchanged | `daily-resolver.test.ts`: "an existing note opens unchanged even when the template is now invalid"; also with the sanitized reference template |
+| Existing note with a broken template opens unchanged | `daily-resolver.test.ts`: "an existing note opens unchanged even when the template is now invalid"; also the reference example note with a template whose script is unsupported |
 | Invalid tags and arguments | `templates.test.ts`: "unsupported tags, commands, and arguments" (44 cases) |
-| Unsupported execution tags, variable expressions, and date formats create nothing | Each fixture in `tests/fixtures/vault-basic/Templates/Unsupported/` and the sanitized `Daily Template.md` produce a template error with zero create calls |
+| Unsupported execution tags, variable expressions, and date formats create nothing | Each fixture in `tests/fixtures/vault-basic/Templates/Unsupported/` produces a template error with zero create calls; `templates.test.ts` rejects 27 script forms outside the date-definition subset |
+| Date scripts and the user's daily template (KTD6 extension, October 8, 2026) | `templates.test.ts` renders the sanitized `Daily Template.md` exactly (front matter on line 1, `2026-W41`, yesterday's embed) and checks ISO weeks at year boundaries; `daily-resolver.test.ts` creates a missing day from it. Not yet run in the Simulator or on a device |
 | Supported starter template creates successfully | Built-in template, `tests/fixtures/vault-basic/Templates/Daily.md`, and the sanitized `Daily Basic.md` render exactly |
 | Selected historical date; explicit title reference | Yesterday's note uses its own title while `tp.date.now()` uses the captured clock; `tp.file.title` references in both filename formats |
 | DST, leap day, and year rollover | Calendar arithmetic tests; `captureClock` under `America/New_York` and `Asia/Tokyo` |

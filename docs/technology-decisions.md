@@ -223,6 +223,8 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Validation:** `tests/unit/templates.test.ts` covers the six formats, strict reference parsing, leap days (including 1900-style and 2000-style century rules), month and year boundaries, years 1-9999, wall-clock preservation across US DST changes, and `captureClock` in `America/New_York` (before and after the 2026-03-08 change) and `Asia/Tokyo` subprocesses.
 
+**Extension (October 8, 2026, user request):** date patterns replaced the six fixed formats. `parseDatePattern` accepts Moment's `YYYY`, `MM`, `DD`, `HH`, `mm`, `ss`, and `WW` with separators, `T`, and bracketed text, and rejects any other run of letters (such as `DDDD`, `Do`, or `ww`) instead of printing it differently from Moment. `WW` is the ISO 8601 week, computed from the Thursday of the week; like Moment, `YYYY-[W]WW` pairs it with the calendar year. Date scripts (`<%* let x = moment(...) %>`) are parsed into definitions and computed with the same calendar arithmetic; still no date library and no JavaScript evaluation.
+
 **Limits:** the time-zone test runs on Bun (JavaScriptCore). In the Release app on Hermes, today's note name and its `Created` line matched the runner's date in its time zone (UTC) on iPhone and iPad Simulators; other time zones and a time zone change while running are not checked on Hermes.
 
 ## Pending decisions
