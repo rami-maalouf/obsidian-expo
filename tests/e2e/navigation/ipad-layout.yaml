@@ -1,5 +1,5 @@
 # on a wide ipad the sidebar stays beside the editor. bookmarks the open note, finds it in the
-# bookmarks list, then opens today again from the calendar.
+# bookmarks list, opens today again from the calendar, then relaunches and finds the bookmark.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -20,3 +20,11 @@ appId: com.ramimaalouf.obsidianexpo
     visible: "No unsaved changes"
     timeout: 15000
 - takeScreenshot: ${OUT}/calendar-today
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "No unsaved changes"
+    timeout: 30000
+- tapOn: "Bookmarks"
+- assertVisible: "Remove"

@@ -1,0 +1,12 @@
+# relaunches the app and checks that it opens today's note again (u7). the smoke script passes
+# TODAY and checks that the note's bytes did not change during this flow.
+appId: com.ramimaalouf.obsidianexpo
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible: "No unsaved changes"
+    timeout: 30000
+- assertVisible: ${TODAY}
+- takeScreenshot: ${OUT}/relaunch-today
