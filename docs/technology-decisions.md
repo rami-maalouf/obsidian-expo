@@ -78,6 +78,28 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Limits:** scrolling, Dynamic Type, and VoiceOver checks on a device are open.
 
+## T08. Navigation shell
+
+**Decided provisionally:** October 8, 2026, for U5 and U7. iPad resizing and VoiceOver checks remain open.
+
+**Choice:** one Expo Router Stack screen that lays out its own panes with React Native views and `useWindowDimensions`. At 768 points and wider the file sidebar stays beside the editor; below that it opens as a full-screen drawer from a Files button. At 1,180 points and wider the calendar is a trailing panel; below that it opens over the editor. Search and settings open over the editor. Only one overlay is visible at a time (A2). No dependency was added.
+
+**Alternatives:** the Expo Router drawer, which needs `@react-navigation/drawer` and adds a gesture drawer; Router SplitView, which its documentation calls alpha and not for production; and `@expo/ui` `NavigationSplitView`, a preview in SDK 58. The current layout keeps the required behavior without a preview API; the gesture drawer can be added later if device testing shows the button-opened drawer is not enough.
+
+**Limits:** no swipe gesture for the drawer; split-screen and Slide Over widths on iPad, state restoration, and keyboard focus after closing overlays are untested.
+
+## T09. Calendar
+
+**Decided provisionally:** October 8, 2026, for U7.
+
+**Choice:** a small month grid built with React Native views (`src/features/calendar/`). It uses the same civil-date code as the template renderer, gives every day an explicit press handler (so re-tapping the selected day opens it again), labels each day for VoiceOver with the weekday, date, "today", and "has a daily note", and shows a dot for days whose note exists. Weeks start on Monday. No dependency was added.
+
+**Alternatives:** the `@expo/ui` SwiftUI DatePicker, whose events describe selection changes (so re-selecting the same day needs a workaround) and which cannot mark days; `react-native-calendars@1.1314.0`, which supports day presses and markings but is a further dependency whose accessibility the app would still own.
+
+**Validation:** `tests/unit/calendar.test.ts` covers the grid, leap February, Sunday- and Monday-first weeks, paging across years, and VoiceOver labels.
+
+**Limits:** the week start does not follow the device locale yet; month and weekday names are English; VoiceOver and Dynamic Type checks on a device are open.
+
 ## T11. UI state and styling
 
 **Decided:** October 8, 2026, for the U1-U3 shell.
@@ -144,7 +166,6 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T04 iCloud qualification | U2, U8 | Disposable iCloud vaults on devices |
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
-| T08 navigation shell | U5 | iPhone and iPad layout, keyboard, and VoiceOver checks; the current shell is a single Stack screen |
-| T09 calendar | U7 | Day selection, reselection, and accessibility on iOS |
+| T08, T09 device qualification | U5, U7 | iPhone and iPad layout, multitasking widths, keyboard focus, and VoiceOver checks |
 | T12 end-to-end and UI test tools | U1-U3 | Xcode scheme inspection and Simulator runs; native unit tests already use Swift Testing through `swift test` |
 | T13 native generation and builds | U1 | Clean prebuild and reproducible Simulator builds |

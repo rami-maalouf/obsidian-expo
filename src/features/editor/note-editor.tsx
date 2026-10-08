@@ -79,7 +79,10 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, accessory
         }}
         onLoad={(event) => {
           setLoad(event.nativeEvent);
-          if (event.nativeEvent.kind === 'recovery-needed') {
+          if (event.nativeEvent.kind === 'loaded') {
+            // the note was chosen on purpose (or is today's): start writing right away.
+            editor.current?.focus().catch(() => undefined);
+          } else if (event.nativeEvent.kind === 'recovery-needed') {
             onRecoveryNeeded(path);
           }
         }}
