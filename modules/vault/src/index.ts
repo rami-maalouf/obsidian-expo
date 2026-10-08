@@ -75,6 +75,10 @@ export type VaultNativeModule = {
   ): Promise<void>;
   listDrafts(): Promise<{ drafts: NativeDraft[]; unreadable: string[] }>;
   discardDraft(vaultId: string, path: string, sequence: number): Promise<boolean>;
+  /** app-owned values such as settings and bookmarks, stored outside every vault. */
+  readAppData(key: string): Promise<string | null>;
+  /** replaces the value atomically; null removes it. */
+  writeAppData(key: string, value: string | null): Promise<void>;
 };
 
 export const VaultNative = requireOptionalNativeModule<VaultNativeModule>('Vault');

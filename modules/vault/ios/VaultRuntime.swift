@@ -11,6 +11,7 @@ final class VaultRuntime: @unchecked Sendable {
 
   let registry = VaultRegistry(file: VaultRuntime.supportDirectory.appendingPathComponent("vaults.json"))
   let journal: DraftJournal? = try? DraftJournal(directory: VaultRuntime.supportDirectory.appendingPathComponent("drafts"))
+  let appData = AppDataStore(directory: VaultRuntime.supportDirectory.appendingPathComponent("app-data"))
   private let lock = NSLock()
   private var sessions: [String: VaultSession] = [:]
 
