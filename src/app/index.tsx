@@ -109,7 +109,7 @@ function Workspace({ vault, settings, onSaveSettings }: WorkspaceProps) {
   const civilToday = useCivilToday();
   const search = useSearchIndex(vault.id);
   const notes = useNoteList(vault.id);
-  const bookmarks = useBookmarks(vault.id);
+  const bookmarks = useBookmarks(vault.id, notes.listing?.notes ?? null);
   const knownPaths = useMemo(() => (notes.listing ? new Set(notes.listing.notes.map((note) => note.path)) : null), [notes.listing]);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;

@@ -68,6 +68,20 @@ import Testing
     #expect(stopped.stopped)
   }
 
+  @Test func fileIdsSurviveARename() throws {
+    let vault = try TestVault()
+    try vault.write("Old.md", Data("x"))
+    try vault.write("Other.md", Data("y"))
+    let before = collect(vault).0
+    try FileManager.default.createDirectory(at: vault.url("Moved"), withIntermediateDirectories: true)
+    try FileManager.default.moveItem(at: vault.url("Old.md"), to: vault.url("Moved/New.md"))
+    let after = collect(vault).0
+    let oldId = before.first { $0.path == "Old.md" }?.fileId
+    #expect(oldId != nil)
+    #expect(after.first { $0.path == "Moved/New.md" }?.fileId == oldId)
+    #expect(after.first { $0.path == "Other.md" }?.fileId != oldId)
+  }
+
   @Test func unreadableFoldersAreReported() throws {
     let vault = try TestVault()
     try vault.write("Open/a.md", Data("a"))

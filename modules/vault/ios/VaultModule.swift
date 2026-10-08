@@ -116,6 +116,7 @@ public class VaultModule: Module {
             var note: [String: Any] = ["path": entry.path, "placeholder": entry.state == .placeholder]
             if let size = entry.size { note["size"] = size }
             if let modified = entry.modified { note["modified"] = modified.timeIntervalSince1970 * 1000 }
+            if let fileId = entry.fileId { note["fileId"] = fileId }
             return note
           })
           return true

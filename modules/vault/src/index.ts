@@ -25,7 +25,14 @@ export type NativeSaveResult =
   | { kind: 'missing' }
   | { kind: 'unavailable'; state: NativeFileState };
 
-export type NativeNote = { path: string; placeholder: boolean; size?: number; modified?: number };
+export type NativeNote = {
+  path: string;
+  placeholder: boolean;
+  size?: number;
+  modified?: number;
+  /** volume and inode; survives a rename on the same volume. */
+  fileId?: string;
+};
 
 export type NativeDraft = {
   vaultId: string;
