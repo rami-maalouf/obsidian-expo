@@ -16,7 +16,7 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Category | Status |
 | --- | --- |
-| Pure TypeScript tests | `bun run check` in L1 and CI; 133 tests across 14 files, including the app variant, icon, and launch screen tests |
+| Pure TypeScript tests | `bun run check` in L1 and CI; 136 tests across 14 files, including the app variant, icon, launch screen, and discovery write tests |
 | Native unit tests | `swift test --package-path modules/vault` on M1; 69 tests in 11 suites passed for `becf682` |
 | Production JS export | Passes in L1 for web, iOS, and Android bundles |
 | Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), the JavaScript bridge with the folder picker (`31e091d`), the full app with the editor, search, explorer, calendar, and settings (`3fbdf82`), the native iPad build with all orientations (`0a1aec2`), and the editor with source styling (`becf682`) |
@@ -70,6 +70,29 @@ Changes:
 - The editor logs `first note <kind> <n> ms after process start` (subsystem `com.ramimaalouf.obsidianexpo`, category `launch`) once per process. The smoke script prints this subsystem's log.
 
 Evidence on L1: `bun run check` (133 tests) and `bun run export` pass. `bunx expo install --check` could not reach the Expo API through the L1 network policy (HTTP 403); no dependency changed. The Swift changes have not been compiled on L1, which has no Swift toolchain; M1 compiles them on push. No launch time has been measured yet: a Release build on a physical iPhone with a large vault is still needed for the plan's cold-launch target.
+
+## Launch profile (October 8, 2026)
+
+`bun scripts/profile-launch.ts --count <n>` replays the JavaScript work of a launch after the first note shows, over a generated vault: the explorer listing, the file tree, the path set and bookmark check, and the search index (open, coverage, refresh of the open note, discovery, content indexing). It counts calls into the native vault module and into SQLite, rows that SQLite changes, and listing bytes passed to JavaScript. The counts are the same on an iPhone. The times are L1 times (Bun 1.4.2), not iPhone times. Native work (enumerating the folder, coordinated reads) is outside the profile.
+
+The profile found three costs on every launch, even when no note changed:
+
+- The vault was scanned twice: once for the file list and once for the search index.
+- Search discovery wrote every note's row again, one SQLite call per note.
+- Opening a note set its modified time to null in the index, so the same launch read and indexed that note a second time.
+
+Changes: discovery compares the listing with the index and writes only new, changed, and removed notes; the search index uses the file list's scan; a refresh without a new modified time keeps the time discovery saw; the sidebar uses the workspace's path set instead of building its own.
+
+| Vault | Launch | Vault scans | Listing bytes | Discovery SQLite calls | Rows changed (all SQL) | Note reads | L1 JavaScript time |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 3,000 notes | Relaunch, nothing changed | 2 → 1 | 721,650 → 360,825 | 3,002 → 1 | 3,015 → 8 | 2 → 1 | 46.5 → 14.4 ms |
+| 3,000 notes | Relaunch, 5 edited, 1 added, 1 deleted | 2 → 1 | 721,650 → 360,825 | 3,004 → 11 | 3,184 → 180 | 8 → 7 | 50.5 → 27.9 ms |
+| 10,000 notes | Relaunch, nothing changed | 2 → 1 | 2,418,882 → 1,209,441 | 10,002 → 1 | 10,015 → 8 | 2 → 1 | 207.2 → 77.9 ms |
+| 10,000 notes | First launch (empty index) | 2 → 1 | 2,418,882 → 1,209,441 | 10,002 → 10,002 | 139,681 → 139,681 | 10,001 → 10,001 | 3,909 → 3,793 ms |
+
+The first launch still reads every note once and makes about four SQLite calls per note to build the index. It runs in the background after the first note shows.
+
+Native launch stages are now logged once per process, as milliseconds after process start (subsystem `com.ramimaalouf.obsidianexpo`, category `launch`): `vault module created`, `javascript asked for the vaults`, `vault opened`, `drafts listed`, `first note state check`, `first note load started`, `first note <kind>`, and `first vault scan finished: <n> notes`. No device values have been recorded yet.
 
 ## Preliminary search benchmark
 
