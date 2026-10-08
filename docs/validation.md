@@ -16,11 +16,11 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Category | Status |
 | --- | --- |
-| Pure TypeScript tests | `bun run check` in L1 and CI; 82 tests across 8 files as of the search commit |
-| Native unit tests | `swift test --package-path modules/vault` on M1; 42 tests in 8 suites passed for the vault bridge commit (`31e091d`) |
+| Pure TypeScript tests | `bun run check` in L1 and CI; 104 tests across 11 files as of `3fbdf82` |
+| Native unit tests | `swift test --package-path modules/vault` on M1; 58 tests in 10 suites passed for `ddcf2fb` |
 | Production JS export | Passes in L1 for web, iOS, and Android bundles |
-| Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), and the journal and enumeration core (`e52e9ea`) |
-| Simulator interaction | The smoke test (fixture vault → today's note → index) is added; results are recorded below once it runs |
+| Native iOS compilation | Release Simulator builds passed on M1 for the starter (`09f6966`, 17.6 minutes), the first vault module (`24158f7`), the journal and enumeration core (`e52e9ea`), and the JavaScript bridge with the folder picker (`31e091d`). The editor, search, explorer, and calendar commits are built by the run for `3fbdf82` |
+| Simulator interaction | `scripts/ci/simulator-smoke.sh` runs on an iPhone and an iPad Pro 13-inch Simulator: fixture vault → today's note → byte checks → FTS5 index, then Maestro flows for typing, saving, search, bookmarks, and the calendar. First results are pending for `3fbdf82` |
 | Physical-device input and performance | Not run |
 | Multi-device iCloud | Not run |
 
@@ -28,13 +28,13 @@ L1 has Node 22.22.0, below the repository's Node 24.3 minimum; CI covers Node 24
 
 | Unit | Status | Evidence | Open gaps |
 | --- | --- | --- | --- |
-| U1 | Mostly done | Bun tests, [authored fixture vault](../tests/fixtures/vault-basic) with a byte manifest, deterministic 10,000-note generator, local Expo module autolinked and compiled in Release Simulator builds, demo screens replaced by the app shell | iPad Simulator run; toolchain requalification with Xcode 27 when available; T01-T02, T08, T12 UI-test and T13 records |
-| U2 | Core done; device qualification open | `swift test`: path containment with symlinks, file states, exact-byte reads, exclusive create under 16 concurrent writers, conditional save conflicts, deleted and renamed targets, failed writes, unreadable files never replaced, journal, enumeration, bookmark registry, session release ordering | Folder picker and bookmark restore on iOS; modern iCloud placeholders; external rename identity; presenter-based change events |
-| U3 | Native editor and writing flow implemented; device qualification open | `swift test` for the document session: save round trip, restart recovery, conflict and missing states that keep drafts, foreground reconcile, read-only encodings, checkpoint failure, newline convention | Simulator typing tests; IME, dictation, hardware keyboard, and long notes on a device; source styling |
-| U4 | Index and search implemented; device qualification open | `tests/integration/search.test.ts` (13 tests); preliminary host benchmark below | Device timing and memory; typing during indexing trace |
-| U5 | Not started | None | Explorer, bookmarks, sidebar |
-| U6 | Logic complete | See below | Native `createExclusive` path is covered by the smoke test once it runs; Hermes date check |
-| U7 | Not started | None | Calendar, settings, date rollover |
+| U1 | Mostly done | Bun tests, [authored fixture vault](../tests/fixtures/vault-basic) with a byte manifest, deterministic 10,000-note generator, local Expo module autolinked and compiled in Release Simulator builds, demo screens and the starter reset script removed | iPad Simulator result; toolchain requalification with Xcode 27 when available; T01-T02 and T13 records |
+| U2 | Core done; device qualification open | `swift test`: path containment with symlinks, file states, exact-byte reads, exclusive create under 16 concurrent writers, conditional save conflicts, deleted and renamed targets, failed writes, unreadable files never replaced, journal, enumeration, bookmark registry, session release ordering | Folder picker and bookmark restore on iOS (the smoke test registers the fixture vault without the picker); modern iCloud placeholders; presenter-based change events |
+| U3 | Native editor and writing flow implemented; device qualification open | `swift test` for the document session: save round trip, restart recovery, conflict and missing states that keep drafts, foreground reconcile, read-only encodings, checkpoint failure, newline convention | Simulator typing result (Maestro flow pending); IME, dictation, hardware keyboard, and long notes on a device; source styling |
+| U4 | Index and search implemented; device qualification open | `tests/integration/search.test.ts` (14 tests, including a refresh during discovery); preliminary host benchmark below | iOS index check in the smoke test (pending); device timing and memory; typing during indexing trace |
+| U5 | Implemented; device qualification open | `tests/unit/explorer-bookmarks.test.ts`: folders first in natural order, deep folders, a 10,000-note tree, duplicate basenames, missing bookmarks, observed moves by file identity; `swift test` for file identity across a rename and the app-data store | iPad layout flow (pending); narrow iPad multitasking and VoiceOver focus on a device; restart persistence of bookmarks on iOS |
+| U6 | Logic complete | See below | Native `createExclusive` through the app is checked by the smoke test (pending); Hermes date check |
+| U7 | Implemented; device qualification open | `tests/unit/calendar.test.ts` (grid, leap years, paging, VoiceOver labels); `tests/unit/daily-settings-store.test.ts` (stored settings, rollover timer); resolver tests for repeated taps, cancellation, and late completion | Calendar flow on iPad (pending); midnight and time zone changes while running; keyboard and VoiceOver navigation on a device |
 | U8 | Not started | None | Devices and iCloud |
 
 ## U6 scenarios
