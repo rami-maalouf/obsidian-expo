@@ -9,13 +9,16 @@ type ButtonProps = {
   onPress: () => void;
   kind?: 'primary' | 'plain';
   disabled?: boolean;
+  /** spoken name when the title is a symbol. */
+  accessibilityLabel?: string;
 };
 
-export function Button({ title, onPress, kind = 'primary', disabled = false }: ButtonProps) {
+export function Button({ title, onPress, kind = 'primary', disabled = false, accessibilityLabel }: ButtonProps) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}

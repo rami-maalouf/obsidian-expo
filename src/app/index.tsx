@@ -1,8 +1,8 @@
 /**
  * launch → restore vault access → resolve unsaved drafts → open today → write (flow f2).
  */
-import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { type ReactNode, useState } from 'react';
+import { ActivityIndicator, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/button';
@@ -10,12 +10,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
+import { useBookmarks } from '@/features/bookmarks/use-bookmarks';
 import { NoteEditor } from '@/features/editor/note-editor';
+import { Sidebar } from '@/features/explorer/sidebar';
+import { useNoteList } from '@/features/explorer/use-note-list';
 import { RecoveryList } from '@/features/recovery/recovery-list';
 import { useDrafts } from '@/features/recovery/use-drafts';
 import { SearchPanel } from '@/features/search/search-panel';
 import { useSearchIndex } from '@/features/search/use-search-index';
-import { useTodayNote } from '@/features/today/use-today-note';
+import { dailyNotes, useTodayNote } from '@/features/today/use-today-note';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
 
 export default function TodayScreen() {
@@ -52,55 +55,99 @@ export default function TodayScreen() {
   );
 }
 
+/** at or above this width the sidebar stays beside the editor; below it, it opens as a drawer. */
+const WIDE_LAYOUT = 768;
+
+type Overlay = 'none' | 'search' | 'sidebar';
+
 function VaultHome({ vault }: { vault: VaultInfo }) {
   const drafts = useDrafts(vault.id);
   const [selected, setSelected] = useState<string | null>(null);
   const [continued, setContinued] = useState(false);
   const [conflicted, setConflicted] = useState<ReadonlySet<string>>(new Set());
-  const [searching, setSearching] = useState(false);
+  const [overlay, setOverlay] = useState<Overlay>('none');
+  const { width } = useWindowDimensions();
+  const wide = width >= WIDE_LAYOUT;
   const search = useSearchIndex(vault.id);
+  const notes = useNoteList(vault.id);
+  const bookmarks = useBookmarks(vault.id);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
   const today = useTodayNote(vault.id, pending !== null && !needsRecovery);
+  const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
 
-  if (pending === null) {
-    return <Busy label="Checking for unsaved edits" />;
-  }
-  if (needsRecovery) {
-    return (
-      <RecoveryList
-        drafts={pending}
-        error={drafts.error}
-        conflicted={conflicted}
-        onOpen={(draft) => setSelected(draft.path)}
-        onKeepBoth={drafts.keepBoth}
-        onDiscard={drafts.discard}
-        onContinue={() => setContinued(true)}
-      />
-    );
-  }
-  if (searching) {
+  const open = (next: string) => {
+    // a deliberate choice wins over a today request that is still running (r15).
+    dailyNotes.navigateAway();
+    setSelected(next);
+    setOverlay('none');
+  };
+
+  if (overlay === 'search') {
     return (
       <SearchPanel
         session={search.phase === 'ready' ? search.session : null}
         coverage={search.phase === 'ready' ? search.coverage : null}
         indexing={search.phase !== 'ready' || search.indexing}
-        onOpen={(found) => {
-          setSelected(found);
-          setSearching(false);
-        }}
-        onClose={() => setSearching(false)}
+        onOpen={open}
+        onClose={() => setOverlay('none')}
       />
     );
   }
-  const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
-  if (path) {
-    return (
+
+  const sidebar = (
+    <Sidebar
+      vaultId={vault.id}
+      vaultName={vault.name}
+      listing={notes.listing}
+      bookmarks={bookmarks}
+      activePath={path}
+      onOpen={open}
+      onCreated={notes.refresh}
+      onClose={wide ? undefined : () => setOverlay('none')}
+    />
+  );
+  if (!wide && overlay === 'sidebar') {
+    return sidebar;
+  }
+
+  let content: ReactNode;
+  if (pending === null) {
+    content = <Busy label="Checking for unsaved edits" />;
+  } else if (needsRecovery) {
+    content = (
+      <RecoveryList
+        drafts={pending}
+        error={drafts.error}
+        conflicted={conflicted}
+        onOpen={(draft) => open(draft.path)}
+        onKeepBoth={async (draft) => {
+          await drafts.keepBoth(draft);
+          notes.refresh();
+        }}
+        onDiscard={drafts.discard}
+        onContinue={() => setContinued(true)}
+      />
+    );
+  } else if (path) {
+    const marked = bookmarks.list?.items.some((item) => item.path === path) ?? false;
+    content = (
       <NoteEditor
         key={path}
         vaultId={vault.id}
         path={path}
-        accessory={<Button kind="plain" title="Search" onPress={() => setSearching(true)} />}
+        accessory={
+          <View style={styles.actions}>
+            {!wide && <Button kind="plain" title="Files" onPress={() => setOverlay('sidebar')} />}
+            <Button
+              kind="plain"
+              title={marked ? '★' : '☆'}
+              accessibilityLabel={marked ? 'Remove bookmark' : 'Bookmark this note'}
+              onPress={() => (marked ? bookmarks.remove(path) : bookmarks.add(path))}
+            />
+            <Button kind="plain" title="Search" onPress={() => setOverlay('search')} />
+          </View>
+        }
         onSaved={(saved) => {
           if (search.phase === 'ready') search.index.refresh(saved).catch(() => undefined);
         }}
@@ -112,11 +159,21 @@ function VaultHome({ vault }: { vault: VaultInfo }) {
         }}
       />
     );
+  } else if (today.state.phase !== 'done') {
+    content = <Busy label="Opening today's note" />;
+  } else {
+    content = <TodayProblem outcome={today.state.outcome} onRetry={today.retry} />;
   }
-  if (today.state.phase !== 'done') {
-    return <Busy label="Opening today's note" />;
+
+  if (!wide) {
+    return content;
   }
-  return <TodayProblem outcome={today.state.outcome} onRetry={today.retry} />;
+  return (
+    <View style={styles.split}>
+      <View style={styles.sidebar}>{sidebar}</View>
+      <View style={styles.main}>{content}</View>
+    </View>
+  );
 }
 
 function TodayProblem({ outcome, onRetry }: { outcome: DailyNoteOutcome; onRetry: () => void }) {
@@ -193,6 +250,20 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  split: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  sidebar: {
+    width: 300,
+  },
+  main: {
+    flex: 1,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing.one,
   },
   message: {
     flex: 1,

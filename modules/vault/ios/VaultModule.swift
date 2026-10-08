@@ -159,6 +159,15 @@ public class VaultModule: Module {
       try self.requireJournal().discard(vaultId: vaultId, path: path, through: sequence)
     }
 
+    // app-owned values such as per-vault settings and bookmarks, outside the vault.
+    AsyncFunction("readAppData") { (key: String) -> String? in
+      try self.runtime.appData.read(key)
+    }
+
+    AsyncFunction("writeAppData") { (key: String, value: String?) in
+      try self.runtime.appData.write(key, value)
+    }
+
     View(VaultEditorView.self) {
       Events("onStatus", "onLoad")
 
