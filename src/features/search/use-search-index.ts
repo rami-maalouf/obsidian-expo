@@ -12,12 +12,13 @@ export type IndexState =
   | { phase: 'opening' }
   | { phase: 'ready'; session: SearchSession; index: SearchIndex; indexing: boolean; coverage: Coverage | null };
 
-export function useSearchIndex(vaultId: string) {
+/** `enabled` false holds indexing back, for example until the first note is on screen. */
+export function useSearchIndex(vaultId: string, enabled = true) {
   const [state, setState] = useState<IndexState>(VaultNative ? { phase: 'opening' } : { phase: 'unavailable' });
 
   useEffect(() => {
     const native = VaultNative;
-    if (!native) return;
+    if (!native || !enabled) return;
     let cancelled = false;
     (async () => {
       const db = await openIndexDatabase(vaultId);
@@ -42,7 +43,7 @@ export function useSearchIndex(vaultId: string) {
     return () => {
       cancelled = true;
     };
-  }, [vaultId]);
+  }, [enabled, vaultId]);
 
   return state;
 }

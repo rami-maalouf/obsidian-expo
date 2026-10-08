@@ -1,11 +1,15 @@
 /**
  * web and android show only the app shell; vault access and the editor are native ios features.
  */
+import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { SystemColors } from '@/constants/theme';
 
+import { revealApp } from './launch-screen';
+
 export function VaultGate() {
+  useEffect(revealApp, []);
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: SystemColors.label }]} accessibilityRole="header">

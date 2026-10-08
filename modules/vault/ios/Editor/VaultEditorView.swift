@@ -143,6 +143,12 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
       payload["diskChanged"] = disk != nil
       onLoad(payload)
     }
+    switch outcome {
+    case .loaded: LaunchTiming.firstNoteShown("editable")
+    case .readOnly: LaunchTiming.firstNoteShown("read-only")
+    case .unavailable: LaunchTiming.firstNoteShown("unavailable")
+    case .recoveryNeeded: LaunchTiming.firstNoteShown("recovery-needed")
+    }
   }
 
   // MARK: - editing

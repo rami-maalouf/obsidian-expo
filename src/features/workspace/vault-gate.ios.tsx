@@ -4,7 +4,7 @@
  */
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Slot } from 'expo-router';
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
 import { PlatformColor, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { Drawer } from 'react-native-drawer-layout';
 
@@ -15,11 +15,17 @@ import { DailySettingsForm } from '@/features/settings/daily-settings-form';
 import { useDailySettings } from '@/features/settings/use-daily-settings';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
 
+import { revealApp } from './launch-screen';
 import { Busy, Notice } from './status-views';
 import { useWorkspace, WorkspaceProvider } from './workspace';
 
 export function VaultGate() {
   const { state, choose } = useVault();
+  // a screen that needs the user replaces the launch screen at once.
+  const needsUser = state.phase !== 'loading' && state.phase !== 'ready';
+  useEffect(() => {
+    if (needsUser) revealApp();
+  }, [needsUser]);
   switch (state.phase) {
     case 'unsupported':
       return <Notice title="Open on iPhone or iPad" systemImage="ipad.and.iphone" description="Vault access and the editor use native iOS features." />;
@@ -52,6 +58,10 @@ export function VaultGate() {
 
 function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVault: () => void }) {
   const settings = useDailySettings(vault.id);
+  const firstSetup = settings.state.phase === 'unset';
+  useEffect(() => {
+    if (firstSetup) revealApp();
+  }, [firstSetup]);
   if (settings.state.phase === 'loading') {
     return <Busy label="Loading settings" />;
   }

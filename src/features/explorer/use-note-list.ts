@@ -7,14 +7,15 @@ import { type NativeNote, VaultNative } from '../../../modules/vault/src';
 
 export type NoteListing = { notes: NativeNote[]; unreadableFolders: string[] };
 
-export function useNoteList(vaultId: string) {
+/** `enabled` false holds the scan back, for example until the first note is on screen. */
+export function useNoteList(vaultId: string, enabled = true) {
   const [listing, setListing] = useState<NoteListing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const refresh = useCallback(() => setVersion((value) => value + 1), []);
 
   useEffect(() => {
-    if (!VaultNative) return;
+    if (!VaultNative || !enabled) return;
     let cancelled = false;
     VaultNative.listNotes(vaultId).then(
       (next) => !cancelled && setListing(next),
@@ -23,7 +24,7 @@ export function useNoteList(vaultId: string) {
     return () => {
       cancelled = true;
     };
-  }, [vaultId, version]);
+  }, [enabled, vaultId, version]);
 
   return { listing, error, refresh };
 }

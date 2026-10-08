@@ -1,6 +1,8 @@
 /**
  * the open vault's state, shared by the sidebar, the editor, and the calendar (t11). it keeps
  * the launch order of flow f2: restore vault access → resolve unsaved drafts → open today → write.
+ * the vault scan and the search index wait until the first screen is shown, so they do not
+ * compete with opening today's note.
  */
 import { router } from 'expo-router';
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
@@ -20,9 +22,16 @@ import { dailyNoteVault } from '@/features/vault/daily-note-vault';
 import type { VaultInfo } from '@/features/vault/use-vault';
 
 import { VaultNative } from '../../../modules/vault/src';
+import { revealApp } from './launch-screen';
 
 /** at this width and wider the side panels can stay pinned beside the note (t08). */
 export const PINNED_PANELS_WIDTH = 768;
+
+/**
+ * background work starts this long after the workspace opens at the latest, even when the first
+ * note is slow to open, for example while icloud downloads it.
+ */
+export const BACKGROUND_START_LIMIT_MS = 1000;
 
 type WorkspaceProps = {
   vault: VaultInfo;
@@ -45,8 +54,18 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
   const [filesOpen, setFilesOpen] = useState(wide);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const civilToday = useCivilToday();
-  const search = useSearchIndex(vault.id);
-  const notes = useNoteList(vault.id);
+  // the note, the recovery list, or a problem is on screen: the launch is over.
+  const [firstScreenShown, setFirstScreenShown] = useState(false);
+  const showFirstScreen = useCallback(() => {
+    setFirstScreenShown(true);
+    revealApp();
+  }, []);
+  useEffect(() => {
+    const timer = setTimeout(() => setFirstScreenShown(true), BACKGROUND_START_LIMIT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const search = useSearchIndex(vault.id, firstScreenShown);
+  const notes = useNoteList(vault.id, firstScreenShown);
   const bookmarks = useBookmarks(vault.id, notes.listing?.notes ?? null);
   const knownPaths = useMemo(() => (notes.listing ? new Set(notes.listing.notes.map((note) => note.path)) : null), [notes.listing]);
   const pending = drafts.drafts;
@@ -164,6 +183,7 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     open,
     selectDay,
     openToday,
+    showFirstScreen,
     retryDay: () => (dayProblem ? selectDay(dayProblem.date) : today.retry()),
     continueToToday: () => setContinued(true),
     onSaved: (saved: string) => {

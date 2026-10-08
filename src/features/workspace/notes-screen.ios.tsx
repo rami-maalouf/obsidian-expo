@@ -5,7 +5,7 @@
  * "more" menu with bookmark, search, and the rest (t08).
  */
 import { Stack, useRouter } from 'expo-router';
-import type { ComponentProps, ReactNode } from 'react';
+import { type ComponentProps, type ReactNode, useEffect } from 'react';
 
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
 import { NoteEditor, noteTitle } from '@/features/editor/note-editor';
@@ -17,8 +17,13 @@ import { useWorkspace } from './workspace';
 export function NotesScreen() {
   const workspace = useWorkspace();
   const router = useRouter();
-  const { path, drafts, needsRecovery, dayProblem, today, bookmarks } = workspace;
+  const { path, drafts, needsRecovery, dayProblem, today, bookmarks, showFirstScreen } = workspace;
   const pending = drafts.drafts;
+  // the recovery list or a problem is the first screen; the editor reports its own (onShown).
+  const shownWithoutEditor = pending !== null && (needsRecovery || dayProblem !== null || (!path && today.state.phase === 'done'));
+  useEffect(() => {
+    if (shownWithoutEditor) showFirstScreen();
+  }, [shownWithoutEditor, showFirstScreen]);
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
 
@@ -52,6 +57,7 @@ export function NotesScreen() {
         vaultId={workspace.vault.id}
         path={path}
         onSaved={workspace.onSaved}
+        onShown={showFirstScreen}
         onRecoveryNeeded={workspace.onRecoveryNeeded}
       />
     );

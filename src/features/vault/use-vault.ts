@@ -24,12 +24,13 @@ function message(error: unknown) {
 export function useVault() {
   const [state, setState] = useState<VaultState>(VaultNative ? { phase: 'loading' } : { phase: 'unsupported' });
 
-  const open = useCallback(async (vault: VaultInfo) => {
+  /** `remember` false skips recording the vault as the last one, when it already is. */
+  const open = useCallback(async (vault: VaultInfo, remember = true) => {
     if (!VaultNative) return;
     try {
       await VaultNative.openVault(vault.id);
       setState({ phase: 'ready', vault });
-      VaultNative.writeAppData(LAST_VAULT_KEY, vault.id).catch(() => undefined);
+      if (remember) VaultNative.writeAppData(LAST_VAULT_KEY, vault.id).catch(() => undefined);
     } catch (error) {
       setState({ phase: 'unavailable', vault, error: message(error) });
     }
@@ -44,7 +45,7 @@ export function useVault() {
         if (cancelled) return;
         const vault = launchVault(vaults, lastId);
         if (vault) {
-          open(vault);
+          open(vault, vault.id !== lastId);
         } else {
           setState({ phase: 'needs-vault' });
         }

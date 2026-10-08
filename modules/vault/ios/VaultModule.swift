@@ -9,6 +9,13 @@ final class VaultException: GenericException<String> {
 /// javascript binding for the vault core. it stays thin: path, state, and save rules live in
 /// Core/, which `swift test` covers. javascript passes vault ids and vault-relative paths only.
 public class VaultModule: Module {
+  /// vault calls run in order on their own queue. without it they share expo's default async
+  /// queue, one serial queue for every module, so a slow call anywhere held up opening a note.
+  private static let fileQueue = DispatchQueue(label: "vault.files", qos: .userInitiated)
+  /// the full vault scan has a lower-priority queue of its own: a large or cloud vault must not
+  /// delay today's note, a read, or a save. VaultSession lets the two queues share a vault.
+  private static let listingQueue = DispatchQueue(label: "vault.listing", qos: .utility)
+
   private let runtime = VaultRuntime.shared
   /// touched only on the main queue.
   private var pickerDelegate: FolderPickerDelegate?
@@ -48,24 +55,24 @@ public class VaultModule: Module {
 
     AsyncFunction("listVaults") { () -> [[String: Any]] in
       try self.runtime.registry.records().map { ["id": $0.id, "name": $0.name] }
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("openVault") { (id: String) -> [String: Any] in
       try self.open(id: id)
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("closeVault") { (id: String) in
       self.runtime.remove(id)?.close()
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("forgetVault") { (id: String) in
       self.runtime.remove(id)?.close()
       try self.runtime.registry.remove(id: id)
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("fileState") { (vaultId: String, path: String) -> [String: Any] in
       try self.withFiles(vaultId) { files in VaultModule.encode(try files.state(of: path)) }
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("readText") { (vaultId: String, path: String) -> [String: Any] in
       try self.withFiles(vaultId) { files in
@@ -81,7 +88,7 @@ public class VaultModule: Module {
           }
         }
       }
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("createExclusive") { (vaultId: String, path: String, text: String) -> [String: Any] in
       try self.withFiles(vaultId) { files in
@@ -94,7 +101,7 @@ public class VaultModule: Module {
           return ["kind": "unavailable", "state": VaultModule.encode(state)]
         }
       }
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("saveText") { (vaultId: String, path: String, text: String, bom: Bool, baseSha256: String, baseSize: Int) -> [String: Any] in
       try self.withFiles(vaultId) { files in
@@ -110,7 +117,7 @@ public class VaultModule: Module {
           return ["kind": "unavailable", "state": VaultModule.encode(state)]
         }
       }
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("listNotes") { (vaultId: String) -> [String: Any] in
       try self.withFiles(vaultId) { files in
@@ -127,7 +134,7 @@ public class VaultModule: Module {
         }
         return ["notes": notes, "unreadableFolders": summary.unreadableFolders]
       }
-    }
+    }.runOnQueue(VaultModule.listingQueue)
 
     AsyncFunction("checkpointDraft") { (vaultId: String, path: String, text: String, bom: Bool, baseSha256: String?, baseSize: Int?, sequence: Int) in
       let base = baseSha256.flatMap { sha in baseSize.map { FileRevision(sha256: sha, size: $0) } }
@@ -139,7 +146,7 @@ public class VaultModule: Module {
         sequence: sequence,
         updatedAt: Date()
       ))
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("listDrafts") { () -> [String: Any] in
       let listing = try self.requireJournal().all()
@@ -158,20 +165,20 @@ public class VaultModule: Module {
         return item
       }
       return ["drafts": drafts, "unreadable": listing.unreadable]
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("discardDraft") { (vaultId: String, path: String, sequence: Int) -> Bool in
       try self.requireJournal().discard(vaultId: vaultId, path: path, through: sequence)
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     // app-owned values such as per-vault settings and bookmarks, outside the vault.
     AsyncFunction("readAppData") { (key: String) -> String? in
       try self.runtime.appData.read(key)
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     AsyncFunction("writeAppData") { (key: String, value: String?) in
       try self.runtime.appData.write(key, value)
-    }
+    }.runOnQueue(VaultModule.fileQueue)
 
     View(VaultEditorView.self) {
       Events("onStatus", "onLoad")
@@ -189,13 +196,14 @@ public class VaultModule: Module {
       }
 
       // starts writing pending edits to the journal and then the file; status events follow.
+      // both view functions use uikit, so they run on the main queue.
       AsyncFunction("flush") { (view: VaultEditorView) in
         view.flush()
-      }
+      }.runOnQueue(.main)
 
       AsyncFunction("focus") { (view: VaultEditorView) in
         view.focus()
-      }
+      }.runOnQueue(.main)
     }
 
     OnCreate {

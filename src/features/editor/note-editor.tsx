@@ -22,6 +22,8 @@ type NoteEditorProps = {
   onRecoveryNeeded: (path: string) => void;
   /** called after each completed save, for example to refresh the search index. */
   onSaved?: (path: string) => void;
+  /** called once the note's load outcome is on screen, whatever it is. */
+  onShown?: () => void;
 };
 
 export function noteTitle(path: string) {
@@ -30,7 +32,7 @@ export function noteTitle(path: string) {
 }
 
 /** the note title is the navigation title; the editor shows the save status under it. */
-export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved }: NoteEditorProps) {
+export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown }: NoteEditorProps) {
   const editor = useRef<VaultEditorHandle>(null);
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
@@ -69,6 +71,7 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved }: NoteEdi
         }}
         onLoad={(event) => {
           setLoad(event.nativeEvent);
+          onShown?.();
           if (event.nativeEvent.kind === 'loaded') {
             // the note was chosen on purpose (or is today's): start writing right away.
             editor.current?.focus().catch(() => undefined);
