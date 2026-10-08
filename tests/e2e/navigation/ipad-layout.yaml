@@ -1,5 +1,6 @@
-# on a wide ipad the sidebar stays beside the editor. bookmarks the open note, finds it in the
-# bookmarks list, opens today again from the calendar, then relaunches and finds the bookmark.
+# on a wide ipad the native sidebar stays beside the note. bookmarks the open note, finds it in
+# the sidebar's bookmarks, opens today again from the calendar inspector, then relaunches and
+# finds the bookmark again.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -8,11 +9,12 @@ appId: com.ramimaalouf.obsidianexpo
 - extendedWaitUntil:
     visible: "No unsaved changes"
     timeout: 30000
-- assertVisible: "Bookmarks"
-- assertVisible: "New Note"
+- assertVisible: "vault"
 - tapOn: "Bookmark this note"
-- tapOn: "Bookmarks"
-- assertVisible: "Remove"
+- extendedWaitUntil:
+    visible:
+      id: "bookmark:Daily/${TODAY}.md"
+    timeout: 10000
 - takeScreenshot: ${OUT}/bookmarks
 - tapOn: "Calendar"
 - tapOn: "Today"
@@ -26,5 +28,5 @@ appId: com.ramimaalouf.obsidianexpo
 - extendedWaitUntil:
     visible: "No unsaved changes"
     timeout: 30000
-- tapOn: "Bookmarks"
-- assertVisible: "Remove"
+- assertVisible:
+    id: "bookmark:Daily/${TODAY}.md"

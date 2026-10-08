@@ -2,13 +2,10 @@
  * the native editor with its save status. the status line is a live region so voiceover
  * announces saves and problems (r17).
  */
-import { type ReactNode, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Button } from '@/components/button';
-import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Accent, SystemColors } from '@/constants/theme';
 
 import {
   type EditorLoadEvent,
@@ -25,8 +22,6 @@ type NoteEditorProps = {
   onRecoveryNeeded: (path: string) => void;
   /** called after each completed save, for example to refresh the search index. */
   onSaved?: (path: string) => void;
-  /** extra header controls, such as a search button. */
-  accessory?: ReactNode;
 };
 
 export function noteTitle(path: string) {
@@ -34,8 +29,8 @@ export function noteTitle(path: string) {
   return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name;
 }
 
-export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, accessory }: NoteEditorProps) {
-  const theme = useTheme();
+/** the note title is the navigation title; the editor shows the save status under it. */
+export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved }: NoteEditorProps) {
   const editor = useRef<VaultEditorHandle>(null);
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
@@ -46,30 +41,24 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, accessory
   }
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="smallBold" numberOfLines={1} style={styles.title} accessibilityRole="header">
-          {noteTitle(path)}
-        </ThemedText>
-        {accessory}
-      </View>
       <View style={styles.statusRow}>
-        <ThemedText
-          type="small"
-          themeColor={label.tone === 'quiet' ? 'textSecondary' : 'text'}
+        <Text
           accessibilityLiveRegion="polite"
-          style={styles.status}>
+          style={[styles.status, { color: label.tone === 'warning' ? SystemColors.warning : SystemColors.secondaryLabel }]}>
           {label.text}
-        </ThemedText>
-        {label.canRetry && <Button kind="plain" title="Retry" onPress={() => editor.current?.flush()} />}
+        </Text>
+        {label.canRetry && (
+          <Pressable accessibilityRole="button" onPress={() => editor.current?.flush()} hitSlop={8}>
+            <Text style={[styles.status, styles.retry]}>Retry</Text>
+          </Pressable>
+        )}
       </View>
       {load?.kind === 'unavailable' && (
-        <ThemedText type="small" style={styles.notice}>
-          This note cannot be opened right now ({load.reason}).
-        </ThemedText>
+        <Text style={[styles.notice, { color: SystemColors.warning }]}>This note cannot be opened right now ({load.reason}).</Text>
       )}
       <VaultEditorView
         ref={editor}
-        style={[styles.editor, { backgroundColor: theme.background }]}
+        style={styles.editor}
         vaultId={vaultId}
         path={path}
         onStatus={(event) => {
@@ -95,29 +84,26 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, accessory
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  title: {
-    flex: 1,
+    backgroundColor: SystemColors.background,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingBottom: Spacing.one,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 2,
   },
   status: {
-    flex: 1,
+    fontSize: 13,
+  },
+  retry: {
+    color: Accent,
+    fontWeight: '600',
   },
   notice: {
-    paddingHorizontal: Spacing.three,
+    fontSize: 13,
+    paddingHorizontal: 16,
   },
   editor: {
     flex: 1,

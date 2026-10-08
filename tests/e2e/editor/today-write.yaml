@@ -29,6 +29,10 @@ appId: com.ramimaalouf.obsidianexpo
     timeout: 15000
 - takeScreenshot: ${OUT}/styled
 - tapOn: "Search"
+# the native search field takes focus by itself; tapping it is only a fallback.
+- tapOn:
+    text: "Search notes"
+    optional: true
 - inputText: "callout"
 - extendedWaitUntil:
     visible: "Welcome"
