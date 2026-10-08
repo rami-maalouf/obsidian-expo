@@ -60,7 +60,7 @@ diagnose() {
   fi
   xcrun simctl spawn "$udid" log show --last 10m --style compact \
     --predicate 'process == "obsidianexpo" AND (messageType == error OR messageType == fault OR subsystem == "com.facebook.react.log")' \
-    | tail -80 || true
+    | grep -v -E 'CoreHaptics|UIKBFeedbackGenerator|Automation type mismatch' | tail -60 || true
   find "$out/maestro" -name 'maestro.log' -exec tail -40 {} \; 2> /dev/null || true
 }
 
@@ -103,7 +103,11 @@ sqlite3 "$db" "select n.path from note_text_content c join notes n on n.id = c.i
 grep -qx 'Welcome.md' "$out/fts.txt"
 
 if [ "$#" -gt 0 ]; then
-  # the install script takes the latest release; its version is printed for the record (t12).
+  # maestro 2.11.0 was the release observed in ci on october 8, 2026 (t12); the install script
+  # reads MAESTRO_VERSION. its xctest driver took over two minutes to start on a fresh ipad
+  # simulator, beyond the default startup timeout.
+  export MAESTRO_VERSION=2.11.0
+  export MAESTRO_DRIVER_STARTUP_TIMEOUT=300000
   export PATH="$HOME/.maestro/bin:$PATH"
   if ! command -v maestro > /dev/null; then
     curl -fsSL "https://get.maestro.mobile.dev" | bash
