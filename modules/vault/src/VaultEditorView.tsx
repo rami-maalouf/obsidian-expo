@@ -4,6 +4,8 @@ import { Platform, type NativeSyntheticEvent, type ViewProps } from 'react-nativ
 
 export type EditorStatus =
   | 'loading'
+  /** opened with no edits yet; nothing has been saved by this editor. */
+  | 'opened'
   | 'unsaved'
   | 'saving'
   | 'saved'

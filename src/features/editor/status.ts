@@ -12,6 +12,8 @@ export function statusLabel(event: EditorStatusEvent): StatusLabel {
   switch (event.status) {
     case 'loading':
       return { text: 'Opening…', tone: 'busy', canRetry: false };
+    case 'opened':
+      return { text: 'No unsaved changes', tone: 'quiet', canRetry: false };
     case 'unsaved':
       return { text: 'Unsaved', tone: 'busy', canRetry: false };
     case 'saving':
