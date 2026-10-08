@@ -1,8 +1,10 @@
+import { Database } from 'bun:sqlite';
 import { describe, expect, test } from 'bun:test';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 
 import { ftsMatch, likeContains, queryTerms, snippetParts } from '@/features/search/query';
+import { SCHEMA_VERSION } from '@/features/search/schema';
 import { type IndexSource, SearchIndex, SearchSession } from '@/features/search/search-index';
 
 import type { NativeNote, NativeReadResult } from '../../modules/vault/src';
@@ -214,6 +216,51 @@ describe('SearchIndex', () => {
     await index.rebuild();
     expect((await index.search('latin')).hits.map((hit) => hit.path)).toEqual(['Encodings/Latin-1.md']);
     expect((await index.coverage()).pending).toBe(0);
+  });
+
+  test('each vault has its own index, so switching vaults never mixes results', async () => {
+    const work = new MemoryVault();
+    work.set('Plans/Roadmap.md', 'quarterly roadmap', 1);
+    const home = new MemoryVault();
+    home.set('Recipes/Bread.md', 'sourdough roadmap for the weekend', 1);
+    const workIndex = await openIndex(work);
+    const homeIndex = await openIndex(home);
+    for (const index of [workIndex, homeIndex]) {
+      await index.discover();
+      await index.indexContents();
+    }
+    expect((await workIndex.search('roadmap')).hits.map((hit) => hit.path)).toEqual(['Plans/Roadmap.md']);
+    expect((await homeIndex.search('roadmap')).hits.map((hit) => hit.path)).toEqual(['Recipes/Bread.md']);
+  });
+
+  test('an index with an older schema version is dropped and rebuilt from the notes', async () => {
+    const db = new Database(':memory:');
+    db.exec(`CREATE TABLE notes (id INTEGER PRIMARY KEY, path TEXT); INSERT INTO notes (path) VALUES ('Old.md');
+      PRAGMA user_version = 1;`);
+    const vault = new MemoryVault();
+    vault.set('Current.md', 'current text', 1);
+    const index = await SearchIndex.open(bunSqlDatabase(db), vault, { batchSize: 25, discoveryBatchSize: 100, pause: immediate });
+    await index.discover();
+    await index.indexContents();
+    expect(db.query('PRAGMA user_version').get()).toEqual({ user_version: SCHEMA_VERSION });
+    expect((await index.search('old')).hits).toEqual([]);
+    expect((await index.search('current')).hits.map((hit) => hit.path)).toEqual(['Current.md']);
+    expect((await index.coverage())).toMatchObject({ total: 1, indexed: 1, pending: 0 });
+  });
+
+  test('rebuild replaces every row with the notes the vault has now', async () => {
+    const vault = new MemoryVault();
+    vault.set('Kept.md', 'kept text', 1);
+    vault.set('Gone.md', 'gone text', 1);
+    const index = await openIndex(vault);
+    await index.discover();
+    await index.indexContents();
+    vault.files.delete('Gone.md');
+    vault.set('Kept.md', 'kept and edited text', 2);
+    await index.rebuild();
+    expect((await index.search('gone')).hits).toEqual([]);
+    expect((await index.search('edited')).hits.map((hit) => hit.path)).toEqual(['Kept.md']);
+    expect((await index.coverage())).toMatchObject({ total: 1, indexed: 1, pending: 0 });
   });
 
   test('unicode: names and diacritic-insensitive content', async () => {
