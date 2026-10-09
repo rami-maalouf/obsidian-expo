@@ -6,15 +6,15 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { StyleSheet, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
-import { Accent } from '@/constants/theme';
+import { AccentDark, AccentLight } from '@/constants/theme';
 import { holdLaunchScreen } from '@/features/workspace/launch-screen';
 import { VaultGate } from '@/features/workspace/vault-gate';
 
 // before the first render: the launch screen stays until the first note is ready.
 holdLaunchScreen();
 
-const light = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: Accent } };
-const dark = { ...DarkTheme, colors: { ...DarkTheme.colors, primary: Accent } };
+const light = { ...DefaultTheme, colors: { ...DefaultTheme.colors, primary: AccentLight } };
+const dark = { ...DarkTheme, colors: { ...DarkTheme.colors, primary: AccentDark } };
 
 const styles = StyleSheet.create({ root: { flex: 1 } });
 

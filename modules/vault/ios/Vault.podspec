@@ -2,9 +2,9 @@ Pod::Spec.new do |s|
   s.name           = 'Vault'
   s.version        = '0.1.0'
   s.summary        = 'Coordinated access to an existing Markdown vault'
-  s.description    = 'Local Expo module for obsidian-expo: vault paths, file state, and coordinated reads and writes'
+  s.description    = 'Local Expo module for Evereld: vault paths, file state, and coordinated reads and writes'
   s.license        = 'MIT'
-  s.author         = 'obsidian-expo'
+  s.author         = 'Rami Maalouf'
   s.homepage       = 'https://github.com/rami-maalouf/obsidian-expo'
   # laperm's editor needs ios 27 (app.json sets the same deployment target).
   s.platforms      = { :ios => '27.0' }

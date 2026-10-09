@@ -98,3 +98,11 @@ Native launch stages are now logged once per process, as milliseconds after proc
 ## Preliminary search benchmark
 
 `bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.
+
+## Evereld rebrand (2026-10-09)
+
+Based on main at `5f52fc1`, the rebrand changes the public name, icon family, launch artwork, welcome title, and light/dark accent colors. English App Store Connect name, subtitle, category, listing description, promotional text, keywords, support URL, copyright, and TestFlight description/review instructions were saved in the dashboard. `store/metadata.json` preserves the copy; its new-build testing and rebrand-review notes are prepared for the next binary, not applied to the rejected build.
+
+Verified with Bun 1.3.14: frozen dependency installation, reference checks, TypeScript, ESLint, all 170 tests, Expo dependency alignment, and production JavaScript exports for iOS, Android, and web. The previously fixed timezone test had returned on main and was restored after reproducing its empty child-process output failure. App variant and generated-icon tests pass. The release and development 1024px fallback icons are RGB without alpha. Xcode 27's Icon Composer tool successfully rendered the release icon in default and dark appearances and the development icon; the release rendering was visually inspected, including its notebook foreground and layer order.
+
+These checks do not establish native app compilation, physical-device behavior, iCloud qualification, or Apple review acceptance. A new production binary and review are required; the rejected 1.0.0 (1) binary still contains the former branding.

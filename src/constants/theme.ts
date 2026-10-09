@@ -2,10 +2,14 @@
  * the app's only custom color. everything else uses system colors, so light and dark follow
  * the phone (t11).
  */
-import { Platform, PlatformColor } from 'react-native';
+import { DynamicColorIOS, Platform, PlatformColor } from 'react-native';
 
-/** obsidian's default accent purple. */
-export const Accent = '#7F6DF2';
+/** evereld emerald, with separate shades for legibility in each appearance. */
+export const AccentLight = '#08745B';
+export const AccentDark = '#63DDB2';
+export const Accent = Platform.OS === 'ios'
+  ? DynamicColorIOS({ light: AccentLight, dark: AccentDark })
+  : AccentLight;
 
 /** ios semantic colors, with plain fallbacks for the web and android shell. */
 export const SystemColors = {

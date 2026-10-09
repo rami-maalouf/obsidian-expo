@@ -1,6 +1,8 @@
-# obsidian-expo
+# Evereld
 
-An Expo SDK 58 app, in progress, for writing in an existing Markdown vault on iPhone and iPad. The iOS code opens a vault folder in place, shows unsaved drafts first, opens or creates today's daily note, edits Markdown source in a native text view with restrained styling and journaled, conditional saves, and searches the vault. The interface follows the phone's light or dark appearance and works like Obsidian's: the note sits between two side panels, files and bookmarks on the left and a calendar on the right, which slide over the note on a phone and can stay beside it on an iPad. Panel contents, toolbars, menus, search, and settings are native iOS views, with Liquid Glass panels on iOS 26. A Simulator test in CI covers today's note, typing, saving, and search; no feature is qualified on a device or with iCloud yet. [Validation](docs/validation.md) lists what is verified and how. Web and Android builds show only the app shell.
+Evereld is an Expo SDK 58 app, in progress, for writing in an existing Markdown vault on iPhone and iPad. The iOS code opens a vault folder in place, shows unsaved drafts first, opens or creates today's daily note, edits Markdown source in a native text view with restrained styling and journaled, conditional saves, and searches the vault. The interface follows the phone's light or dark appearance with a writing workspace: the note sits between two side panels, files and bookmarks on the left and a calendar on the right, which slide over the note on a phone and can stay beside it on an iPad. Panel contents, toolbars, menus, search, and settings are native iOS views, with Liquid Glass panels on iOS 26. A Simulator test in CI covers today's note, typing, saving, and search; no feature is qualified on a device or with iCloud yet. [Validation](docs/validation.md) lists what is verified and how. Web and Android builds show only the app shell.
+
+The public app name is **Evereld**. The existing bundle identifier, URL scheme, EAS project, and repository name remain stable so updates preserve installations and saved vault access. [Store copy](store/metadata.json) records the English listing and TestFlight text. A new native build is required to ship the name and icons.
 
 ## Specification and implementation plan
 
@@ -58,8 +60,8 @@ The native application identifier is `com.ramimaalouf.obsidianexpo`. Native proj
 
 | Build | Command | Bundle identifier | Icon | JavaScript |
 | --- | --- | --- | --- | --- |
-| Development | `bun run build:dev` | `com.ramimaalouf.obsidianexpo.dev` | Amber shard | From Metro (`bun run dev`), or an EAS update chosen in the dev client's Extensions tab |
-| Preview | `bun run build:preview` | `com.ramimaalouf.obsidianexpo.preview` | Violet shard | The embedded bundle, then updates from the `preview` channel |
+| Development | `bun run build:dev` | `com.ramimaalouf.obsidianexpo.dev` | Amber notebook | From Metro (`bun run dev`), or an EAS update chosen in the dev client's Extensions tab |
+| Preview | `bun run build:preview` | `com.ramimaalouf.obsidianexpo.preview` | Emerald notebook | The embedded bundle, then updates from the `preview` channel |
 
 Do these steps one time, on a computer with access to the Expo account and an Apple Developer account:
 

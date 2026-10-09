@@ -35,7 +35,7 @@ export function VaultGate() {
     case 'needs-vault':
       return (
         <Notice
-          title="Choose your vault"
+          title="Welcome to Evereld"
           systemImage="folder.badge.plus"
           description="Pick the folder that holds your Markdown notes. Notes stay where they are, including in iCloud Drive."
           detail={state.error}

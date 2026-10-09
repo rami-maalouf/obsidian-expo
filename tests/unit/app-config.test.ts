@@ -111,6 +111,8 @@ describe('generated icons', () => {
       expect(bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
       expect(bytes.readUInt32BE(16)).toBe(1024);
       expect(bytes.readUInt32BE(20)).toBe(1024);
+      // app-store fallback icons must use rgb, without an alpha channel.
+      expect(bytes[25]).toBe(2);
     }
   });
 });

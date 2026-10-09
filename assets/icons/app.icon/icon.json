@@ -1,42 +1,38 @@
 {
   "fill": {
-    "automatic-gradient": "extended-srgb:0.20392,0.11373,0.47059,1.00000"
+    "automatic-gradient": "extended-srgb:0.03529,0.18039,0.16078,1.00000"
   },
   "groups": [
     {
       "layers": [
         {
-          "image-name": "facet-1.svg",
-          "name": "facet-1"
+          "image-name": "notebook.svg",
+          "name": "notebook"
         },
         {
-          "image-name": "facet-2.svg",
-          "name": "facet-2"
+          "image-name": "writing-face.svg",
+          "name": "writing-face"
         },
         {
-          "image-name": "facet-3.svg",
-          "name": "facet-3"
+          "image-name": "upper-bevel.svg",
+          "name": "upper-bevel"
         },
         {
-          "image-name": "facet-4.svg",
-          "name": "facet-4"
+          "image-name": "lower-bevel.svg",
+          "name": "lower-bevel"
         },
         {
-          "image-name": "facet-5.svg",
-          "name": "facet-5"
-        },
-        {
-          "image-name": "facet-6.svg",
-          "name": "facet-6"
+          "image-name": "emerald-cut.svg",
+          "name": "emerald-cut"
         }
       ],
       "shadow": {
         "kind": "neutral",
-        "opacity": 0.5
+        "opacity": 0.35
       },
       "translucency": {
-        "enabled": true,
-        "value": 0.4
+        "enabled": false,
+        "value": 0
       }
     }
   ],

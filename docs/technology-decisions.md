@@ -290,3 +290,9 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
 | T08, T09 device qualification | U5, U7 | Side panels on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar and shortcuts |
+
+## Evereld branding and icon output (2026-10-09)
+
+The public name is Evereld, with an original emerald-cut notebook mark, light/dark emerald accents, and matching launch artwork. Existing installation, storage, scheme, repository, and EAS identifiers remain stable. The editable generator produces Icon Composer layers and fallback PNGs; no generated native project is edited.
+
+The build-only encoder `pngjs` 7.0.0 (types 6.0.5) removes the alpha channel from opaque fallback icons. `@resvg/resvg-js` still renders the vectors; its PNG output carries alpha even when every pixel is opaque. Encoding RGB through pngjs is reproducible across developer and CI machines, unlike a macOS-only image conversion command. It is not a runtime dependency. The [maintainer documentation](https://github.com/pngjs/pngjs) documents synchronous encoding with `colorType: 2`; transparent splash and foreground layers keep their alpha channels. Native iOS uses the existing Icon Composer format.
