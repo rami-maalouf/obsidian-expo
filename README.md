@@ -93,6 +93,16 @@ bun run build:preview:android
 
 The development and preview builds have their own application IDs (`com.ramimaalouf.obsidianexpo.dev` and `.preview`), so both can be installed beside each other. Enable installing from unknown sources for the browser that opens the link. `bun run update:preview` sends JavaScript updates to preview builds of both platforms that have the same runtime fingerprint.
 
+### Try a copy of your vault on an emulator
+
+Start an Android emulator, install the app with `bun run android`, and copy a vault folder to the emulator's Documents folder:
+
+```sh
+scripts/emulator-vault.sh push "<vault folder>" [name]
+```
+
+The script only reads the vault folder; it never writes to it, moves it, or deletes from it. It refuses to replace an earlier copy on the emulator, refuses a folder with iCloud files that are not downloaded, and checks the copy byte for byte. In the app, choose "Choose Folder", then Documents and the copy's name. Afterwards, `scripts/emulator-vault.sh check <name>` lists the files the app added, changed, or removed in the copy, by path only. Its working files are in the ignored `.fixtures/emulator/` folder; keep a real vault's notes out of the repository.
+
 ## Checks
 
 ```sh

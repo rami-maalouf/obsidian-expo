@@ -37,8 +37,8 @@ adb shell wm dismiss-keyguard || true
 
 echo "installing $apk"
 adb install -r "$apk"
-adb shell mkdir -p /sdcard/Documents
-adb push tests/fixtures/vault-basic "$vault" > /dev/null
+# the same copy a person makes of their own vault (scripts/emulator-vault.sh).
+scripts/emulator-vault.sh push tests/fixtures/vault-basic vault
 adb shell ls -a "$vault"
 
 # the emulator's own clock and time zone decide which note is today's.
@@ -118,3 +118,6 @@ run_flow tests/e2e/android/relaunch-search.yaml
 check_fixture relaunch
 echo "--- Daily/$today.md after the flows"
 adb shell cat "$note"
+# the copy helper reports today's note as the only change.
+scripts/emulator-vault.sh check vault | tee "$out/changes.txt"
+printf 'changes in Documents/vault since push (+ added, ~ changed, - removed):\n+ Daily/%s.md\n' "$today" | cmp - "$out/changes.txt"
