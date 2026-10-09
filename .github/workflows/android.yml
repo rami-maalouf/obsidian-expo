@@ -1,5 +1,9 @@
 name: android
 
+# a manual run (workflow_dispatch) or an android-v* tag also publishes the tested apk as a
+# github prerelease, which anyone can download without signing in; actions artifacts need a
+# github account.
+
 on:
   push:
     paths-ignore:
@@ -37,7 +41,7 @@ jobs:
 
   release-build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 75
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
@@ -53,11 +57,13 @@ jobs:
         run: |
           grep -q 'android:configChanges' android/app/src/main/AndroidManifest.xml
           grep -n 'windowSoftInputMode\|screenOrientation' android/app/src/main/AndroidManifest.xml || true
-      - name: release build for the x86_64 emulator
+      # arm64-v8a for phones, tablets, and apple silicon emulators; x86_64 for the emulator below
+      # and intel emulators. the apk that the emulator tests is the one that is published.
+      - name: release build for phones and emulators
         working-directory: android
         env:
           CI: 1
-        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon
       - name: check that the vault module is linked
         run: grep -rl --include='*.java' --include='*.kt' 'expo.modules.vault.VaultModule' android node_modules/expo/android | head -5 | grep .
       - uses: actions/upload-artifact@v4
@@ -122,3 +128,53 @@ jobs:
           name: emulator-smoke
           path: smoke
           retention-days: 7
+
+  publish:
+    needs: [vault-core-tests, emulator-smoke]
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/android-v')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-release-apk
+          path: apk
+      - name: name the apk and check its native libraries
+        id: apk
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then tag=$GITHUB_REF_NAME; else tag="android-preview-${GITHUB_SHA::7}"; fi
+          file="obsidian-expo-$tag.apk"
+          cp apk/app-release.apk "$file"
+          # both architectures must be in the apk, or it does not install on one of them. the listing
+          # is read once, so grep -q cannot stop unzip early and fail the step under pipefail.
+          listing=$(unzip -l "$file")
+          for abi in arm64-v8a x86_64; do
+            grep -q " lib/$abi/.*\.so$" <<< "$listing" || { echo "the apk has no $abi libraries" >&2; exit 1; }
+          done
+          sha256sum "$file" > "$file.sha256"
+          ls -l "$file"
+          cat "$file.sha256"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+      # the apk is signed with the debug key of the generated project: it installs from the file,
+      # but google play does not accept it.
+      - name: publish the prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.apk.outputs.tag }}
+          FILE: ${{ steps.apk.outputs.file }}
+        run: |
+          {
+            echo "Android release build of commit $GITHUB_SHA ($GITHUB_REF_NAME). It passed the emulator test in run $GITHUB_RUN_ID."
+            echo
+            echo "- Architectures: arm64-v8a (phones, tablets, and Apple silicon emulators) and x86_64 (Intel emulators)."
+            echo "- Signed with the debug key of the generated project. It installs from the file; Google Play does not accept it."
+            echo "- Install: open the APK on the device and allow installs from that app, or run \`adb install $FILE\`."
+            echo "- Check the download: \`shasum -a 256 -c $FILE.sha256\`."
+          } > notes.md
+          if [ "$GITHUB_REF_TYPE" = tag ]; then target=(); else target=(--target "$GITHUB_SHA"); fi
+          gh release create "$TAG" "$FILE" "$FILE.sha256" --repo "$GITHUB_REPOSITORY" --prerelease \
+            --title "Android $TAG" --notes-file notes.md "${target[@]}"
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$FILE"

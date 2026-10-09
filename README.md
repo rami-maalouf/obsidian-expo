@@ -93,7 +93,7 @@ bun run build:preview:android
 
 The development and preview builds have their own application IDs (`com.ramimaalouf.obsidianexpo.dev` and `.preview`), so both can be installed beside each other. Enable installing from unknown sources for the browser that opens the link. `bun run update:preview` sends JavaScript updates to preview builds of both platforms that have the same runtime fingerprint.
 
-Without an Expo account, the [android release workflow](.github/workflows/android-release.yml) builds the release APK for phones (arm64-v8a) and emulators (x86_64) and publishes it as a GitHub prerelease, which downloads without a GitHub sign-in. Run it from the Actions tab, or push a tag that starts with `android-v`. The APK is signed with the generated project's debug key, so it installs from the file but not through Google Play.
+Without an Expo account, run the [android workflow](.github/workflows/android.yml) from the Actions tab, or push a tag that starts with `android-v`. After the emulator test passes, it publishes the tested Release APK as a GitHub prerelease, which downloads without a GitHub sign-in. The APK has native code for phones (arm64-v8a) and emulators (x86_64). It is signed with the generated project's debug key, so it installs from the file but not through Google Play.
 
 ### Try a copy of your vault on an emulator
 
@@ -140,7 +140,7 @@ The Android vault core is plain Kotlin, so its tests run on any computer with Ja
 modules/vault/android/core-tests/gradlew -p modules/vault/android/core-tests test
 ```
 
-The [android workflow](.github/workflows/android.yml) runs these tests, builds the Release app for the x86_64 emulator, and runs `scripts/ci/emulator-smoke.sh` on an Android 15 emulator. The script copies `tests/fixtures/vault-basic` to the emulator's Documents folder, and the Maestro flows in `tests/e2e/android` pick it with the system folder picker, accept the settings that first setup found, write in today's note, relaunch, and search. The script checks today's note on disk and that every other fixture file is byte-identical. The app itself needs Xcode 27, which those runners do not offer, so build the Release app for the Simulator and run the smoke test on a Mac with Xcode 27 and CocoaPods:
+The [android workflow](.github/workflows/android.yml) runs these tests, builds the Release app for arm64-v8a and x86_64, and runs `scripts/ci/emulator-smoke.sh` on an Android 15 emulator. The script copies `tests/fixtures/vault-basic` to the emulator's Documents folder, and the Maestro flows in `tests/e2e/android` pick it with the system folder picker, accept the settings that first setup found, write in today's note, relaunch, and search. The script checks today's note on disk and that every other fixture file is byte-identical. The app itself needs Xcode 27, which those runners do not offer, so build the Release app for the Simulator and run the smoke test on a Mac with Xcode 27 and CocoaPods:
 
 ```sh
 bun install --frozen-lockfile
