@@ -372,15 +372,18 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     var inserts: [String] = []
     if query.isHeading {
       // `[[#`: headings of this note, best match first, in document order for ties.
+      // a plain loop with explicit types: the chained version was too slow to type-check.
       let wanted = String(query.text.dropFirst())
-      let ranked = textView.outline.enumerated()
-        .filter { !$0.element.title.isEmpty }
-        .compactMap { offset, item in
-          WikiLinkTargets.score(wanted, in: item.title).map { (offset: offset, title: item.title, score: $0) }
+      var ranked: [(offset: Int, title: String, score: Int)] = []
+      for (offset, item) in textView.outline.enumerated() where !item.title.isEmpty {
+        if let score = WikiLinkTargets.score(wanted, in: item.title) {
+          ranked.append((offset: offset, title: item.title, score: score))
         }
-        .sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }
-        .prefix(6)
-      for heading in ranked {
+      }
+      ranked.sort { a, b in
+        a.score != b.score ? a.score > b.score : a.offset < b.offset
+      }
+      for heading in ranked.prefix(6) {
         items.append(.init(title: heading.title, detail: nil, isHeading: true))
         inserts.append("#" + heading.title)
       }
