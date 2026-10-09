@@ -42,6 +42,6 @@ export type VaultEditorViewProps = ViewProps & {
   ref?: Ref<VaultEditorHandle>;
 };
 
-/** the native source editor. it exists only in ios builds. */
+/** the native source editor. it exists in ios and android builds. */
 export const VaultEditorView =
-  Platform.OS === 'ios' ? requireNativeView<VaultEditorViewProps>('Vault', 'VaultEditorView') : null;
+  Platform.OS === 'ios' || Platform.OS === 'android' ? requireNativeView<VaultEditorViewProps>('Vault', 'VaultEditorView') : null;

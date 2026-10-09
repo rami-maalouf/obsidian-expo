@@ -113,6 +113,37 @@ object MarkdownStyles {
     return region.contains("```") || region.contains("~~~") || region.contains("---") || region.contains("...")
   }
 
+  /** the note's headings outside front matter and code: each line's offset and its text. */
+  fun headings(text: CharSequence): List<Pair<Int, String>> {
+    val found = ArrayList<Pair<Int, String>>()
+    var fence: Fence? = null
+    var start = frontMatterEnd(text)
+    while (start <= text.length) {
+      val end = lineEnd(text, start)
+      val line = text.subSequence(start, end)
+      if (fence != null) {
+        if (closesFence(line, fence)) fence = null
+      } else {
+        val opened = opensFence(line)
+        if (opened != null) {
+          fence = opened
+        } else {
+          heading.find(line)?.let { match ->
+            // a closing run of "#" after a space is not part of the title.
+            val title = line.substring(match.range.last + 1).replace(closingHashes, "").trim()
+            found.add(start to title)
+          }
+        }
+      }
+      val next = nextLine(text, end)
+      if (next <= start) break
+      start = next
+    }
+    return found
+  }
+
+  private val closingHashes = Regex("[ \\t]+#+[ \\t]*$|^#+[ \\t]*$")
+
   /** the wikilink at [offset], if the offset is inside one. */
   fun wikiLinkAt(text: CharSequence, offset: Int): WikiLinkReference? {
     if (offset < 0 || offset > text.length) return null

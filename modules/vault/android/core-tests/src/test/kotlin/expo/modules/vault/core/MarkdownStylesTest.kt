@@ -98,4 +98,10 @@ class MarkdownStylesTest {
     val perEdit = (System.nanoTime() - started) / 20 / 1_000_000.0
     assertTrue(perEdit < 50, "styling one line of a ${text.length}-character note took $perEdit ms")
   }
+
+  @Test
+  fun headingsSkipFrontMatterAndCode() {
+    val text = "---\ntitle: x\n---\n# Intro\n```\n# not a heading\n```\n## Next steps ##\n#tag\n"
+    assertEquals(listOf(text.indexOf("# Intro") to "Intro", text.indexOf("## Next") to "Next steps"), MarkdownStyles.headings(text))
+  }
 }

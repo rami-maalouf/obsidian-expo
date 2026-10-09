@@ -1,0 +1,67 @@
+name: android
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# a new push waits for the running job instead of cancelling it, so every finished run still
+# reports its result; only the newest waiting run is kept.
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  vault-core-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: gradle test
+        run: |
+          java -version
+          modules/vault/android/core-tests/gradlew -p modules/vault/android/core-tests test --no-daemon
+
+  release-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: expo prebuild
+        run: bunx expo prebuild --platform android --no-install
+      - name: check the generated project
+        run: |
+          grep -q 'android:configChanges' android/app/src/main/AndroidManifest.xml
+          grep -n 'windowSoftInputMode\|screenOrientation' android/app/src/main/AndroidManifest.xml || true
+      - name: release build for the x86_64 emulator
+        working-directory: android
+        env:
+          CI: 1
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
+      - name: check that the vault module is linked
+        run: grep -rl --include='*.java' --include='*.kt' 'expo.modules.vault.VaultModule' android node_modules/expo/android | head -5 | grep .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 7
