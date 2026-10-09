@@ -20,12 +20,13 @@ No environment file, app secret, Expo login, personal vault, or sibling checkout
 | Worker capability | Available checks |
 | --- | --- |
 | Linux with Node and Bun | Reference checks, TypeScript, lint, production JS exports for all three platforms, and future platform-independent tests |
+| Linux with Java 17 or newer | The Kotlin vault core's tests (`modules/vault/android/core-tests/gradlew -p modules/vault/android/core-tests test`); no Android SDK needed |
 | Worker with a browser | Web UI and navigation, in addition to the command-line checks |
 | macOS with Xcode and CocoaPods | iOS native build and Simulator interaction |
-| Worker with Android SDK, Java, and an emulator | Android native build and emulator interaction |
+| Worker with Android SDK, Java, and an emulator | Android native build and emulator interaction; the [android workflow](../.github/workflows/android.yml) does both on GitHub's Linux runners |
 | Suitable physical Apple devices and disposable iCloud vaults | Input behavior, release performance, cloud downloads, external edits, and multi-device conflict qualification |
 
-Linux cannot run Xcode or the iOS Simulator. Missing native or device infrastructure must remain an explicit verification gap; do not replace those checks with a claim that JS export proves native behavior.
+Linux cannot run Xcode or the iOS Simulator. A Linux container whose network policy blocks Google's Android SDK downloads cannot compile the Android app; push the branch and read the android workflow's results instead. Missing native or device infrastructure must remain an explicit verification gap; do not replace those checks with a claim that JS export proves native behavior.
 
 ## Native builds
 
