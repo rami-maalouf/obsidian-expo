@@ -7,7 +7,7 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 - The app opens a vault folder in place through the iOS folder picker and keeps access with a security-scoped bookmark. Notes are never copied into an app database.
 - Only `.md` files are listed and opened. Hidden files and folders, including `.obsidian` and `.trash`, are never listed, read, or written. Symlinks are skipped, and no read or write may resolve outside the vault folder.
 - App data stays outside the vault: the vault list, daily-note settings, bookmarks, unsaved drafts, and the search index (in app caches).
-- Obsidian's own settings in `.obsidian` are not imported. Enter the daily-note folder, file name format, and template in the app's settings; its preview shows the result before it is saved.
+- Obsidian's own settings in `.obsidian` are not imported. The daily-note folder, file name format, and template are set in the app's settings. First setup suggests them from file names (see [daily notes and templates](#daily-notes-and-templates)), and the preview shows the result before it is saved.
 
 ## Text and saving
 
@@ -22,6 +22,8 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 ## Daily notes and templates
 
 - A day's note path is `<folder>/<date>.md`, with the date as `YYYY-MM-DD` (default) or `YYYYMMDD`. The default folder is `Daily`.
+- First setup lists the vault and suggests settings from file names only; no note and no `.obsidian` file is read. The suggested folder is the one with the most notes named as dates (`YYYY-MM-DD` or `YYYYMMDD`, real calendar days only), in the format most of them use. It needs two such notes, or one when the folder is the top of the vault or its name contains "daily", "journal", or "diary", or the word "day" or "days". Year and month folders such as `2026`, `2026-10`, or `10-October` are never suggested, because the app cannot file notes by month. The suggested template is a Markdown file named for daily notes ("daily", or else "journal", "diary", "day", or "today", but not "week", "month", "quarter", or "year"), inside a folder whose name contains "template" (such as `Templates` or `Templater`), or with "template" in its own name. A file inside a templates folder beats one that is only named as a template, and among equal matches the most recently changed one wins. Anything not found keeps the default. The form shows what was found, and nothing is saved until the user accepts it.
+- While the folder or template field has focus, up to five of the vault's folders or Markdown files are suggested below it, ranked as in [[ link completion: an exact name, then a name that starts with the typed text, then a word that starts with it, then any substring, then its letters in order. Case and accents are ignored. Text with a "/" is matched against whole paths. The Daily Note Settings sheet shows the same suggestions and what was found, with a button to use it.
 - An existing note opens unchanged; its template is never applied again.
 - A missing note is created once from the template. If the note might exist in iCloud but is not downloaded, or its state cannot be checked, nothing is created.
 - The template is checked completely before any file or folder is created. A template with any unsupported syntax creates nothing and shows the line, column, and tag.
