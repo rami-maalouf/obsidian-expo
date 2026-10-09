@@ -82,6 +82,17 @@ import Testing
     #expect(after.first { $0.path == "Other.md" }?.fileId != oldId)
   }
 
+  @Test func reportsCreationAndModificationDates() throws {
+    let vault = try TestVault()
+    let target = try vault.write("Dated.md", Data("x"))
+    let date = Date(timeIntervalSince1970: 1_700_000_000)
+    try FileManager.default.setAttributes([.creationDate: date], ofItemAtPath: target.path)
+    let entry = collect(vault).0.first { $0.path == "Dated.md" }
+    let created = try #require(entry?.created)
+    #expect(abs(created.timeIntervalSince(date)) < 1)
+    #expect(entry?.modified != nil)
+  }
+
   @Test func unreadableFoldersAreReported() throws {
     let vault = try TestVault()
     try vault.write("Open/a.md", Data("a"))

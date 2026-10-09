@@ -5,6 +5,8 @@ public struct VaultEntry: Equatable, Sendable {
   public let path: String
   public let size: Int?
   public let modified: Date?
+  /// creation date, used to sort by created time; nil when unknown.
+  public let created: Date?
   /// `.readable` or `.placeholder`.
   public let state: FileState
   /// volume and inode, which survive a rename on the same volume; nil when unknown.
@@ -35,7 +37,7 @@ extension VaultFiles {
   public func enumerateNotes(batchSize: Int = 500, _ handle: ([VaultEntry]) -> Bool) -> EnumerationSummary {
     let keys: [URLResourceKey] = [
       .isDirectoryKey, .isSymbolicLinkKey, .fileSizeKey, .contentModificationDateKey,
-      .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
+      .creationDateKey, .isUbiquitousItemKey, .ubiquitousItemDownloadingStatusKey,
     ]
     var unreadable: [String] = []
     let enumerator = FileManager.default.enumerator(
@@ -93,6 +95,7 @@ extension VaultFiles {
         path: path,
         size: state == .readable ? values?.fileSize : nil,
         modified: values?.contentModificationDate,
+        created: values?.creationDate,
         state: state,
         fileId: state == .readable ? VaultFiles.fileId(of: url) : nil
       ))
