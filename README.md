@@ -107,7 +107,25 @@ On a Mac with Xcode, run the vault core's Swift tests without a Simulator:
 swift test --package-path modules/vault
 ```
 
-The [ios workflow](.github/workflows/ios.yml) runs these tests, generates the iOS project, builds a Release app for the Simulator, and runs a smoke test. The test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes.
+The [ios workflow](.github/workflows/ios.yml) runs these tests on GitHub's macOS runners. The app itself needs Xcode 27, which those runners do not offer, so build the Release app for the Simulator and run the smoke test on a Mac with Xcode 27 and CocoaPods:
+
+```sh
+bun install --frozen-lockfile
+bunx expo prebuild --platform ios
+workspace=$(ls -d ios/*.xcworkspace | head -1)
+xcodebuild -workspace "$workspace" -scheme "$(basename "$workspace" .xcworkspace)" -configuration Release \
+  -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+  -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
+app=$(ls -d build/Build/Products/Release-iphonesimulator/*.app | head -1)
+scripts/ci/simulator-smoke.sh "iPhone" "$app" smoke/iphone \
+  tests/e2e/editor/today-write.yaml tests/e2e/editor/background.yaml @external-edit \
+  tests/e2e/editor/foreground.yaml @lock-daily tests/e2e/recovery/unsaved-draft.yaml @unlock-daily \
+  tests/e2e/recovery/open-draft.yaml tests/e2e/daily-notes/relaunch-today.yaml
+scripts/ci/simulator-smoke.sh "iPad Pro 13" "$app" smoke/ipad \
+  tests/e2e/editor/today-write.yaml tests/e2e/navigation/ipad-layout.yaml tests/e2e/daily-notes/relaunch-today.yaml
+```
+
+The smoke test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes.
 
 A preliminary search benchmark over the generated 10,000-note vault runs on any machine with Bun; it does not qualify device performance:
 

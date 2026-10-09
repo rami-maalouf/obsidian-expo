@@ -14,8 +14,11 @@ on:
 permissions:
   contents: read
 
-# a new push waits for the running simulator job instead of cancelling it, so every finished
-# run still reports its result; only the newest waiting run is kept.
+# a new push waits for the running job instead of cancelling it, so every finished run still
+# reports its result; only the newest waiting run is kept.
+#
+# the app needs xcode 27, which this runner image does not offer, so the simulator build and
+# smoke test run on a mac with xcode 27 instead (readme, "native tests").
 concurrency:
   group: ios-${{ github.ref }}
   cancel-in-progress: false
@@ -38,70 +41,3 @@ jobs:
           swift --version
       - name: swift test
         run: swift test --package-path modules/vault
-
-  simulator-build:
-    runs-on: macos-26
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v7.0.1
-      - uses: actions/setup-node@v7.1.0
-        with:
-          node-version: 24
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.14
-      - name: select xcode 27 or newer
-        run: |
-          ls -d /Applications/Xcode*.app
-          # laperm's editor package needs swift 6.4 and the ios 27 sdk. a stable xcode wins over a
-          # release candidate; a beta is never used.
-          candidates=$(ls -d /Applications/Xcode_*.app | grep -viE 'beta' | grep -E 'Xcode_(2[7-9]|[3-9][0-9])' || true)
-          stable=$(echo "$candidates" | grep -viE 'release_candidate|_rc' | sort -V | tail -1 || true)
-          xcode=${stable:-$(echo "$candidates" | sort -V | tail -1)}
-          if [ -z "$xcode" ]; then
-            echo "::error::this app needs xcode 27 or newer, and the runner has none"
-            exit 1
-          fi
-          sudo xcode-select -s "$xcode"
-          xcodebuild -version
-          xcrun simctl list runtimes
-          sw_vers
-          pod --version
-      - run: bun install --frozen-lockfile
-      - name: generate the ios project
-        run: bunx expo prebuild --platform ios
-        env:
-          CI: 1
-      - name: confirm the local vault module is autolinked
-        run: grep -rl 'VaultModule' ios/Pods/Target\ Support\ Files/*/ExpoModulesProvider.swift
-      - name: confirm the app targets iphone and ipad and rotates
-        run: |
-          grep -q 'TARGETED_DEVICE_FAMILY = "1,2"' ios/*.xcodeproj/project.pbxproj
-          plist=$(ls ios/*/Info.plist | grep -v Pods | head -1)
-          plutil -extract 'UISupportedInterfaceOrientations' json -o - "$plist" | tee orientations.json
-          grep -q LandscapeLeft orientations.json
-          plutil -extract 'UISupportedInterfaceOrientations~ipad' json -o - "$plist" || echo "no ipad-specific orientations"
-      - name: build for the simulator
-        run: |
-          workspace=$(ls -d ios/*.xcworkspace | head -1)
-          scheme=$(basename "$workspace" .xcworkspace)
-          xcodebuild -workspace "$workspace" -scheme "$scheme" -configuration Release \
-            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
-          ls build/Build/Products/Release-iphonesimulator
-      - name: iphone smoke test with typing, saving, search, background, outside edits, recovery, and relaunch
-        run: |
-          scripts/ci/simulator-smoke.sh "iPhone" build/Build/Products/Release-iphonesimulator/*.app smoke/iphone \
-            tests/e2e/editor/today-write.yaml tests/e2e/editor/background.yaml @external-edit \
-            tests/e2e/editor/foreground.yaml @lock-daily tests/e2e/recovery/unsaved-draft.yaml @unlock-daily \
-            tests/e2e/recovery/open-draft.yaml tests/e2e/daily-notes/relaunch-today.yaml
-      - name: ipad smoke test with the wide layout
-        run: |
-          scripts/ci/simulator-smoke.sh "iPad Pro 13" build/Build/Products/Release-iphonesimulator/*.app smoke/ipad \
-            tests/e2e/editor/today-write.yaml tests/e2e/navigation/ipad-layout.yaml tests/e2e/daily-notes/relaunch-today.yaml
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: simulator-smoke
-          path: smoke
-          if-no-files-found: ignore

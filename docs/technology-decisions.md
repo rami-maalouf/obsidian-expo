@@ -4,7 +4,7 @@ This file records technology choices required by KTD8, following the [technology
 
 ## Native verification environment
 
-The cloud workers that implement this plan run Linux and cannot run Xcode. Native code is compiled and tested by the [ios workflow](../.github/workflows/ios.yml) on GitHub-hosted macOS runners, which are free for this public repository. Observed on October 8, 2026: image `macos-26-arm64` version 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3. The starter was originally verified with Xcode 27.0; the runner image did not offer a stable Xcode 27 at this date. Simulator builds and tests on this runner do not qualify physical-device input, performance, or iCloud behavior. Since the T05 revision, the app needs Xcode 27 and Swift tools 6.4, because its editor package requires them. The workflow's Simulator job now selects Xcode 27 or newer and fails with an error when the runner has none; `swift test` still uses the newest stable Xcode. EAS builds of October 8, 2026 used the image `macos-tahoe-26.6-xcode-27.0` (Xcode 27.0, 27A266a).
+The cloud workers that implement this plan run Linux and cannot run Xcode. The vault core's Swift tests run in the [ios workflow](../.github/workflows/ios.yml) on GitHub-hosted macOS runners, which are free for this public repository. Observed on October 8, 2026: image `macos-26-arm64` version 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3. The starter was originally verified with Xcode 27.0; the runner image did not offer a stable Xcode 27 at this date. Simulator builds and tests on this runner do not qualify physical-device input, performance, or iCloud behavior. Since the T05 revision, the app needs Xcode 27 and Swift tools 6.4, because its editor package requires them. The workflow's Simulator job stopped at its Xcode 27 check in run 37847969598 (`3614b80`) and run 37882059978 (`819f055`), and every ios run between them failed, so the job was removed on October 9, 2026. The workflow now runs only `swift test`, with the newest stable Xcode. The Simulator build and smoke test run on a Mac with Xcode 27 ([README](../README.md#native-tests-and-builds)), and EAS builds compile the app for devices. EAS builds of October 8, 2026 used the image `macos-tahoe-26.6-xcode-27.0` (Xcode 27.0, 27A266a).
 
 ## T01. Expo, React Native, and their runtime dependencies
 
@@ -46,7 +46,7 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Alternatives:** option B, the Expo Modules 2.0 Swift macros (`@JS`, `@ExpoModule`), which `expo-modules-core@58.0.14` ships. The options research describes them as a preview that does not cover native views. Because the binding is thin, moving the service functions to macros later changes only `VaultModule.swift`.
 
-**Validation:** the ios workflow confirms that `VaultModule` appears in the generated `ExpoModulesProvider.swift` after `expo prebuild`. Core tests pass with `swift test`. Simulator compile evidence is recorded in [validation](validation.md).
+**Validation:** until October 9, 2026, the ios workflow's Simulator job confirmed that `VaultModule` appears in the generated `ExpoModulesProvider.swift` after `expo prebuild`; no CI job checks it now. Core tests pass with `swift test`. Simulator compile evidence is recorded in [validation](validation.md).
 
 **Limits:** the folder picker has not run in CI; the Simulator tests register the fixture vault through a simulator-only launch argument. The editor view (T05) is not part of this decision.
 
@@ -133,7 +133,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Alternatives:** Expo Router's `SplitView` (a native `UISplitViewController`, the first native version): on iPhone it collapses into a navigation stack with a second bar and a back button, which the user rejected; `@expo/ui` `NavigationSplitView`, which collapses the same way and has no right-hand column; Expo Router's drawer navigator, which would add drawer routes and headers that the controlled panels do not need.
 
-**App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The iOS workflow checks both settings after `expo prebuild`.
+**App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The ios workflow's Simulator job checked both settings after `expo prebuild` until it was removed on October 9, 2026; no CI job checks them now.
 
 **Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Daily Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Today's Note (⌘T) and Search Notes (⇧⌘F). The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
 
@@ -186,7 +186,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 | Layer | Tool | Entry point |
 | --- | --- | --- |
 | Native unit and integration tests | Swift Testing through `swift test` on the Foundation-only vault core | `swift test --package-path modules/vault` (ios workflow) |
-| App flows | Maestro CLI 2.11.0 against Release Simulator builds, with a 3-minute driver startup timeout and one restart of a driver that did not start | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/` |
+| App flows | Maestro CLI 2.11.0 against Release Simulator builds, with a 3-minute driver startup timeout and one restart of a driver that did not start | `scripts/ci/simulator-smoke.sh` with flows in `tests/e2e/`, on a Mac with Xcode 27 (no CI job since October 9, 2026) |
 | Component and Router tests | Not adopted yet | Logic is kept in pure modules tested by Bun |
 | Performance | Xcode Instruments on a device | Not run; no device is available |
 
@@ -202,7 +202,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Decided:** October 8, 2026, for U1.
 
-**Choice:** option A, Expo prebuild (CNG) with CocoaPods. The `ios` folder is not committed; the ios workflow runs `bunx expo prebuild --platform ios` and builds with `xcodebuild` (Release, generic iOS Simulator, `CODE_SIGNING_ALLOWED=NO`). Native configuration lives in `app.json` and the local module's podspec; no custom config plugin is needed yet. The workflow checks that `VaultModule` is autolinked and that the generated project targets iPhone and iPad with all orientations.
+**Choice:** option A, Expo prebuild (CNG) with CocoaPods. The `ios` folder is not committed; `bunx expo prebuild --platform ios` generates it, and `xcodebuild` builds it (Release, generic iOS Simulator, `CODE_SIGNING_ALLOWED=NO`; commands in the [README](../README.md#native-tests-and-builds)). Native configuration lives in `app.json` and the local module's podspec; no custom config plugin is needed yet. Until October 9, 2026, the ios workflow ran these steps and checked that `VaultModule` is autolinked and that the generated project targets iPhone and iPad with all orientations.
 
 **Alternatives:** option B, SDK 58's experimental Swift Package Manager build path, not evaluated, because the CocoaPods path already builds every module the app uses. CI does not use EAS Build. On October 8, 2026, the user asked for iPhone development and preview builds; T14 records that setup.
 
@@ -276,7 +276,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Validation:** `tests/unit/app-config.test.ts` regenerates the icons in a temporary folder, compares the bundles byte for byte, checks that every layer exists, and checks the PNG sizes. The flattened PNGs were inspected visually on L1.
 
-**Limits:** the script writes the `icon.json` files, not Icon Composer. They use only keys that the SDK 58 template's icon used. No Xcode has compiled them yet; the ios workflow compiles `app.icon` for the release variant, and `app-dev.icon` compiles only in a development build. The Liquid Glass rendering on iOS 26 has not been seen.
+**Limits:** the script writes the `icon.json` files, not Icon Composer. They use only keys that the SDK 58 template's icon used. No Xcode has compiled them yet; a Release Simulator build compiles `app.icon` for the release variant, and `app-dev.icon` compiles only in a development build. The Liquid Glass rendering on iOS 26 has not been seen.
 
 ## Pending decisions
 

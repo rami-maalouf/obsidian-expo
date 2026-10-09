@@ -47,3 +47,7 @@ example
 
 # synthetic vaults from scripts/generate-vault.ts
 /.fixtures/
+
+# local simulator build and smoke test output (readme, "native tests and builds")
+/build
+/smoke
