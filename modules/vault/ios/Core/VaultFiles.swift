@@ -21,6 +21,15 @@ public enum SaveResult: Equatable, Sendable {
   case unavailable(FileState)
 }
 
+public enum MoveResult: Equatable, Sendable {
+  case moved
+  /// another file already has the new path; nothing moved.
+  case exists
+  /// the file to move is gone.
+  case missing
+  case unavailable(FileState)
+}
+
 public enum VaultFileError: Error, Equatable, Sendable {
   case coordination(String)
   case io(String)
@@ -113,7 +122,85 @@ public final class VaultFiles: @unchecked Sendable {
     return result
   }
 
+  /// renames or moves a file inside the vault, creating missing parent folders. another file is
+  /// never replaced. a change of case only is allowed where the volume ignores case, because the
+  /// old and new paths then name the same file.
+  public func move(_ path: String, to newPath: String) throws -> MoveResult {
+    let source = try root.resolve(path)
+    let destination = try root.resolve(newPath)
+    var result = MoveResult.missing
+    try coordinate(moving: source, to: destination) { from, to in
+      _ = try self.root.resolve(path)
+      _ = try self.root.resolve(newPath)
+      switch FileStateProbe.state(of: from, fileManager: self.fileManager) {
+      case .readable:
+        break
+      case .absent:
+        result = .missing
+        return false
+      case let other:
+        result = .unavailable(other)
+        return false
+      }
+      try self.fileManager.createDirectory(at: to.deletingLastPathComponent(), withIntermediateDirectories: true)
+      // the new folders could have been swapped for symlinks; check containment again.
+      _ = try self.root.resolve(newPath)
+      let caseOnly = path != newPath && path.lowercased() == newPath.lowercased() && VaultFiles.sameFile(from, to)
+      if renamex_np(from.path, to.path, caseOnly ? 0 : UInt32(RENAME_EXCL)) == 0 {
+        result = .moved
+        return true
+      }
+      let code = errno
+      if code == EEXIST {
+        result = .exists
+        return false
+      }
+      throw VaultFileError.io(String(cString: strerror(code)))
+    }
+    return result
+  }
+
   // MARK: - helpers
+
+  /// true when both urls name one file on one volume, as a case-insensitive volume reports for
+  /// names that differ only in case.
+  static func sameFile(_ a: URL, _ b: URL) -> Bool {
+    var first = stat()
+    var second = stat()
+    guard stat(a.path, &first) == 0, stat(b.path, &second) == 0 else {
+      return false
+    }
+    return first.st_dev == second.st_dev && first.st_ino == second.st_ino
+  }
+
+  /// coordinates a move; `body` returns whether the file moved, so presenters learn of it.
+  private func coordinate(moving source: URL, to destination: URL, _ body: (URL, URL) throws -> Bool) throws {
+    var coordinationError: NSError?
+    var bodyError: Error?
+    let coordinator = NSFileCoordinator(filePresenter: nil)
+    coordinator.coordinate(
+      writingItemAt: source,
+      options: .forMoving,
+      writingItemAt: destination,
+      options: .forReplacing,
+      error: &coordinationError
+    ) { from, to in
+      coordinator.item(at: from, willMoveTo: to)
+      do {
+        if try body(from, to) {
+          coordinator.item(at: from, didMoveTo: to)
+        }
+      } catch {
+        bodyError = error
+      }
+    }
+    if let coordinationError {
+      throw VaultFileError.coordination(coordinationError.localizedDescription)
+    }
+    if let bodyError {
+      throw bodyError
+    }
+  }
 
   private func coordinate(reading url: URL, _ body: (URL) throws -> Void) throws {
     var coordinationError: NSError?

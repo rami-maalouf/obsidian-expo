@@ -180,3 +180,61 @@ import Testing
     #expect(try vault.bytes("A.md") == Self.crlfWithBom)
   }
 }
+
+@Suite struct MoveTests {
+  @Test func renameKeepsTheExactBytes() throws {
+    let vault = try TestVault()
+    try vault.write("Notes/Old.md", VaultFilesTests.crlfWithBom)
+    #expect(try vault.files.move("Notes/Old.md", to: "Notes/New name.md") == .moved)
+    #expect(!vault.exists("Notes/Old.md"))
+    #expect(try vault.bytes("Notes/New name.md") == VaultFilesTests.crlfWithBom)
+  }
+
+  @Test func neverReplacesAnotherFile() throws {
+    let vault = try TestVault()
+    try vault.write("A.md", Data("a"))
+    try vault.write("B.md", Data("b"))
+    #expect(try vault.files.move("A.md", to: "B.md") == .exists)
+    #expect(try vault.bytes("A.md") == Data("a"))
+    #expect(try vault.bytes("B.md") == Data("b"))
+  }
+
+  @Test func missingAndCloudFilesDoNotMove() throws {
+    let vault = try TestVault()
+    #expect(try vault.files.move("Missing.md", to: "Found.md") == .missing)
+    try vault.write(".Cloud.md.icloud", Data("stub"))
+    #expect(try vault.files.move("Cloud.md", to: "Moved.md") == .unavailable(.placeholder))
+    #expect(!vault.exists("Found.md"))
+    #expect(!vault.exists("Moved.md"))
+  }
+
+  @Test func createsMissingFolders() throws {
+    let vault = try TestVault()
+    try vault.write("Note.md", Data("x"))
+    #expect(try vault.files.move("Note.md", to: "Inbox/Later/Note.md") == .moved)
+    #expect(try vault.bytes("Inbox/Later/Note.md") == Data("x"))
+  }
+
+  @Test func changesOnlyTheCaseOfAName() throws {
+    let vault = try TestVault()
+    try vault.write("Notes/meeting.md", Data("x"))
+    // on a case-insensitive volume both names are one file; on a case-sensitive one the new
+    // name is free. either way the file ends up with the new spelling.
+    #expect(try vault.files.move("Notes/meeting.md", to: "Notes/Meeting.md") == .moved)
+    let names = try FileManager.default.contentsOfDirectory(atPath: vault.url("Notes").path)
+    #expect(names == ["Meeting.md"])
+    #expect(try vault.bytes("Notes/Meeting.md") == Data("x"))
+  }
+
+  @Test func refusesPathsOutsideTheVaultOrHidden() throws {
+    let vault = try TestVault()
+    try vault.write("Note.md", Data("x"))
+    let outside = vault.outside.appendingPathComponent("elsewhere")
+    try FileManager.default.createDirectory(at: outside, withIntermediateDirectories: true)
+    try FileManager.default.createSymbolicLink(at: vault.url("Link"), withDestinationURL: outside)
+    #expect(throws: VaultPathError.outsideVault) { try vault.files.move("Note.md", to: "Link/Note.md") }
+    #expect(throws: VaultPathError.invalidSegment("..")) { try vault.files.move("Note.md", to: "../Note.md") }
+    #expect(throws: VaultPathError.hiddenSegment(".obsidian")) { try vault.files.move("Note.md", to: ".obsidian/Note.md") }
+    #expect(try vault.bytes("Note.md") == Data("x"))
+  }
+}

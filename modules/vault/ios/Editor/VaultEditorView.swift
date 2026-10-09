@@ -339,6 +339,12 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     document.persist()
   }
 
+  /// writes pending edits and returns the open document, so a rename can wait for its save.
+  func flushForRename() -> DocumentSession? {
+    flush()
+    return document
+  }
+
   func focus() {
     // laperm's override of this method does not mark its result as discardable.
     _ = textView.becomeFirstResponder()

@@ -223,6 +223,29 @@ public class VaultModule: Module {
       AsyncFunction("focus") { (view: VaultEditorView) in
         view.focus()
       }.runOnQueue(.main)
+
+      // saves the open note, waits for that save, then renames its file. nothing moves while
+      // edits are unsaved, so no later save of this document can target the old path.
+      AsyncFunction("rename") { (view: VaultEditorView, newPath: String, promise: Promise) in
+        guard let vaultId = view.vaultId, let path = view.path else {
+          promise.resolve(["kind": "missing"])
+          return
+        }
+        let document = view.flushForRename()
+        VaultModule.fileQueue.async {
+          document?.waitUntilIdle()
+          if let status = document?.status, !VaultModule.isSettled(status) {
+            promise.resolve(["kind": "unsaved"])
+            return
+          }
+          do {
+            let moved = try self.withFiles(vaultId) { files in try files.move(path, to: newPath) }
+            promise.resolve(VaultModule.encode(moved))
+          } catch {
+            promise.reject(VaultException("The note could not be renamed. (\(error))"))
+          }
+        }
+      }.runOnQueue(.main)
     }
 
     OnCreate {
@@ -340,6 +363,29 @@ public class VaultModule: Module {
 
   static func encode(_ revision: FileRevision) -> [String: Any] {
     ["sha256": revision.sha256, "size": revision.size]
+  }
+
+  static func encode(_ result: MoveResult) -> [String: Any] {
+    switch result {
+    case .moved:
+      return ["kind": "moved"]
+    case .exists:
+      return ["kind": "exists"]
+    case .missing:
+      return ["kind": "missing"]
+    case let .unavailable(state):
+      return ["kind": "unavailable", "state": encode(state)]
+    }
+  }
+
+  /// true when the document has nothing left to save: its text is on disk, or it is read-only.
+  static func isSettled(_ status: DocumentStatus) -> Bool {
+    switch status {
+    case .clean, .readOnly:
+      return true
+    default:
+      return false
+    }
   }
 
   static func encode(_ state: FileState) -> [String: Any] {
