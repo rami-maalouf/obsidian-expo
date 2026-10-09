@@ -88,7 +88,8 @@ jobs:
         run: |
           echo "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
           tools="$ANDROID_HOME/cmdline-tools/latest/bin"
-          yes | "$tools/sdkmanager" --install emulator platform-tools "$SYSTEM_IMAGE" > /dev/null
+          # yes stops with a broken pipe when sdkmanager is done; only sdkmanager's result counts.
+          (yes || true) | "$tools/sdkmanager" --install emulator platform-tools "$SYSTEM_IMAGE" > /dev/null
           echo no | "$tools/avdmanager" create avd --force -n smoke -k "$SYSTEM_IMAGE" -d pixel_7
           nohup "$ANDROID_HOME/emulator/emulator" -avd smoke -no-window -no-audio -no-boot-anim -no-snapshot \
             -gpu swiftshader_indirect -camera-back none -memory 4096 > emulator.log 2>&1 &
