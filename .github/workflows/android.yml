@@ -105,6 +105,15 @@ jobs:
         run: scripts/ci/emulator-smoke.sh "$(ls apk/*.apk | head -1)" smoke/android
       - if: always()
         run: tail -40 emulator.log || true
+      # small jpeg copies of the screenshots, as base64 in the log: some cloud agents can read
+      # job logs but cannot download artifacts. decode a line with `base64 -d > name.jpg`.
+      - name: screenshots as text
+        if: always()
+        run: |
+          find smoke -name '*.png' | sort | while read -r shot; do
+            convert "$shot" -resize 360x -quality 60 thumbnail.jpg
+            echo "screenshot $shot $(base64 -w0 thumbnail.jpg)"
+          done
       - uses: actions/upload-artifact@v4
         if: always()
         with:
