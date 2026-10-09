@@ -3,6 +3,7 @@
  * access and the workspace (t08, t11).
  */
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { Platform, StyleSheet, useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -27,6 +28,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider value={colorScheme === 'dark' ? dark : light}>
+        {/* dark status bar icons on light screens and light ones on dark screens; android drew light icons on the light app. */}
+        <StatusBar style="auto" />
         <VaultGate />
       </ThemeProvider>
     </GestureHandlerRootView>
