@@ -109,9 +109,11 @@ jobs:
       # job logs but cannot download artifacts. decode a line with `base64 -d > name.jpg`.
       - name: screenshots as text
         if: always()
+        continue-on-error: true
         run: |
+          python3 -m pip install --quiet --user pillow
           find smoke -name '*.png' | sort | while read -r shot; do
-            convert "$shot" -resize 360x -quality 60 thumbnail.jpg
+            python3 -c 'import sys; from PIL import Image; image = Image.open(sys.argv[1]).convert("RGB"); image.thumbnail((360, 800)); image.save("thumbnail.jpg", quality=60)' "$shot"
             echo "screenshot $shot $(base64 -w0 thumbnail.jpg)"
           done
       - uses: actions/upload-artifact@v4
