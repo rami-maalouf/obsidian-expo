@@ -5,12 +5,14 @@ appId: com.ramimaalouf.obsidianexpo
 ---
 - launchApp:
     stopApp: false
-# "No unsaved changes" appears instead if the system ended the app while it was in the background.
+# the editor reports "opened" instead of "saved" if the system ended the app while it was in the background.
 - extendedWaitUntil:
-    visible: "(Saved locally|No unsaved changes)"
+    visible:
+      id: "note-status:(saved|opened)"
     timeout: 15000
 - inputText: " After foreground."
 - extendedWaitUntil:
-    visible: "Saved locally"
+    visible:
+      id: "note-status:saved"
     timeout: 15000
 - takeScreenshot: ${OUT}/foreground

@@ -563,6 +563,9 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
 
   private func emit(_ payload: [String: Any]) {
     let status = payload["status"] as? String
+    // no on-screen text names the routine save states, so ui tests read them from this
+    // identifier, for example "note-status:saved". voiceover does not speak identifiers.
+    textView.accessibilityIdentifier = status.map { "note-status:\($0)" }
     if status == "unsaved", lastStatus == "unsaved" {
       return
     }

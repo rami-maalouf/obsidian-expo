@@ -6,7 +6,8 @@ appId: com.ramimaalouf.obsidianexpo
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: "No unsaved changes"
+    visible:
+      id: "note-status:opened"
     timeout: 30000
 - assertVisible: ${TODAY}
 - takeScreenshot: ${OUT}/relaunch-today

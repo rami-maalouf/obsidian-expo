@@ -10,5 +10,6 @@ appId: com.ramimaalouf.obsidianexpo
 - takeScreenshot: ${OUT}/recovery
 - tapOn: "Open and save"
 - extendedWaitUntil:
-    visible: "Saved locally"
+    visible:
+      id: "note-status:saved"
     timeout: 15000

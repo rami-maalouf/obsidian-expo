@@ -1,14 +1,16 @@
 /**
  * the note between the two side panels: drafts to recover before today, then the open note
- * (flow f2). the note title is the native navigation title. the toolbar's left group opens the
- * files panel and today's note; the right group opens the native "more" menu with bookmark,
- * search, and the rest, then the calendar panel at the trailing edge (t08).
+ * (flow f2). the note title is the native navigation title; it ends with "*" while edits wait
+ * for a save. the toolbar's left group opens the files panel and today's note; the right group
+ * opens the native "more" menu with bookmark, search, and the rest, then the calendar panel at
+ * the trailing edge (t08).
  */
 import { Stack, useRouter } from 'expo-router';
-import { type ComponentProps, type ReactNode, useEffect } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
 
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
 import { NoteEditor, noteTitle } from '@/features/editor/note-editor';
+import { UNSAVED_MARK } from '@/features/editor/status';
 import { RecoveryList } from '@/features/recovery/recovery-list';
 
 import { Busy, Notice } from './status-views';
@@ -18,6 +20,7 @@ export function NotesScreen() {
   const workspace = useWorkspace();
   const router = useRouter();
   const { path, drafts, needsRecovery, dayProblem, today, bookmarks, showFirstScreen } = workspace;
+  const [unsaved, setUnsaved] = useState(false);
   const pending = drafts.drafts;
   // the recovery list or a problem is the first screen; the editor reports its own (onShown).
   const shownWithoutEditor = pending !== null && (needsRecovery || dayProblem !== null || (!path && today.state.phase === 'done'));
@@ -50,7 +53,7 @@ export function NotesScreen() {
   } else if (dayProblem) {
     content = <TodayProblem outcome={dayProblem.outcome} onRetry={workspace.retryDay} />;
   } else if (path) {
-    title = noteTitle(path);
+    title = unsaved ? `${noteTitle(path)}${UNSAVED_MARK}` : noteTitle(path);
     content = (
       <NoteEditor
         key={path}
@@ -60,6 +63,7 @@ export function NotesScreen() {
         onShown={showFirstScreen}
         onRecoveryNeeded={workspace.onRecoveryNeeded}
         onOpenLink={workspace.openLink}
+        onUnsavedChange={setUnsaved}
       />
     );
   } else if (today.state.phase !== 'done') {

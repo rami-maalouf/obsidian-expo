@@ -7,7 +7,8 @@ appId: com.ramimaalouf.obsidianexpo
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: "No unsaved changes"
+    visible:
+      id: "note-status:opened"
     timeout: 30000
 - assertVisible: "vault"
 - tapOn: "More"
@@ -24,13 +25,15 @@ appId: com.ramimaalouf.obsidianexpo
 - takeScreenshot: ${OUT}/calendar
 - tapOn: "Today|Open today's note"
 - extendedWaitUntil:
-    visible: "No unsaved changes"
+    visible:
+      id: "note-status:opened"
     timeout: 15000
 - stopApp
 - launchApp:
     clearState: false
 - extendedWaitUntil:
-    visible: "No unsaved changes"
+    visible:
+      id: "note-status:opened"
     timeout: 30000
 - assertVisible:
     id: "bookmark:Daily/${TODAY}.md"
