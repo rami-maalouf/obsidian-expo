@@ -93,6 +93,8 @@ bun run build:preview:android
 
 The development and preview builds have their own application IDs (`com.ramimaalouf.obsidianexpo.dev` and `.preview`), so both can be installed beside each other. Enable installing from unknown sources for the browser that opens the link. `bun run update:preview` sends JavaScript updates to preview builds of both platforms that have the same runtime fingerprint.
 
+Without an Expo account, the [android release workflow](.github/workflows/android-release.yml) builds the release APK for phones (arm64-v8a) and emulators (x86_64) and publishes it as a GitHub prerelease, which downloads without a GitHub sign-in. Run it from the Actions tab, or push a tag that starts with `android-v`. The APK is signed with the generated project's debug key, so it installs from the file but not through Google Play.
+
 ### Try a copy of your vault on an emulator
 
 Start an Android emulator, install the app with `bun run android`, and copy a vault folder to the emulator's Documents folder:

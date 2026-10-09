@@ -1,0 +1,84 @@
+name: android release
+
+# builds the release apk for phones (arm64-v8a) and emulators (x86_64) and publishes it as a
+# github prerelease, which anyone can download without signing in. actions artifacts need a
+# github account, so they are not enough to share a build.
+#
+# run it from the actions tab, or push a tag that starts with android-v. a run without a tag
+# makes the tag android-preview-<short commit>. the apk is signed with the debug key from the
+# generated android project: it installs from the file, but google play does not accept it.
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'android-v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14
+      - run: bun install --frozen-lockfile
+      - name: expo prebuild
+        run: bunx expo prebuild --platform android --no-install
+      - name: release build for phones and emulators
+        working-directory: android
+        env:
+          CI: 1
+        run: ./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a,x86_64 --no-daemon
+      - name: name the apk and check its native libraries
+        id: apk
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then tag=$GITHUB_REF_NAME; else tag="android-preview-${GITHUB_SHA::7}"; fi
+          file="obsidian-expo-$tag.apk"
+          cp android/app/build/outputs/apk/release/app-release.apk "$file"
+          # both architectures must be in the apk, or it does not install on one of them. the listing
+          # is read once, so grep -q cannot stop unzip early and fail the step under pipefail.
+          listing=$(unzip -l "$file")
+          for abi in arm64-v8a x86_64; do
+            grep -q " lib/$abi/.*\.so$" <<< "$listing" || { echo "the apk has no $abi libraries" >&2; exit 1; }
+          done
+          sha256sum "$file" > "$file.sha256"
+          ls -l "$file"
+          cat "$file.sha256"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "file=$file" >> "$GITHUB_OUTPUT"
+      - name: publish the prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.apk.outputs.tag }}
+          FILE: ${{ steps.apk.outputs.file }}
+        run: |
+          {
+            echo "Android release build of commit $GITHUB_SHA, from $GITHUB_REF_NAME."
+            echo
+            echo "- Architectures: arm64-v8a (phones, tablets, and Apple silicon emulators) and x86_64 (Intel emulators)."
+            echo "- Signed with the debug key of the generated project. It installs from the file; Google Play does not accept it."
+            echo "- Install: open the APK on the device and allow installs from that app, or run \`adb install $FILE\`."
+            echo "- Check the download with \`shasum -a 256 -c $FILE.sha256\`."
+          } > notes.md
+          if [ "$GITHUB_REF_TYPE" = tag ]; then target=(); else target=(--target "$GITHUB_SHA"); fi
+          gh release create "$TAG" "$FILE" "$FILE.sha256" --repo "$GITHUB_REPOSITORY" --prerelease \
+            --title "Android $TAG" --notes-file notes.md "${target[@]}"
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$FILE"
