@@ -15,6 +15,7 @@ import { DailySettingsForm } from '@/features/settings/daily-settings-form';
 import { useDailySettings } from '@/features/settings/use-daily-settings';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
 
+import { VaultNative } from '../../../modules/vault/src';
 import { revealApp } from './launch-screen';
 import { Busy, Notice } from './status-views';
 import { useWorkspace, WorkspaceProvider } from './workspace';
@@ -85,12 +86,27 @@ const FILES_WIDTH = 320;
 const CALENDAR_WIDTH = 360;
 
 /**
+ * closes the keyboard. the drawer's own keyboard handling calls react native's
+ * Keyboard.dismiss(), which does not reach the native editor.
+ */
+function dismissKeyboard() {
+  VaultNative?.dismissKeyboard().catch(() => undefined);
+}
+
+/**
  * the note with a side panel on each edge (t08): files on the left, the calendar on the right.
  * on a phone each panel slides over the note; on a wide screen an open panel stays beside it.
+ * a panel closes the keyboard when it opens, from a button, the menu bar, or a swipe.
  */
 function WorkspacePanels() {
   const { wide, filesOpen, setFilesOpen, calendarOpen, setCalendarOpen } = useWorkspace();
   const { width } = useWindowDimensions();
+  useEffect(() => {
+    if (filesOpen) dismissKeyboard();
+  }, [filesOpen]);
+  useEffect(() => {
+    if (calendarOpen) dismissKeyboard();
+  }, [calendarOpen]);
   const filesStyle = [styles.panel, { width: Math.min(FILES_WIDTH, Math.round(width * 0.86)) }];
   const calendarStyle = [styles.panel, { width: Math.min(CALENDAR_WIDTH, Math.round(width * 0.92)) }];
   return (
@@ -104,7 +120,8 @@ function WorkspacePanels() {
       overlayStyle={styles.scrim}
       overlayAccessibilityLabel="Close files"
       swipeEdgeWidth={EDGE_SWIPE}
-      keyboardDismissMode="on-drag"
+      keyboardDismissMode="none"
+      onGestureStart={dismissKeyboard}
       renderDrawerContent={() => (
         <Panel>
           <NativeSidebar />
@@ -120,7 +137,8 @@ function WorkspacePanels() {
         overlayStyle={styles.scrim}
         overlayAccessibilityLabel="Close calendar"
         swipeEdgeWidth={EDGE_SWIPE}
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode="none"
+        onGestureStart={dismissKeyboard}
         renderDrawerContent={() => (
           <Panel>
             <CalendarInspector />

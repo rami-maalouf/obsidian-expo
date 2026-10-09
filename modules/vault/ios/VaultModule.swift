@@ -53,6 +53,12 @@ public class VaultModule: Module {
       self.presentFolderPicker(promise)
     }.runOnQueue(.main)
 
+    // closes the keyboard, whatever has focus. react native's Keyboard.dismiss() only reaches
+    // react native text inputs, so it leaves the native editor's keyboard open.
+    AsyncFunction("dismissKeyboard") { () in
+      _ = UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }.runOnQueue(.main)
+
     AsyncFunction("listVaults") { () -> [[String: Any]] in
       // the app's javascript is running: its first call is for the vault list.
       LaunchTiming.mark("javascript asked for the vaults")

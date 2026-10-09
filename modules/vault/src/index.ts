@@ -58,6 +58,8 @@ export type VaultNativeModule = {
   checkRelativePath(path: string): string | null;
   /** resolves null when the user cancels; an open vault stays open. */
   pickVault(): Promise<{ id: string; name: string } | null>;
+  /** closes the keyboard, whatever has focus, including the native editor. */
+  dismissKeyboard(): Promise<void>;
   listVaults(): Promise<{ id: string; name: string }[]>;
   openVault(id: string): Promise<{ id: string; name?: string; status: 'open' }>;
   closeVault(id: string): Promise<void>;
