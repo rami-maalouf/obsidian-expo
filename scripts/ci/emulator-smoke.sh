@@ -19,7 +19,8 @@ package=com.ramimaalouf.obsidianexpo
 vault=/sdcard/Documents/vault
 mkdir -p "$out"
 
-adb wait-for-device
+echo "waiting for the emulator to boot"
+timeout 300 adb wait-for-device
 for _ in $(seq 1 120); do
   [ "$(adb shell getprop sys.boot_completed | tr -d '\r')" = 1 ] && break
   sleep 2
@@ -34,6 +35,7 @@ adb shell svc power stayon true
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard || true
 
+echo "installing $apk"
 adb install -r "$apk"
 adb shell mkdir -p /sdcard/Documents
 adb push tests/fixtures/vault-basic "$vault" > /dev/null
@@ -48,7 +50,7 @@ diagnose() {
   echo "--- diagnostics after $1"
   adb shell pidof "$package" || echo "the app is not running"
   adb exec-out screencap -p > "$out/failure.png" || true
-  if maestro hierarchy > "$out/hierarchy.txt" 2> "$out/hierarchy.err"; then
+  if timeout 120 maestro hierarchy > "$out/hierarchy.txt" 2> "$out/hierarchy.err"; then
     sed -n '/^{/,$p' "$out/hierarchy.txt" | jq -r '
       .. | objects | select(has("attributes")) | .attributes
       | [.text, .accessibilityText, .hintText, .["resource-id"]] | map(select(. != null and . != "")) | unique
@@ -60,7 +62,8 @@ diagnose() {
 }
 
 run_flow() {
-  if ! maestro test -e OUT="$out" -e TODAY="$today" --test-output-dir "$out/maestro" "$1" 2>&1 | tee "$out/maestro-$(basename "$1" .yaml).log"; then
+  echo "--- maestro: $1"
+  if ! timeout 600 maestro test -e OUT="$out" -e TODAY="$today" --test-output-dir "$out/maestro" "$1" 2>&1 | tee "$out/maestro-$(basename "$1" .yaml).log"; then
     diagnose "$1"
     return 1
   fi
@@ -93,8 +96,10 @@ check_fixture() {
 export MAESTRO_VERSION=2.11.0
 export PATH="$HOME/.maestro/bin:$PATH"
 if ! command -v maestro > /dev/null; then
+  echo "installing maestro $MAESTRO_VERSION"
   curl -fsSL "https://get.maestro.mobile.dev" | bash
 fi
+maestro --version
 
 run_flow tests/e2e/android/pick-vault.yaml
 wait_for_note "# $today"
