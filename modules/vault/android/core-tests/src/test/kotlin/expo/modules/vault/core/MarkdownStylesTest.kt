@@ -104,4 +104,12 @@ class MarkdownStylesTest {
     val text = "---\ntitle: x\n---\n# Intro\n```\n# not a heading\n```\n## Next steps ##\n#tag\n"
     assertEquals(listOf(text.indexOf("# Intro") to "Intro", text.indexOf("## Next") to "Next steps"), MarkdownStyles.headings(text))
   }
+
+  @Test
+  fun aVeryLongLineKeepsOnlyItsBlockStyling() {
+    val line = "# " + "**bold** ".repeat(2_000)
+    val found = styled(line)
+    assertTrue(found.any { it.startsWith("HEADING") })
+    assertTrue(found.none { it.startsWith("STRONG") })
+  }
 }

@@ -1,6 +1,6 @@
 # Obsidian compatibility
 
-This page states what obsidian-expo does with an existing Obsidian vault. It describes implemented behavior; [validation](validation.md) records which parts have been verified and on what hardware. Nothing here claims support that has not been implemented.
+This page states what obsidian-expo does with an existing Obsidian vault. It describes implemented behavior on iOS; [Android](#android) lists where the Android app differs; [validation](validation.md) records which parts have been verified and on what hardware. Nothing here claims support that has not been implemented.
 
 ## Vault and files
 
@@ -61,6 +61,21 @@ Not supported, and rejected before anything is created: any other script content
 
 App bookmarks are stored per vault in the app. They are not read from or written to Obsidian's bookmarks plugin. A bookmark whose file disappears stays in the list as missing, with Locate and Remove actions; removing a bookmark never deletes its note.
 
+## Android
+
+The Android app uses the same JavaScript as the iOS app, so daily notes, templates, search, and bookmarks behave as described above. These parts differ:
+
+- The vault is a folder picked with Android's system folder picker. The app keeps the permission that the picker grants for that folder only; it does not ask for access to all files. Choosing the vault again, or "Choose another vault", asks again. Forgetting a vault gives the permission back unless another registered vault uses the same folder.
+- A note that a document provider lists but cannot open as a file (a "virtual" document, for example in some cloud providers) counts as not on this device: it is found by name, never created again, and opened only when readable. iCloud Drive is not available on Android.
+- A name that differs from the wanted name only in case or accents (for example `daily/` beside `Daily/`) makes that path's state unknown, because Android's shared storage can treat such names as the same file. Nothing is created there.
+- Saves read the file and compare its bytes with the version the edits started from, then write in place and read the result back. Android has no file coordination between apps, so a write by another app in the instant between that comparison and the write is not detected. A save that does not read back as written keeps the draft and reports an error.
+- A new note is created only under its exact name. If a document provider gives the new file another name, such as `Note (1).md`, the app deletes that file and treats the note as existing.
+- The editor shows Markdown source with the same light styling as the first iOS release (headings, dimmed marks, monospaced code, colored links and tags, bold, italic, and strikethrough), without live preview. Tapping a wikilink while the keyboard is down opens the note; with the keyboard up, a tap places the caret. `[[` opens the same link suggestions as on iOS; with a hardware keyboard, the arrow keys, Tab, Enter, and Escape work as on iOS.
+- A line break typed into a note follows the note's first line break, as on iOS. A lone carriage return (`\r`) is kept but shows as a space, not a line break.
+- The keyboard's composing text (the word that the keyboard is still changing) is saved as it is shown, because Android keyboards compose most words.
+- The file system does not report creation times through the folder picker's documents, so "Created time" sorting keeps notes in name order. Document identities are paths, so a bookmark does not follow a note that another app renamed; it shows as missing with Locate and Remove.
+- There is no menu bar; the app bar and the side panels offer the same actions.
+
 ## Not yet supported
 
-The first release edits Markdown source with light styling and no Live Preview. These are deferred: rendered Markdown, embeds, and images; styling for emphasis, tables, and HTML; graph view; backlinks and link updates on rename; tags and Dataview queries (their source text is kept); community plugins; Templater JavaScript beyond the date definitions above; syncing bookmarks with Obsidian; importing `.obsidian` settings; a custom sync service (iCloud Drive provides syncing); and Mac, Android, and web apps.
+The first release edits Markdown source with light styling and no Live Preview. These are deferred: rendered Markdown, embeds, and images; styling for emphasis, tables, and HTML; graph view; backlinks and link updates on rename; tags and Dataview queries (their source text is kept); community plugins; Templater JavaScript beyond the date definitions above; syncing bookmarks with Obsidian; importing `.obsidian` settings; a custom sync service (iCloud Drive provides syncing on iOS); and Mac and web apps.

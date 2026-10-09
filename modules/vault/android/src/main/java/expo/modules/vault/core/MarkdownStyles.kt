@@ -36,6 +36,9 @@ data class WikiLinkReference(val start: Int, val end: Int, val target: String, v
  * (front matter and code fences) is found by scanning from the top of the note.
  */
 object MarkdownStyles {
+  /** lines longer than this many utf-16 units get no inline styling. */
+  const val MAX_INLINE_LINE = 10_000
+
   private val heading = Regex("^ {0,3}(#{1,6})(?:[ \\t]+|$)")
   private val quote = Regex("^ {0,3}(?:> ?)+")
   private val listItem = Regex("^[ \\t]*(?:[-*+]|\\d{1,9}[.)])[ \\t]+(?:\\[[ xX]\\][ \\t])?")
@@ -193,7 +196,8 @@ object MarkdownStyles {
    * emphasis and tags are never found inside them.
    */
   private fun styleInline(line: CharSequence, from: Int, offset: Int, out: MutableList<StyledRange>) {
-    if (from >= line.length) return
+    // like the ios editor, a very long line keeps only its block styling, so typing stays quick.
+    if (from >= line.length || line.length > MAX_INLINE_LINE) return
     val masked = StringBuilder(line)
     fun mask(start: Int, end: Int) {
       for (index in start until end) masked.setCharAt(index, '\u0001')

@@ -94,6 +94,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   /** the start of a link whose popup was dismissed; it stays closed for that link. */
   private var dismissedCompletionStart: Int? = null
   private var keyboardOverlap = 0
+  private var keyboardShown = false
   private val flushTask = Runnable { flush() }
 
   private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { updateKeyboardOverlap() }
@@ -368,7 +369,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   fun focusEditor() {
     if (!editable) return
     editText.requestFocus()
-    context.getSystemService(InputMethodManager::class.java)?.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT)
+    context.getSystemService(InputMethodManager::class.java)?.showSoftInput(editText, 0)
   }
 
   private fun reconcile() {
@@ -429,6 +430,11 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private fun updateKeyboardOverlap() {
     val insets = ViewCompat.getRootWindowInsets(this) ?: return
     val keyboard = insets.getInsets(WindowInsetsCompat.Type.ime()).bottom
+    // the back button closes the keyboard but leaves the text focused; giving up focus then
+    // makes the note behave as it does after opening, where a tap on a link opens it.
+    val shown = insets.isVisible(WindowInsetsCompat.Type.ime())
+    if (keyboardShown && !shown && editText.isFocused) container.requestFocus()
+    keyboardShown = shown
     val location = IntArray(2)
     getLocationInWindow(location)
     val overlap = if (keyboard > 0) max(0, location[1] + height - (rootView.height - keyboard)) else 0

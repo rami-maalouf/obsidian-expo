@@ -20,7 +20,7 @@ It began with the working name Vault Notes and an SDK 57 assumption. The user th
 
 ## Defaults versus requirements
 
-The user confirmed iOS-only implementation for now, covering iPhone and iPad. Android and web feature work is outside scope. The updated plan delegates library choices to the executor using the [technology options](technology-options-2026-10.md), while retaining native input, lossless source handling, coordinated vault access, SQLite FTS5, and the required sidebar/calendar behavior. Record selections before dependent implementation. The starter's Android and web bundles do not qualify vault features on those platforms.
+The user confirmed iOS-only implementation at first, covering iPhone and iPad. On October 9, 2026, the user asked for the Android version as well and left its design to the executor; [technology decisions](technology-decisions.md) (T16) records the choices. Web feature work is outside scope. The updated plan delegates library choices to the executor using the [technology options](technology-options-2026-10.md), while retaining native input, lossless source handling, coordinated vault access, SQLite FTS5, and the required sidebar/calendar behavior. Record selections before dependent implementation. The starter's Android and web bundles do not qualify vault features on those platforms.
 
 The default daily-note profile is `Daily/YYYY-MM-DD.md`. Selected calendar dates determine note paths and titles; `tp.date.now()` uses the actual captured creation clock unless given an explicit reference. Existing notes are never templated again. The exact syntax whitelist is KTD6 in the plan.
 
