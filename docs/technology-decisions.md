@@ -123,6 +123,8 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Alternatives:** the core `FlatList` (the earlier choice, not native list cells) and `@shopify/flash-list` (SDK 58 lists 2.3.2), which has the same limit.
 
+**Sorting** (added October 9, 2026, at the user's request): a sort button at the right of the Files header opens a native menu with Obsidian's six orders in three groups: file name (A to Z, Z to A), modified time (new to old, old to new), and created time (new to old, old to new). The current order has a checkmark, so a change takes two taps. Folders always come before notes. Name orders sort folders and notes in the chosen direction; time orders sort notes by that time, with notes that have no time last and equal times by name, and keep folders A to Z. The choice is saved per vault in the app-data store (`vault:<id>:file-sort`). Modified and created times come from the vault scan (`contentModificationDateKey`, `creationDateKey`). A file's creation date is what the device's file system reports: for a note copied or downloaded to this device, for example by iCloud, it can be the copy's date rather than the note's first creation elsewhere.
+
 **Limits:** scrolling a 10,000-note tree, Dynamic Type, and VoiceOver have not been checked on a device.
 
 ## T08. Navigation shell

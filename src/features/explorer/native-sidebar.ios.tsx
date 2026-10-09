@@ -2,12 +2,27 @@
  * the left sidebar: bookmarks and the vault's files as a native SwiftUI sidebar list (r8, r9,
  * t07, t08). only expanded folders produce rows, and the list reuses rows while scrolling.
  */
-import { Button, Host, Label, List, Menu, NavigationStack, Section, Text, Toolbar, ToolbarItem } from '@expo/ui/swift-ui';
+import {
+  Button,
+  Host,
+  HStack,
+  Label,
+  List,
+  Menu,
+  NavigationStack,
+  Section,
+  Spacer,
+  Text,
+  Toggle,
+  Toolbar,
+  ToolbarItem,
+} from '@expo/ui/swift-ui';
 import {
   accessibilityIdentifier,
   accessibilityLabel,
   bold,
   foregroundStyle,
+  labelStyle,
   listStyle,
   navigationBarTitleDisplayMode,
   navigationTitle,
@@ -22,7 +37,9 @@ import { Accent } from '@/constants/theme';
 import { viewBookmarks } from '@/features/bookmarks/bookmarks';
 import { useWorkspace } from '@/features/workspace/workspace';
 
+import { FILE_SORT_GROUPS } from './file-sort';
 import { ancestorFolders, buildTree, type ExplorerRow, flattenTree } from './tree';
+import { useFileSort } from './use-file-sort';
 
 const INDENT = 14;
 const secondary = foregroundStyle({ type: 'hierarchical', style: 'secondary' });
@@ -35,9 +52,10 @@ export function NativeSidebar() {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set(activePath ? ancestorFolders(activePath) : []));
   const [locating, setLocating] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const { sort, setSort } = useFileSort(vault.id);
 
   const tree = useMemo(() => (listing ? buildTree(listing.notes) : null), [listing]);
-  const rows = useMemo(() => (tree ? flattenTree(tree, expanded) : []), [tree, expanded]);
+  const rows = useMemo(() => (tree ? flattenTree(tree, expanded, sort) : []), [tree, expanded, sort]);
   const marks = bookmarks.list ? viewBookmarks(bookmarks.list, known) : [];
 
   const toggle = useCallback(
@@ -124,7 +142,33 @@ export function NativeSidebar() {
               )}
               {bookmarks.error ? <Text modifiers={[secondary]}>{bookmarks.error}</Text> : null}
             </Section>
-            <Section title="Files">
+            <Section
+              header={
+                <HStack>
+                  <Text>Files</Text>
+                  <Spacer />
+                  {/* one tap opens obsidian's six orders; the current one has a checkmark. */}
+                  <Menu
+                    label="Sort Files"
+                    systemImage="arrow.up.arrow.down"
+                    modifiers={[labelStyle('iconOnly'), accessibilityIdentifier('files-sort')]}>
+                    {FILE_SORT_GROUPS.map((group) => (
+                      <Section key={group.id}>
+                        {group.options.map((option) => (
+                          <Toggle
+                            key={option.value}
+                            label={option.label}
+                            isOn={sort === option.value}
+                            onIsOnChange={(on) => {
+                              if (on) setSort(option.value);
+                            }}
+                          />
+                        ))}
+                      </Section>
+                    ))}
+                  </Menu>
+                </HStack>
+              }>
               {listing?.unreadableFolders.length ? (
                 <Text modifiers={[secondary]}>Some folders could not be read: {listing.unreadableFolders.join(', ')}</Text>
               ) : null}
