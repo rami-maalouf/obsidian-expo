@@ -21,7 +21,7 @@ const collator =
     ? new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' })
     : null;
 
-function compareNames(a: string, b: string) {
+export function compareNames(a: string, b: string) {
   const primary = collator ? collator.compare(a, b) : a.toLowerCase().localeCompare(b.toLowerCase());
   return primary || (a < b ? -1 : a > b ? 1 : 0);
 }
