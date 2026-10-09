@@ -73,6 +73,9 @@ jobs:
     env:
       # api 35 (android 15): edge-to-edge is on, as it is for every app on recent android.
       SYSTEM_IMAGE: system-images;android-35;google_apis;x86_64
+      # one folder for avdmanager and the emulator; in run 37896208258 the emulator did not
+      # find the device that avdmanager had created.
+      ANDROID_AVD_HOME: ${{ github.workspace }}/.avd
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/download-artifact@v4
@@ -90,9 +93,14 @@ jobs:
           tools="$ANDROID_HOME/cmdline-tools/latest/bin"
           # yes stops with a broken pipe when sdkmanager is done; only sdkmanager's result counts.
           (yes || true) | "$tools/sdkmanager" --install emulator platform-tools "$SYSTEM_IMAGE" > /dev/null
-          echo no | "$tools/avdmanager" create avd --force -n smoke -k "$SYSTEM_IMAGE" -d pixel_7
+          mkdir -p "$ANDROID_AVD_HOME"
+          echo no | "$tools/avdmanager" create avd --force -n smoke -k "$SYSTEM_IMAGE" -d pixel_7 -p "$ANDROID_AVD_HOME/smoke.avd"
+          "$ANDROID_HOME/emulator/emulator" -list-avds | grep -qx smoke
           nohup "$ANDROID_HOME/emulator/emulator" -avd smoke -no-window -no-audio -no-boot-anim -no-snapshot \
             -gpu swiftshader_indirect -camera-back none -memory 4096 > emulator.log 2>&1 &
+          # an emulator that stops at once (for example, without hardware acceleration) fails here.
+          sleep 15
+          pgrep -f 'qemu-system|emulator -avd smoke' > /dev/null || { cat emulator.log; exit 1; }
       - name: smoke test
         run: scripts/ci/emulator-smoke.sh "$(ls apk/*.apk | head -1)" smoke/android
       - if: always()
