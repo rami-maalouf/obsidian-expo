@@ -1,4 +1,4 @@
-/** native status views are ios ui; other platforms show the app shell only. */
+/** the status views have ios and android versions; the web shell shows nothing. */
 export type NoticeProps = {
   title: string;
   systemImage: string;

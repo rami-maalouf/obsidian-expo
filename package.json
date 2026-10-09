@@ -52,9 +52,12 @@
     "check": "bun run check:references && bun run typecheck && bun run lint && bun run test",
     "export": "expo export --platform all",
     "icons": "bun scripts/generate-icons.ts",
+    "icons:android": "bun scripts/generate-android-icons.ts",
     "dev": "APP_VARIANT=development expo start",
     "build:dev": "bunx eas-cli@latest build --profile development --platform ios",
     "build:preview": "bunx eas-cli@latest build --profile preview --platform ios",
+    "build:dev:android": "bunx eas-cli@latest build --profile development --platform android",
+    "build:preview:android": "bunx eas-cli@latest build --profile preview --platform android",
     "update:preview": "APP_VARIANT=preview bunx eas-cli@latest update --channel preview --environment preview"
   },
   "private": true

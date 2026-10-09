@@ -1,4 +1,4 @@
-/** the settings form is native ios ui; other platforms show the app shell only. */
+/** the settings form has ios and android versions; the web shell shows nothing. */
 import type { ListedNote } from '@/features/daily-notes/detect';
 import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 

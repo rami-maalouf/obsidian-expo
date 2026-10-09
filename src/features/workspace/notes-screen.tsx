@@ -1,4 +1,4 @@
-/** the notes screen is native ios ui; other platforms show the app shell only. */
+/** the notes screen has ios and android versions; the web shell shows nothing. */
 export function NotesScreen() {
   return null;
 }
