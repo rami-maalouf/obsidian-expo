@@ -309,7 +309,9 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 | `expo-file-system`'s storage access framework API | A general file API: a save would compare and write in separate bridge calls, so another write could land between them. This is the same reason as for iOS (T04). |
 | Jetpack Compose screens through `@expo/ui/jetpack-compose` | The Material 3 counterpart of the iOS SwiftUI screens. Not chosen for the screens because no Android device or emulator was available in the authoring environment to check Compose layout inside React Native views; core components behave predictably. The app bar still uses Compose through Expo Router. Revisit after a device review. |
 | A WebView editor (CodeMirror 6) | As for iOS (T05): a separate web runtime and an asynchronous bridge between the text and its drafts. |
-| Kotlin Multiplatform for one core on both platforms | It would replace the tested Swift core and add a build system to the iOS app. Here, the Kotlin core is a port with the same tests. |
+| Kotlin Multiplatform for one core on both platforms | It would replace the tested Swift core and add a build system to the iOS app. Here, the Kotlin core is a port, and its tests are ports of the Swift tests. |
+
+**Validation:** the Kotlin core's 64 tests pass on L2 and on A1; the Release app compiles for x86_64 on A1 with the module autolinked; see [validation](validation.md#android-october-9-2026). The emulator smoke test is recorded there.
 
 **Limits:**
 
