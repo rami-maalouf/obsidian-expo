@@ -81,7 +81,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 - F1. Select vault -> configure daily-note location/template -> preview -> open Today. Cancelling selection preserves the previous vault. Covers R1, R10-R14.
 - F2. Launch -> restore access -> resolve recovery if present -> open Today -> type -> see local save completion. Covers R1-R5, R11.
 - F3. Search or browse -> open note -> edit -> bookmark -> return through the bookmark. Covers R5-R9.
-- F4. Tap a calendar day -> resolve its canonical path -> open existing content or validate and create -> focus editor. Covers R4, R10, R13-R15.
+- F4. Tap a calendar day -> resolve its canonical path -> open existing content or validate and create -> show the note (amended October 9, 2026, at the user's request: a note opens at its top without the keyboard, and a tap places the caret). Covers R4, R10, R13-R15.
 
 ### Acceptance Examples
 

@@ -194,14 +194,20 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     case let .loaded(loaded):
       self.document = document
       newline = loaded.newline
+      let followingHeading = pendingHeading != nil
       textView.text = loaded.text
       textView.isEditable = true
+      // a `[[note#heading]]` link that already moved to its heading keeps that place.
+      if !(followingHeading && pendingHeading == nil) {
+        showStartOfNote()
+      }
       onLoad(["kind": "loaded", "restoredDraft": loaded.restoredDraft])
       if loaded.restoredDraft {
         document.persist()
       }
     case let .readOnly(preview, encoding):
       textView.text = preview
+      showStartOfNote()
       onLoad(["kind": "read-only", "encoding": encoding])
     case let .unavailable(state):
       onLoad(["kind": "unavailable", "reason": "\(state)"])
@@ -216,6 +222,32 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     case .unavailable: LaunchTiming.firstNoteShown("unavailable")
     case .recoveryNeeded: LaunchTiming.firstNoteShown("recovery-needed")
     }
+  }
+
+  /// a note opens at its top, without the keyboard. the caret waits on the line after the front
+  /// matter (or at the start), so focusing without a tap starts there rather than at the end,
+  /// where UIKit puts it after the text is set.
+  private func showStartOfNote() {
+    let text = textView.textStorage.mutableString
+    let start = FrontMatterParser.parse(text)?.endIncludingNewline(in: text) ?? 0
+    let caret = NSRange(location: min(start, text.length), length: 0)
+    textView.selectedRange = caret
+    scrollToTop()
+    // TextKit 2 lays out lazily, so a later pass can move the offset; settle it once more unless
+    // the user or a heading link has moved the caret or the text since.
+    let target = openedTarget
+    DispatchQueue.main.async { [weak self] in
+      guard let self, self.openedTarget == target, !self.textView.isTracking, !self.textView.isDecelerating,
+        self.textView.selectedRange == caret
+      else {
+        return
+      }
+      self.scrollToTop()
+    }
+  }
+
+  private func scrollToTop() {
+    textView.setContentOffset(CGPoint(x: textView.contentOffset.x, y: -textView.adjustedContentInset.top), animated: false)
   }
 
   // MARK: - editing

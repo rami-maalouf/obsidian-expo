@@ -10,6 +10,9 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:(saved|opened)"
     timeout: 15000
+# a note opens without the keyboard; a tap in the editor, below the short note, puts the caret
+# at its end.
+- tapOn: "Note text"
 - inputText: " After foreground."
 - extendedWaitUntil:
     visible:

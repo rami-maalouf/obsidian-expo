@@ -87,10 +87,8 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, 
         onLoad={(event) => {
           setLoad(event.nativeEvent);
           onShown?.();
-          if (event.nativeEvent.kind === 'loaded') {
-            // the note was chosen on purpose (or is today's): start writing right away.
-            editor.current?.focus().catch(() => undefined);
-          } else if (event.nativeEvent.kind === 'recovery-needed') {
+          // a note opens at its top without the keyboard; a tap in the text places the caret.
+          if (event.nativeEvent.kind === 'recovery-needed') {
             onRecoveryNeeded(path);
           }
         }}
