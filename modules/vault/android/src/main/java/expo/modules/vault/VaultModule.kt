@@ -382,8 +382,9 @@ class VaultModule : Module() {
     if (testFolderChecked || !isEmulator()) return
     val activity = appContext.currentActivity ?: return
     testFolderChecked = true
-    val name = activity.intent?.getStringExtra("VaultTestFolder") ?: return
+    // creates the app's own folder, so a test can copy a vault into it before a relaunch.
     val base = activity.getExternalFilesDir(null) ?: return
+    val name = activity.intent?.getStringExtra("VaultTestFolder") ?: return
     val folder = File(base, name)
     if (!isTestFolder(folder) || !folder.isDirectory) return
     ready()

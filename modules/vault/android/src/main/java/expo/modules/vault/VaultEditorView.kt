@@ -603,6 +603,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   private fun emit(payload: Map<String, Any>) {
     val status = payload["status"] as? String
+    editText.statusId = status?.let { "note-status:$it" }
     if (status == "unsaved" && lastStatus == "unsaved") return
     lastStatus = status
     onStatus(payload)

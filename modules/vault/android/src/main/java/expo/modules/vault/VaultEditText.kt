@@ -5,6 +5,8 @@ import android.content.Context
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.EditText
 import kotlin.math.abs
 
@@ -25,6 +27,17 @@ class VaultEditText(context: Context) : EditText(context) {
 
   /** moves focus away from the text, to the editor's own container. */
   var onRelease: (() -> Unit)? = null
+
+  /**
+   * the save state for ui tests, such as "note-status:saved", reported as the view's resource
+   * id; no on-screen text names the routine save states. talkback does not read resource ids.
+   */
+  var statusId: String? = null
+    set(value) {
+      if (field == value) return
+      field = value
+      sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+    }
 
   private val slop = ViewConfiguration.get(context).scaledTouchSlop
   private var downX = 0f
@@ -65,6 +78,11 @@ class VaultEditText(context: Context) : EditText(context) {
   override fun onSelectionChanged(selStart: Int, selEnd: Int) {
     super.onSelectionChanged(selStart, selEnd)
     onSelectionChange?.invoke()
+  }
+
+  override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
+    super.onInitializeAccessibilityNodeInfo(info)
+    statusId?.let { info.viewIdResourceName = it }
   }
 
   fun release() {
