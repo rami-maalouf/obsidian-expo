@@ -24,6 +24,8 @@ type NoteEditorProps = {
   onSaved?: (path: string) => void;
   /** called once the note's load outcome is on screen, whatever it is. */
   onShown?: () => void;
+  /** called when a wikilink to another note is tapped; `path` is the matching note, if any. */
+  onOpenLink?: (target: string, path: string | null) => void;
 };
 
 export function noteTitle(path: string) {
@@ -32,7 +34,7 @@ export function noteTitle(path: string) {
 }
 
 /** the note title is the navigation title; the editor shows the save status under it. */
-export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown }: NoteEditorProps) {
+export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, onOpenLink }: NoteEditorProps) {
   const editor = useRef<VaultEditorHandle>(null);
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
@@ -79,6 +81,7 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown }
             onRecoveryNeeded(path);
           }
         }}
+        onOpenLink={(event) => onOpenLink?.(event.nativeEvent.target, event.nativeEvent.path ?? null)}
       />
     </View>
   );

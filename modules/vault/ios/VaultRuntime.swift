@@ -14,8 +14,47 @@ final class VaultRuntime: @unchecked Sendable {
   let appData = AppDataStore(directory: VaultRuntime.supportDirectory.appendingPathComponent("app-data"))
   private let lock = NSLock()
   private var sessions: [String: VaultSession] = [:]
+  private var linkTargets: [String: WikiLinkTargets] = [:]
+  /// the heading of a `[[note#heading]]` link being followed; the next editor for that note
+  /// takes it. one at a time: following another link replaces it.
+  private var pendingHeading: (vaultId: String, path: String, heading: String)?
+
+  /// posted on the main queue after a vault's link targets change; `userInfo["vaultId"]`.
+  static let linkTargetsChanged = Notification.Name("vault.linkTargetsChanged")
 
   private init() {}
+
+  /// the notes that wikilinks can name, from the vault's last complete listing.
+  func linkTargets(_ vaultId: String) -> WikiLinkTargets? {
+    lock.lock()
+    defer { lock.unlock() }
+    return linkTargets[vaultId]
+  }
+
+  func setPendingHeading(_ heading: String?, vaultId: String, path: String) {
+    lock.lock()
+    defer { lock.unlock() }
+    pendingHeading = heading.map { (vaultId, path, $0) }
+  }
+
+  func takePendingHeading(vaultId: String, path: String) -> String? {
+    lock.lock()
+    defer { lock.unlock() }
+    guard let pending = pendingHeading, pending.vaultId == vaultId, pending.path == path else {
+      return nil
+    }
+    pendingHeading = nil
+    return pending.heading
+  }
+
+  func setLinkTargets(_ targets: WikiLinkTargets, for vaultId: String) {
+    lock.lock()
+    linkTargets[vaultId] = targets
+    lock.unlock()
+    DispatchQueue.main.async {
+      NotificationCenter.default.post(name: VaultRuntime.linkTargetsChanged, object: nil, userInfo: ["vaultId": vaultId])
+    }
+  }
 
   func session(_ id: String) -> VaultSession? {
     lock.lock()

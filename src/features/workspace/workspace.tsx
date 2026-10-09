@@ -11,7 +11,7 @@ import { useWindowDimensions } from 'react-native';
 import { useBookmarks } from '@/features/bookmarks/use-bookmarks';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
 import type { DailyNoteSettings } from '@/features/daily-notes/settings';
-import { createUntitledNote, folderOf } from '@/features/explorer/new-note';
+import { createUntitledNote, folderOf, linkedNotePath } from '@/features/explorer/new-note';
 import { useNoteList } from '@/features/explorer/use-note-list';
 import { useDrafts } from '@/features/recovery/use-drafts';
 import { useSearchIndex } from '@/features/search/use-search-index';
@@ -130,6 +130,29 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     return true;
   }, [open, path, refreshNotes, vault.id]);
 
+  /**
+   * opens the note a tapped wikilink names. with no matching note, it creates the note, as
+   * obsidian does: beside the open note, or at the link's vault path. creation is exclusive, so
+   * a file made since the last listing is opened, never replaced.
+   */
+  const openLink = useCallback(
+    async (target: string, resolved: string | null): Promise<boolean> => {
+      if (resolved) {
+        open(resolved);
+        return true;
+      }
+      const native = VaultNative;
+      const notePath = linkedNotePath(target, path);
+      if (!native || !notePath || native.checkRelativePath(notePath) !== null) return false;
+      const result = await native.createExclusive(vault.id, notePath, '');
+      if (result.kind === 'unavailable') return false;
+      refreshNotes();
+      open(notePath);
+      return true;
+    },
+    [open, path, refreshNotes, vault.id],
+  );
+
   // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
   useEffect(() => {
     const subscription = VaultNative?.addListener('onMenuCommand', ({ command }) => {
@@ -161,6 +184,7 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     vault,
     settings,
     createNote,
+    openLink,
     saveSettings,
     chooseVault,
     drafts,

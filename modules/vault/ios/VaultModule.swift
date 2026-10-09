@@ -128,7 +128,9 @@ public class VaultModule: Module {
     AsyncFunction("listNotes") { (vaultId: String) -> [String: Any] in
       try self.withFiles(vaultId) { files in
         var notes: [[String: Any]] = []
+        var paths: [String] = []
         let summary = files.enumerateNotes { batch in
+          paths.append(contentsOf: batch.map(\.path))
           notes.append(contentsOf: batch.map { entry in
             var note: [String: Any] = ["path": entry.path, "placeholder": entry.state == .placeholder]
             if let size = entry.size { note["size"] = size }
@@ -138,6 +140,8 @@ public class VaultModule: Module {
           })
           return true
         }
+        // the editor resolves wikilinks against this listing without asking javascript.
+        VaultRuntime.shared.setLinkTargets(WikiLinkTargets(paths: paths), for: vaultId)
         LaunchTiming.mark("first vault scan finished", detail: ": \(notes.count) notes")
         return ["notes": notes, "unreadableFolders": summary.unreadableFolders]
       }
@@ -189,7 +193,7 @@ public class VaultModule: Module {
     }.runOnQueue(VaultModule.fileQueue)
 
     View(VaultEditorView.self) {
-      Events("onStatus", "onLoad")
+      Events("onStatus", "onLoad", "onOpenLink")
 
       Prop("vaultId") { (view, vaultId: String?) in
         view.vaultId = vaultId

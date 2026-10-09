@@ -12,6 +12,8 @@ import UIKit
 public final class VaultEditorView: ExpoView, UITextViewDelegate {
   let onStatus = EventDispatcher()
   let onLoad = EventDispatcher()
+  /// a tap on a wikilink to another note: `target` as written, and `path` when a note matches.
+  let onOpenLink = EventDispatcher()
 
   var vaultId: String?
   var path: String?
@@ -26,6 +28,8 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   private var lastStatus: String?
   /// "saved locally" is shown only after a save of this document completed (integrity gate).
   private var savedSinceOpen = false
+  /// a `[[note#heading]]` heading in this note to put the caret on once the note is parsed.
+  private var pendingHeading: String?
   private var observers: [NSObjectProtocol] = []
   private static let settleDelay: TimeInterval = 0.2
 
@@ -61,6 +65,25 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     })
     observers.append(center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
       MainActor.assumeIsolated { self?.reconcile() }
+    })
+
+    // wikilinks resolve against the vault's last note listing (VaultRuntime). a link shown as
+    // rendered text opens on a tap; a missing note's link takes laperm's unresolved color.
+    textView.wikiLinkResolver = { [weak self] reference in
+      self?.resolution(of: reference) ?? .unknown
+    }
+    textView.onOpenWikiLink = { [weak self] reference in
+      self?.follow(reference) ?? false
+    }
+    textView.onOutlineChange = { [weak self] outline in
+      self?.showPendingHeading(in: outline)
+    }
+    observers.append(center.addObserver(forName: VaultRuntime.linkTargetsChanged, object: nil, queue: .main) { [weak self] note in
+      let vaultId = note.userInfo?["vaultId"] as? String
+      MainActor.assumeIsolated {
+        guard let self, vaultId == self.vaultId else { return }
+        self.textView.refreshWikiLinkResolution()
+      }
     })
   }
 
@@ -119,6 +142,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     }
     flush()
     openedTarget = target
+    pendingHeading = VaultRuntime.shared.takePendingHeading(vaultId: vaultId, path: path)
     savedSinceOpen = false
     document = nil
     textView.isEditable = false
@@ -287,6 +311,61 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
         self.newline = DocumentSession.newline(of: text)
       }
     }
+  }
+
+  // MARK: - wikilinks
+
+  private func targets() -> WikiLinkTargets? {
+    vaultId.flatMap { VaultRuntime.shared.linkTargets($0) }
+  }
+
+  private func resolution(of reference: WikiLinkReference) -> WikiLinkResolution {
+    if reference.target.isEmpty {
+      return .resolved
+    }
+    guard let targets = targets() else {
+      // before the first listing, links keep the normal link color.
+      return .unknown
+    }
+    return targets.resolve(reference.target, from: path) == nil ? .unresolved : .resolved
+  }
+
+  /// a link to this note only moves to its heading. any other link goes to javascript, which
+  /// opens the note, or creates it when no note matches. returns true: the tap is handled.
+  private func follow(_ reference: WikiLinkReference) -> Bool {
+    let resolved = reference.target.isEmpty ? path : targets()?.resolve(reference.target, from: path)
+    if let resolved, resolved == path {
+      if let heading = reference.heading {
+        pendingHeading = heading
+        showPendingHeading(in: textView.outline)
+      }
+      return true
+    }
+    if let resolved, let vaultId {
+      // the note opens in a new editor view, which takes the heading.
+      VaultRuntime.shared.setPendingHeading(reference.heading, vaultId: vaultId, path: resolved)
+    }
+    var payload: [String: Any] = ["target": reference.target]
+    if let resolved {
+      payload["path"] = resolved
+    }
+    onOpenLink(payload)
+    return true
+  }
+
+  /// puts the caret on the pending heading once the note it belongs to is open and parsed.
+  /// `[[note#a#b]]` names heading "b" under "a"; the last part is matched, ignoring case.
+  private func showPendingHeading(in outline: [OutlineItem]) {
+    guard let heading = pendingHeading, document != nil else {
+      return
+    }
+    let wanted = (heading.split(separator: "#").last.map(String.init) ?? heading)
+      .trimmingCharacters(in: .whitespaces)
+    guard let item = outline.first(where: { $0.title.trimmingCharacters(in: .whitespaces).caseInsensitiveCompare(wanted) == .orderedSame }) else {
+      return
+    }
+    pendingHeading = nil
+    textView.select(NSRange(location: item.headingLocation, length: 0))
   }
 
   // MARK: - status

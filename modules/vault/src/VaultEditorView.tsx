@@ -24,6 +24,9 @@ export type EditorLoadEvent =
   | { kind: 'unavailable'; reason: string }
   | { kind: 'recovery-needed'; draftSequence: number; diskChanged: boolean };
 
+/** a tap on a wikilink to another note: the target as written, and the matching note's path. */
+export type EditorOpenLinkEvent = { target: string; path?: string };
+
 export type VaultEditorHandle = {
   /** starts writing pending edits; status events report the result. */
   flush(): Promise<void>;
@@ -35,6 +38,7 @@ export type VaultEditorViewProps = ViewProps & {
   path: string | null;
   onStatus?: (event: NativeSyntheticEvent<EditorStatusEvent>) => void;
   onLoad?: (event: NativeSyntheticEvent<EditorLoadEvent>) => void;
+  onOpenLink?: (event: NativeSyntheticEvent<EditorOpenLinkEvent>) => void;
   ref?: Ref<VaultEditorHandle>;
 };
 

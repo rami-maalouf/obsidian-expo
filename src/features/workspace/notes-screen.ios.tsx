@@ -59,6 +59,7 @@ export function NotesScreen() {
         onSaved={workspace.onSaved}
         onShown={showFirstScreen}
         onRecoveryNeeded={workspace.onRecoveryNeeded}
+        onOpenLink={workspace.openLink}
       />
     );
   } else if (today.state.phase !== 'done') {

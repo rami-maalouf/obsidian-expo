@@ -16,6 +16,26 @@ export function untitledPath(folder: string, attempt: number): string {
   return folder ? `${folder}/${name}` : name;
 }
 
+/** characters that obsidian refuses in note names; a link that needs them creates nothing. */
+const UNSAFE_NAME = /[\\:*?"<>]/;
+
+/**
+ * the path for the note a wikilink names when no note matches: beside the open note, or the
+ * vault path itself when the target has a "/". returns null when no valid name results.
+ */
+export function linkedNotePath(target: string, from: string | null): string | null {
+  let name = target.trim().replace(/\.md$/i, '');
+  if (!name || UNSAFE_NAME.test(name)) return null;
+  if (name.includes('/')) {
+    name = name.replace(/^\/+/, '');
+    const segments = name.split('/').map((segment) => segment.trim());
+    if (segments.some((segment) => segment === '')) return null;
+    return `${segments.join('/')}.md`;
+  }
+  const folder = folderOf(from);
+  return folder ? `${folder}/${name}.md` : `${name}.md`;
+}
+
 /** returns the created path, or null when every name is taken or creation failed. */
 export async function createUntitledNote(folder: string, create: (path: string) => Promise<CreateResult>): Promise<string | null> {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
