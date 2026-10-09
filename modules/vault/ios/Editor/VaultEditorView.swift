@@ -30,6 +30,12 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   private var savedSinceOpen = false
   /// a `[[note#heading]]` heading in this note to put the caret on once the note is parsed.
   private var pendingHeading: String?
+  /// `[[` link completion: the popup, the link being typed, and what each row inserts.
+  private let completion = WikiLinkCompletionView()
+  private var completionQuery: WikiLinkQuery?
+  private var completionInserts: [String] = []
+  /// the start of a link whose popup was dismissed with escape; it stays closed for that link.
+  private var dismissedCompletionStart: Int?
   private var observers: [NSObjectProtocol] = []
   private static let settleDelay: TimeInterval = 0.2
 
@@ -52,6 +58,10 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     textView.accessibilityLabel = "Note text"
     textView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     addSubview(textView)
+    completion.onSelect = { [weak self] index in
+      self?.acceptCompletion(at: index)
+    }
+    addSubview(completion)
     // the theme's fonts are fixed sizes, so a dynamic type change builds a new theme.
     registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: VaultEditorView, _: UITraitCollection) in
       view.textView.theme = VaultEditorView.theme(for: view.traitCollection)
@@ -128,6 +138,9 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   public override func layoutSubviews() {
     super.layoutSubviews()
     textView.frame = bounds
+    if !completion.isHidden {
+      positionCompletion()
+    }
   }
 
   // MARK: - opening
@@ -142,6 +155,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     }
     flush()
     openedTarget = target
+    hideCompletion()
     pendingHeading = VaultRuntime.shared.takePendingHeading(vaultId: vaultId, path: path)
     savedSinceOpen = false
     document = nil
@@ -207,6 +221,11 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   // MARK: - editing
 
   public func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+    // return chooses the highlighted link suggestion instead of starting a new line.
+    if !completion.isHidden, textView.markedTextRange == nil, text.hasPrefix("\n") || text.hasPrefix("\r") {
+      acceptCompletion(at: completion.highlighted)
+      return false
+    }
     // new line breaks follow the file's convention; untouched text is never rewritten.
     guard newline != "\n", !applyingNewline, textView.markedTextRange == nil, text.contains("\n") else {
       return true
@@ -231,6 +250,25 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   }
 
   public func textViewDidChange(_ textView: UITextView) {
+    noteEdited()
+    updateCompletion()
+  }
+
+  public func textViewDidChangeSelection(_ textView: UITextView) {
+    updateCompletion()
+  }
+
+  public func textViewDidEndEditing(_ textView: UITextView) {
+    hideCompletion()
+  }
+
+  public func scrollViewDidScroll(_ scrollView: UIScrollView) {
+    if !completion.isHidden {
+      positionCompletion()
+    }
+  }
+
+  private func noteEdited() {
     guard document != nil else {
       return
     }
@@ -311,6 +349,156 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
         self.newline = DocumentSession.newline(of: text)
       }
     }
+  }
+
+  // MARK: - link completion
+
+  /// shows, updates, or hides the `[[` popup for the caret. it runs on every edit and caret
+  /// move; the vault's note names are ranked natively, so no keystroke waits for javascript.
+  private func updateCompletion() {
+    let selection = textView.selectedRange
+    guard textView.isFirstResponder, document != nil, textView.markedTextRange == nil, selection.length == 0,
+      let query = WikiLinkCompletion.query(in: textView.textStorage.mutableString, caret: selection.location)
+    else {
+      dismissedCompletionStart = nil
+      hideCompletion()
+      return
+    }
+    guard query.start != dismissedCompletionStart else {
+      hideCompletion()
+      return
+    }
+    var items: [WikiLinkCompletionView.Item] = []
+    var inserts: [String] = []
+    if query.isHeading {
+      // `[[#`: headings of this note, best match first, in document order for ties.
+      let wanted = String(query.text.dropFirst())
+      let ranked = textView.outline.enumerated()
+        .filter { !$0.element.title.isEmpty }
+        .compactMap { offset, item in
+          WikiLinkTargets.score(wanted, in: item.title).map { (offset: offset, title: item.title, score: $0) }
+        }
+        .sorted { $0.score != $1.score ? $0.score > $1.score : $0.offset < $1.offset }
+        .prefix(6)
+      for heading in ranked {
+        items.append(.init(title: heading.title, detail: nil, isHeading: true))
+        inserts.append("#" + heading.title)
+      }
+    } else if let targets = targets() {
+      for suggestion in targets.suggestions(for: query.text, from: path) {
+        items.append(.init(title: suggestion.name, detail: suggestion.folder.isEmpty ? nil : suggestion.folder, isHeading: false))
+        inserts.append(suggestion.linkText)
+      }
+    }
+    // nothing to offer when the only suggestion is what is already typed.
+    let typedAlready = inserts.count == 1 && inserts[0].caseInsensitiveCompare(query.text) == .orderedSame
+    guard !items.isEmpty, !typedAlready, let layout = completionLayout(rows: items.count) else {
+      hideCompletion()
+      return
+    }
+    let appearing = completion.isHidden
+    completionQuery = query
+    completionInserts = Array(inserts.prefix(layout.rows))
+    completion.show(Array(items.prefix(layout.rows)))
+    completion.frame = layout.frame
+    completion.isHidden = false
+    if appearing {
+      UIAccessibility.post(notification: .announcement, argument: "\(layout.rows) link suggestions")
+    }
+  }
+
+  /// below the caret's line, or above it when the keyboard leaves more room there. fewer rows
+  /// are shown when the visible text is short; nil when none fit or the caret is off screen.
+  private func completionLayout(rows wanted: Int) -> (frame: CGRect, rows: Int)? {
+    guard wanted > 0, let range = textView.selectedTextRange else { return nil }
+    let caret = textView.convert(textView.caretRect(for: range.end), to: self)
+    let top = textView.frame.minY + textView.adjustedContentInset.top + 4
+    let bottom = textView.frame.maxY - textView.adjustedContentInset.bottom - 4
+    guard caret.maxY > top, caret.minY < bottom else { return nil }
+    let gap: CGFloat = 6
+    func fit(_ space: CGFloat) -> Int {
+      max(0, min(wanted, Int((space - WikiLinkCompletionView.height(rows: 0)) / WikiLinkCompletionView.rowHeight)))
+    }
+    let rowsBelow = fit(bottom - caret.maxY - gap)
+    let rowsAbove = fit(caret.minY - gap - top)
+    let rows = max(rowsBelow, rowsAbove)
+    guard rows > 0 else { return nil }
+    let height = WikiLinkCompletionView.height(rows: rows)
+    let y = rowsBelow >= rows ? caret.maxY + gap : caret.minY - gap - height
+    let width = min(WikiLinkCompletionView.width, bounds.width - 16)
+    let x = min(max(8, caret.minX - 16), bounds.width - width - 8)
+    return (CGRect(x: x, y: y, width: width, height: height), rows)
+  }
+
+  /// follows the caret while the text scrolls; hides the popup when its rows no longer fit.
+  private func positionCompletion() {
+    guard let layout = completionLayout(rows: completion.items.count), layout.rows == completion.items.count else {
+      hideCompletion()
+      return
+    }
+    completion.frame = layout.frame
+  }
+
+  private func hideCompletion() {
+    completion.isHidden = true
+    completion.show([])
+    completionQuery = nil
+    completionInserts = []
+  }
+
+  /// replaces the typed target with the chosen link and puts the caret after it. the edit goes
+  /// through UITextInput, so it is one undo step.
+  private func acceptCompletion(at index: Int) {
+    guard let query = completionQuery, index < completionInserts.count else { return }
+    let edit = query.edit(inserting: completionInserts[index])
+    // the finished link stays without a popup until the caret leaves it.
+    dismissedCompletionStart = query.start
+    hideCompletion()
+    guard
+      let start = textView.position(from: textView.beginningOfDocument, offset: edit.range.location),
+      let end = textView.position(from: start, offset: edit.range.length),
+      let range = textView.textRange(from: start, to: end)
+    else {
+      return
+    }
+    textView.replace(range, withText: edit.text)
+    textView.selectedRange = NSRange(location: edit.caret, length: 0)
+    noteEdited()
+  }
+
+  /// with the popup open, a hardware keyboard's arrows move the highlight, tab chooses it, and
+  /// escape closes the popup. return is handled with the other text changes.
+  public override var keyCommands: [UIKeyCommand]? {
+    guard !completion.isHidden else {
+      return super.keyCommands
+    }
+    let commands = [
+      UIKeyCommand(input: UIKeyCommand.inputUpArrow, modifierFlags: [], action: #selector(highlightPreviousSuggestion)),
+      UIKeyCommand(input: UIKeyCommand.inputDownArrow, modifierFlags: [], action: #selector(highlightNextSuggestion)),
+      UIKeyCommand(input: "\t", modifierFlags: [], action: #selector(chooseHighlightedSuggestion)),
+      UIKeyCommand(input: UIKeyCommand.inputEscape, modifierFlags: [], action: #selector(dismissSuggestions)),
+    ]
+    for command in commands {
+      command.wantsPriorityOverSystemBehavior = true
+    }
+    return commands
+  }
+
+  @objc private func highlightPreviousSuggestion() {
+    completion.moveHighlight(by: -1)
+  }
+
+  @objc private func highlightNextSuggestion() {
+    completion.moveHighlight(by: 1)
+  }
+
+  @objc private func chooseHighlightedSuggestion() {
+    acceptCompletion(at: completion.highlighted)
+  }
+
+  @objc private func dismissSuggestions() {
+    dismissedCompletionStart = completionQuery?.start
+    hideCompletion()
   }
 
   // MARK: - wikilinks
