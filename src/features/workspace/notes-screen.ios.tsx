@@ -141,11 +141,13 @@ export function NotesScreen() {
           <Stack.Toolbar.MenuAction icon="magnifyingglass" onPress={() => router.push('/search')}>
             Search
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="square.and.pencil" onPress={() => workspace.createNote()}>
+          <Stack.Toolbar.MenuAction
+            icon="square.and.pencil"
+            onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't Create a Note", problem))}>
             New note
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="calendar.badge.clock" onPress={() => router.push('/settings')}>
-            Daily note settings
+          <Stack.Toolbar.MenuAction icon="gearshape" onPress={() => router.push('/settings')}>
+            Note settings
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="folder" onPress={workspace.chooseVault}>
             Choose another vault

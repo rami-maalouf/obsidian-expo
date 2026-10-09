@@ -28,7 +28,7 @@ enum VaultMenu {
     UIMainMenuSystem.shared.setBuildConfiguration(UIMainMenuSystem.Configuration()) { builder in
       let file = UIMenu(title: "", options: .displayInline, children: [
         UIKeyCommand(title: "New Note", action: #selector(UIApplication.vaultNewNote(_:)), input: "n", modifierFlags: .command),
-        UIKeyCommand(title: "Daily Note Settings…", action: #selector(UIApplication.vaultSettings(_:)), input: ",", modifierFlags: .command),
+        UIKeyCommand(title: "Note Settings…", action: #selector(UIApplication.vaultSettings(_:)), input: ",", modifierFlags: .command),
       ])
       builder.insertChild(file, atStartOfMenu: .file)
 
