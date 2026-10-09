@@ -153,6 +153,20 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     [open, path, refreshNotes, vault.id],
   );
 
+  /**
+   * shows the open note at its new path after its file was renamed. the new listing removes the
+   * old path from search and moves its bookmark, which follows the file's identity.
+   */
+  const noteRenamed = useCallback(
+    (to: string) => {
+      dailyNotes.navigateAway();
+      setSelected(to);
+      setDayProblem(null);
+      refreshNotes();
+    },
+    [refreshNotes],
+  );
+
   // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
   useEffect(() => {
     const subscription = VaultNative?.addListener('onMenuCommand', ({ command }) => {
@@ -185,6 +199,7 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     settings,
     createNote,
     openLink,
+    noteRenamed,
     saveSettings,
     chooseVault,
     drafts,

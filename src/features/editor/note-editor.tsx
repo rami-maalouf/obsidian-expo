@@ -3,7 +3,7 @@
  * above the text appears only when a save went wrong or the note is read-only or unavailable.
  * the notice is a live region so voiceover announces problems (r17).
  */
-import { useEffect, useRef, useState } from 'react';
+import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Accent, SystemColors } from '@/constants/theme';
@@ -11,6 +11,7 @@ import { Accent, SystemColors } from '@/constants/theme';
 import {
   type EditorLoadEvent,
   type EditorStatusEvent,
+  type NativeRenameResult,
   type VaultEditorHandle,
   VaultEditorView,
 } from '../../../modules/vault/src/VaultEditorView';
@@ -29,6 +30,12 @@ type NoteEditorProps = {
   onOpenLink?: (target: string, path: string | null) => void;
   /** called when edits start or stop waiting for a save, for the unsaved mark in the title. */
   onUnsavedChange?: (unsaved: boolean) => void;
+  ref?: Ref<NoteEditorHandle>;
+};
+
+export type NoteEditorHandle = {
+  /** saves the open note, then renames its file; null when no editor is on screen. */
+  rename(newPath: string): Promise<NativeRenameResult | null>;
 };
 
 export function noteTitle(path: string) {
@@ -37,8 +44,9 @@ export function noteTitle(path: string) {
 }
 
 /** the note title is the navigation title; the editor reports its save state to it. */
-export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, onOpenLink, onUnsavedChange }: NoteEditorProps) {
+export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, onOpenLink, onUnsavedChange, ref }: NoteEditorProps) {
   const editor = useRef<VaultEditorHandle>(null);
+  useImperativeHandle(ref, () => ({ rename: async (newPath) => (editor.current ? editor.current.rename(newPath) : null) }), []);
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [unsaved, setUnsaved] = useState(false);
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
