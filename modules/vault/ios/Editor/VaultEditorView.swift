@@ -246,7 +246,8 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   }
 
   func focus() {
-    textView.becomeFirstResponder()
+    // laperm's override of this method does not mark its result as discardable.
+    _ = textView.becomeFirstResponder()
   }
 
   // MARK: - lifecycle

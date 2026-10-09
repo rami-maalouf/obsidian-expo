@@ -91,9 +91,9 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 | Enriched Markdown 1.1.1 | Rich-text editing with Markdown output; it normalizes source, so lossless editing is not established. |
 | CodeMirror 6 through Expo DOM with a live-preview extension | Obsidian's own approach on iOS (a web view); a separate web runtime with an asynchronous bridge, and native input and draft ownership would need proof. |
 
-**Validation:** on L1, `bun run check` and the production export pass, and `expo prebuild --platform ios --no-install` writes `ios.deploymentTarget` `27.0` to `Podfile.properties.json` and the app target. Native compilation, the Simulator flows, and device behavior are recorded in [validation](validation.md) as they run.
+**Validation:** on L1, `bun run check` and the production export pass, and `expo prebuild --platform ios --no-install` writes `ios.deploymentTarget` `27.0` to `Podfile.properties.json` and the app target. EAS preview build `6c41494c-9896-41ff-9657-81e73206c430` (`3614b80`, Xcode 27.0) archived the app for devices with the package resolved at the pinned commit, and copied Laperm's resource bundle into the app. The GitHub Simulator job cannot build it until its runner image offers Xcode 27. Details are in [validation](validation.md).
 
-**Limits:** wikilinks are styled, but a tap on one does nothing yet (the view sets no `onOpenWikiLink` handler or resolver); image previews have no base folder; Laperm's link-menu titles come from its resource bundle, whose presence in the app is unverified; VoiceOver, IME, dictation, hardware keyboard, undo, and long notes (4 KiB, 100 KiB, 1 MiB) are unverified on a device; the package has one author and no releases.
+**Limits:** wikilinks are styled, but a tap on one does nothing yet (the view sets no `onOpenWikiLink` handler or resolver); image previews have no base folder; the Simulator flows have not run with this editor; VoiceOver, IME, dictation, hardware keyboard, undo, and long notes (4 KiB, 100 KiB, 1 MiB) are unverified on a device; the package has one author and no releases.
 
 ## T06. SQLite index and metadata
 
