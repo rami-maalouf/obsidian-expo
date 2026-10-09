@@ -311,7 +311,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 | A WebView editor (CodeMirror 6) | As for iOS (T05): a separate web runtime and an asynchronous bridge between the text and its drafts. |
 | Kotlin Multiplatform for one core on both platforms | It would replace the tested Swift core and add a build system to the iOS app. Here, the Kotlin core is a port, and its tests are ports of the Swift tests. |
 
-**Validation:** the Kotlin core's 64 tests pass on L2 and on A1; the Release app compiles for x86_64 on A1 with the module autolinked; see [validation](validation.md#android-october-9-2026). The emulator smoke test is recorded there.
+**Validation:** the Kotlin core's 64 tests pass on L2 and on A1; the Release app compiles for x86_64 on A1 with the module autolinked; see [validation](validation.md#android-october-9-2026). On an Android 15 emulator, the Release app picked the fixture vault with the system folder picker, created today's note from the vault's template, saved typed text, reopened today after a relaunch, and searched, with every other fixture file byte-identical (run 37902235503).
 
 **Limits:**
 
