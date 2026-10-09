@@ -13,6 +13,7 @@
     },
     "ios": {
       "supportsTablet": true,
+      "deploymentTarget": "27.0",
       "bundleIdentifier": "com.ramimaalouf.obsidianexpo",
       "icon": "./assets/icons/app.icon",
       "infoPlist": {

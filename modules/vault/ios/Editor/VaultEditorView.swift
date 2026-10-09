@@ -1,8 +1,14 @@
 import ExpoModulesCore
+import LapermEditor
 import UIKit
 
 /// native markdown source editor (ktd3). native code owns the text, selection, composition,
 /// and undo; javascript receives status events, never the full text on each keystroke.
+///
+/// the text view is laperm's TextKit 2 editor (t05). its live preview hides markdown markers on
+/// every line except the ones the caret or selection touches, and on every line while the
+/// keyboard is down. it styles the text storage's attributes only, so the saved text is the
+/// typed markdown. this view keeps the document session, drafts, saves, and newlines.
 public final class VaultEditorView: ExpoView, UITextViewDelegate {
   let onStatus = EventDispatcher()
   let onLoad = EventDispatcher()
@@ -10,8 +16,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   var vaultId: String?
   var path: String?
 
-  private let textView = UITextView(usingTextLayoutManager: true)
-  private var styler: MarkdownStyler?
+  private let textView = MarkdownTextView(theme: VaultEditorView.theme(for: nil))
   private var document: DocumentSession?
   private var openedTarget: String?
   private var newline = "\n"
@@ -27,12 +32,13 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     textView.delegate = self
-    textView.font = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 17))
-    textView.adjustsFontForContentSizeCategory = true
-    textView.textColor = .label
-    textView.backgroundColor = .systemBackground
-    textView.textContainerInset = UIEdgeInsets(top: 16, left: 12, bottom: 32, right: 12)
-    textView.alwaysBounceVertical = true
+    // top and bottom only: `margins` sets the sides and keeps long lines readable on ipad.
+    textView.textContainerInset = UIEdgeInsets(top: 16, left: 0, bottom: 32, right: 0)
+    textView.margins = .readable
+    textView.showsLineNumbers = false
+    textView.isLivePreviewEnabled = true
+    // pair completion would add characters the user did not type, such as a closing backtick.
+    textView.editingOptions.completesPairs = false
     textView.keyboardDismissMode = .interactive
     // smart punctuation would rewrite markdown source such as quotes, dashes, and spacing.
     textView.smartQuotesType = .no
@@ -42,21 +48,43 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     textView.accessibilityLabel = "Note text"
     textView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     addSubview(textView)
-    // display-only styling; reading textLayoutManager keeps TextKit 2 (layoutManager would not).
-    styler = MarkdownStyler(contentStorage: textView.textLayoutManager?.textContentManager as? NSTextContentStorage)
+    // the theme's fonts are fixed sizes, so a dynamic type change builds a new theme.
+    registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: VaultEditorView, _: UITraitCollection) in
+      view.textView.theme = VaultEditorView.theme(for: view.traitCollection)
+    }
 
     let center = NotificationCenter.default
-    // these observers are delivered on the main queue.
+    // these observers are delivered on the main queue. the text view moves its own content
+    // above the keyboard.
     observers.append(center.addObserver(forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main) { [weak self] _ in
       MainActor.assumeIsolated { self?.flushForBackground() }
     })
     observers.append(center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
       MainActor.assumeIsolated { self?.reconcile() }
     })
-    observers.append(center.addObserver(forName: UIResponder.keyboardWillChangeFrameNotification, object: nil, queue: .main) { [weak self] note in
-      let frame = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect
-      MainActor.assumeIsolated { self?.keyboardWillChangeFrame(frame) }
-    })
+  }
+
+  /// a reading theme: the system body font at the user's text size, bold headings at fixed
+  /// ratios, and monospaced code. laperm's default theme gives the colors and spacing.
+  static func theme(for traits: UITraitCollection?) -> MarkdownTheme {
+    let body = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 17), compatibleWith: traits)
+    let size = body.pointSize
+    let bold = UIFont.systemFont(ofSize: size, weight: .bold)
+    let mono = UIFont.monospacedSystemFont(ofSize: (size * 0.9).rounded(), weight: .regular)
+    var theme = MarkdownTheme.default
+    theme.bodyFont = body
+    let headingScales: [CGFloat] = [1.6, 1.4, 1.25, 1.1, 1, 1]
+    for (index, scale) in headingScales.enumerated() {
+      theme.styles[.heading(level: index + 1)] = .init(font: .systemFont(ofSize: (size * scale).rounded(), weight: .bold))
+    }
+    theme.styles[.strong] = .init(font: bold)
+    theme.styles[.emphasis] = .init(font: .italicSystemFont(ofSize: size))
+    theme.styles[.tableHeader] = .init(font: bold)
+    theme.styles[.inlineCode] = .init(font: mono, foregroundColor: .systemPink)
+    theme.styles[.codeBlock] = .init(font: mono, foregroundColor: .label)
+    theme.styles[.listMarker] = .init(foregroundColor: .secondaryLabel)
+    theme.lineSpacing = 3
+    return theme
   }
 
   deinit {
@@ -173,14 +201,12 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     return false
   }
 
+  /// laperm adds "open link" to the edit menu for a link; it never sets the delegate itself.
+  public func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {
+    self.textView.editMenu(forTextIn: range, suggestedActions: suggestedActions)
+  }
+
   public func textViewDidChange(_ textView: UITextView) {
-    if styler?.staleFrom != nil {
-      // after this edit finishes, and never during a keyboard composition.
-      DispatchQueue.main.async { [weak self] in
-        guard let self, self.textView.markedTextRange == nil else { return }
-        self.styler?.refresh()
-      }
-    }
     guard document != nil else {
       return
     }
@@ -260,16 +286,6 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
         self.newline = DocumentSession.newline(of: text)
       }
     }
-  }
-
-  private func keyboardWillChangeFrame(_ frame: CGRect?) {
-    guard let frame, let window else {
-      return
-    }
-    let keyboard = convert(frame, from: window.screen.coordinateSpace)
-    let overlap = max(0, bounds.maxY - keyboard.minY)
-    textView.contentInset.bottom = overlap
-    textView.verticalScrollIndicatorInsets.bottom = overlap
   }
 
   // MARK: - status

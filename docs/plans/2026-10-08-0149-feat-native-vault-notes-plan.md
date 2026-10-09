@@ -97,7 +97,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 
 ### Scope Boundaries
 
-The first release edits Markdown source with restrained syntax styling. Full Obsidian Live Preview, rendered embeds, graph view, backlinks, plugin execution, arbitrary Templater JavaScript, bookmark synchronization with Obsidian, and a custom sync service are deferred. Mac, Android, and web are later platform work. No speed claim relative to Obsidian is justified until measured.
+The first release edits Markdown source with restrained syntax styling. Full Obsidian Live Preview, rendered embeds, graph view, backlinks, plugin execution, arbitrary Templater JavaScript, bookmark synchronization with Obsidian, and a custom sync service are deferred. Mac, Android, and web are later platform work. No speed claim relative to Obsidian is justified until measured. Amended October 8, 2026, at the user's request: the editor shows line-level live preview (markers hidden except on the lines the caret touches) through the editor package recorded in T05 of the [technology decisions](../technology-decisions.md). Rendered embeds and the rest of the list above stay deferred.
 
 ### Repository References
 

@@ -3,13 +3,14 @@
 #
 #   scripts/ci/simulator-smoke.sh <device name prefix> <app bundle> <output dir> [maestro flow | @external-edit | @lock-daily | @unlock-daily ...]
 #
-# 1. boots the first available simulator whose name starts with the prefix and installs the app.
+# 1. boots the first available simulator of an ios 27 or newer runtime whose name starts with the
+#    prefix, and installs the app.
 # 2. copies tests/fixtures/vault-basic to the app's documents and launches it with the
 #    simulator-only `-VaultTestFolder vault` argument.
 # 3. checks that today's note was created from the built-in template, that every other fixture
 #    file is byte-identical, and that the search index (fts5) found every note.
-# 4. runs each maestro flow, checks the typed lines, prints the editor's log (source styling on or
-#    off), then checks the fixture bytes again. when a flow fails, it prints the
+# 4. runs each maestro flow, checks the typed lines, prints the editor's log, then checks the
+#    fixture bytes again. when a flow fails, it prints the
 #    on-screen text, whether the app still runs, and the app's errors into the job log, because the
 #    uploaded artifacts are not always reachable.
 set -euo pipefail
@@ -21,7 +22,15 @@ shift 3
 bundle=com.ramimaalouf.obsidianexpo
 mkdir -p "$out"
 
-udid=$(xcrun simctl list devices available -j | jq -r --arg prefix "$prefix" '[.devices[][] | select(.name | startswith($prefix))][0].udid')
+# the app needs ios 27 (laperm's editor), so only simulators of an ios 27 or newer runtime qualify.
+udid=$(xcrun simctl list devices available -j | jq -r --arg prefix "$prefix" '
+  [.devices | to_entries[] | select(.key | test("SimRuntime\\.iOS-(2[7-9]|[3-9][0-9])-")) | .value[]
+   | select(.name | startswith($prefix))][0].udid // empty')
+if [ -z "$udid" ]; then
+  echo "no available \"$prefix\" simulator with an ios 27 or newer runtime"
+  xcrun simctl list runtimes
+  exit 1
+fi
 xcrun simctl list devices available | grep "$udid"
 xcrun simctl boot "$udid"
 xcrun simctl bootstatus "$udid" -b

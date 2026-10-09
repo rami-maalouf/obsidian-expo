@@ -14,7 +14,8 @@ appId: com.ramimaalouf.obsidianexpo
     visible: "Saved locally"
     timeout: 15000
 - takeScreenshot: ${OUT}/after-typing
-# source styling is display-only, so these lines must reach the file exactly as typed.
+# styling and live preview change attributes, never characters, so these lines must reach the
+# file exactly as typed.
 - pressKey: Enter
 - inputText: "## Styled heading"
 - pressKey: Enter

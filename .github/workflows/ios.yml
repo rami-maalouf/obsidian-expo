@@ -50,10 +50,18 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.14
-      - name: select the newest stable xcode
+      - name: select xcode 27 or newer
         run: |
           ls -d /Applications/Xcode*.app
-          xcode=$(ls -d /Applications/Xcode_*.app | grep -viE 'beta|release_candidate|_rc' | sort -V | tail -1)
+          # laperm's editor package needs swift 6.4 and the ios 27 sdk. a stable xcode wins over a
+          # release candidate; a beta is never used.
+          candidates=$(ls -d /Applications/Xcode_*.app | grep -viE 'beta' | grep -E 'Xcode_(2[7-9]|[3-9][0-9])' || true)
+          stable=$(echo "$candidates" | grep -viE 'release_candidate|_rc' | sort -V | tail -1 || true)
+          xcode=${stable:-$(echo "$candidates" | sort -V | tail -1)}
+          if [ -z "$xcode" ]; then
+            echo "::error::this app needs xcode 27 or newer, and the runner has none"
+            exit 1
+          fi
           sudo xcode-select -s "$xcode"
           xcodebuild -version
           xcrun simctl list runtimes

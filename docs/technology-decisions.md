@@ -4,7 +4,7 @@ This file records technology choices required by KTD8, following the [technology
 
 ## Native verification environment
 
-The cloud workers that implement this plan run Linux and cannot run Xcode. Native code is compiled and tested by the [ios workflow](../.github/workflows/ios.yml) on GitHub-hosted macOS runners, which are free for this public repository. Observed on October 8, 2026: image `macos-26-arm64` version 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3. The starter was originally verified with Xcode 27.0; the runner image did not offer a stable Xcode 27 at this date. Simulator builds and tests on this runner do not qualify physical-device input, performance, or iCloud behavior.
+The cloud workers that implement this plan run Linux and cannot run Xcode. Native code is compiled and tested by the [ios workflow](../.github/workflows/ios.yml) on GitHub-hosted macOS runners, which are free for this public repository. Observed on October 8, 2026: image `macos-26-arm64` version 20260907.0351, macOS 26.6.2, Xcode 26.6 (17F113), Swift 6.3.3. The starter was originally verified with Xcode 27.0; the runner image did not offer a stable Xcode 27 at this date. Simulator builds and tests on this runner do not qualify physical-device input, performance, or iCloud behavior. Since the T05 revision, the app needs Xcode 27 and Swift tools 6.4, because its editor package requires them. The workflow's Simulator job now selects Xcode 27 or newer and fails with an error when the runner has none; `swift test` still uses the newest stable Xcode. EAS builds of October 8, 2026 used the image `macos-tahoe-26.6-xcode-27.0` (Xcode 27.0, 27A266a).
 
 ## T01. Expo, React Native, and their runtime dependencies
 
@@ -34,7 +34,7 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. Nativ
 
 **Alternatives:** Bun 1.4.2 (the tests also pass on it; not adopted, to keep the lockfile's Bun); TypeScript 7.0.2 (its programmatic compiler API is not provided in 7.0, and Expo tooling was not verified with it); Xcode 27.0, which verified the starter but was not available as a stable Xcode on the runner image.
 
-**Limits:** requalify with Xcode 27 when the runner offers it. Swift 6 language mode was not adopted for the vault module.
+**Limits:** requalify with Xcode 27 when the runner offers it; since the T05 revision the app build requires it. Swift 6 language mode was not adopted for the vault module.
 
 ## T03. Native module authoring
 
@@ -70,23 +70,30 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 ## T05. Markdown source editor
 
-**Decided provisionally:** October 8, 2026, for U3. Device input trials remain open.
+**Decided provisionally:** October 8, 2026, for U3, and revised the same day at the user's direction: the editor now shows Obsidian-style live preview. Device input trials remain open.
 
-**Choice:** a local `UITextView` created with `UITextView(usingTextLayoutManager: true)` (TextKit 2), exposed as an Expo native view (`VaultEditorView`). UIKit supplies selection, composition, dictation, hardware-keyboard input, and undo. Native code owns the text and hands it to the document session after edits settle for 200 ms; JavaScript receives only status and load events. Smart quotes, smart dashes, and smart insert/delete are off so typing does not rewrite Markdown source. New line breaks follow the file's first line break (`\n`, `\r\n`, or `\r`), and existing bytes are never re-encoded. The code does not touch `layoutManager`, which would force a TextKit 1 fallback.
+**Choice:** `MarkdownTextView` from [LapermEditor](https://github.com/k-ymmt/LapermEditor) (product `LapermEditor`), pinned to commit `b905bc45dca55cd689f810e491e64b6b99b45e89` (September 29, 2026). It is a `UITextView` subclass on TextKit 2, hosted by the Expo native view `VaultEditorView`. With live preview on, it hides Markdown markers (heading `#`, emphasis, strikethrough and inline-code delimiters, link and image brackets, quote `>`) on every line except the lines that the caret or selection touches. While the keyboard is down, it hides them on every line. It draws front matter as a key/value table and GFM tables as grids while the caret is outside them. It hides markers with a near-zero font in a display paragraph and with text-storage attributes, never by changing characters, and it defers styling while the keyboard composes text. Its parser is `swift-markdown` 0.8 (a dependency of the package).
 
-**Alternatives** (from the dated options research; none was installed, so registry versions were not rechecked):
+**Integration:** `VaultEditorView` keeps the document session, draft journal, saves, newline convention, background flush, and foreground reconcile. It sets live preview on, line numbers off, readable margins, and pair completion off, so typing never adds characters such as a closing backtick. List continuation, task toggling, list indentation, and URL paste over a selection stay on. The view's theme uses the system body font at the user's Dynamic Type size (rebuilt when the size changes), bold headings, and monospaced code; colors come from Laperm's default theme. The view forwards `textView(_:editMenuForTextIn:suggestedActions:)` so the edit menu offers "Open Link" on a link. The earlier display-only styler (`MarkdownStyler.swift`, `MarkdownStyle.swift`) and its tests were removed, because Laperm owns the content-storage delegate.
 
-| Option | Why not chosen now |
+**Packaging:** `modules/vault/ios/Vault.podspec` declares the package with React Native's `spm_dependency` helper (`react-native/scripts/react_native_pods.rb`), which adds it to the pod during `pod install`. The requirement is the exact revision, so an upstream change cannot reach a build unannounced. The package requires Swift tools 6.4 (Xcode 27) and iOS 27, so `app.json` sets `ios.deploymentTarget` to `27.0` and the podspec targets iOS 27.0.
+
+**License:** the upstream repository has no LICENSE file at the pinned commit. On October 8, 2026, the user reported that the author approved use and will add the MIT license. This repository references the package by URL and commit and contains none of its code. When the license file is published, move the pin to that commit.
+
+**Alternatives** (researched October 8, 2026, from source code; none was built):
+
+| Option | Why not chosen |
 | --- | --- |
-| `@expensify/react-native-live-markdown@0.1.343` | Its compatibility notes cover React Native 0.86, not 0.88, and its Worklets requirement needs reconciling with this SDK. Its parser runs on the UI thread and stops styling above 4,000 characters by default. |
-| Enriched Markdown 1.1.1 | Rich-text editing with Markdown output; lossless source editing is not established. |
-| CodeMirror 6 through Expo DOM | A separate web runtime with an asynchronous bridge; native input and native draft ownership would need proof. |
+| The local display-only styler (previous choice) | Markers stayed visible; live preview would need the same hiding, caret-reveal, and table work that Laperm already has. |
+| `hellotham/hellonotes` `Packages/NotesEditor` (MIT) | Caret-line reveal on TextKit 2, but it is part of a whole app, has no marked-text guard, and its app reads every note to rebuild its link graph. Its wikilink completion remains a reference for later work. |
+| `v57/Markdown`, `nodes-app/swift-markdown-engine` | No license file, or macOS only (AppKit). |
+| `@expensify/react-native-live-markdown@0.1.343` | Markers can change color but cannot hide; its parser receives no selection; its compatibility notes stop at React Native 0.86. |
+| Enriched Markdown 1.1.1 | Rich-text editing with Markdown output; it normalizes source, so lossless editing is not established. |
+| CodeMirror 6 through Expo DOM with a live-preview extension | Obsidian's own approach on iOS (a web view); a separate web runtime with an asynchronous bridge, and native input and draft ownership would need proof. |
 
-**Source styling:** display-only. A `NSTextContentStorageDelegate` (`modules/vault/ios/Editor/MarkdownStyler.swift`) gives TextKit 2 a styled copy of each paragraph it displays; the text storage keeps plain text. So styling cannot change the saved bytes, the selection, keyboard composition (marked text), or the undo stack, which are the usual ways syntax styling breaks input. The styling is restrained: headings are bold and slightly larger; heading hashes, quote markers, list bullets, task boxes, code fences, and front matter use the secondary label color; inline code and fenced blocks use the monospaced system font; wikilinks and embeds use the link color. Fonts derive from the stored body font, so Dynamic Type still applies. Front matter and fenced code are found by one linear scan per edit (`modules/vault/ios/Core/MarkdownStyle.swift`). When an edit opens, closes, or removes a block, the paragraphs after it are rebuilt with an attribute-only edit after the keystroke finishes, and never during composition. Inline styling stops on paragraphs longer than 10,000 UTF-16 units. If UIKit already uses the content storage's delegate, styling turns itself off and logs that.
+**Validation:** on L1, `bun run check` and the production export pass, and `expo prebuild --platform ios --no-install` writes `ios.deploymentTarget` `27.0` to `Podfile.properties.json` and the app target. Native compilation, the Simulator flows, and device behavior are recorded in [validation](validation.md) as they run.
 
-**Validation:** the document session's persistence rules are covered by `swift test` (see T04), and so are the styling rules (headings, markers, inline code, links, blocks, and block changes after edits). The Simulator flow types a heading and a code fence and checks the exact lines on disk; on iPhone and iPad Simulators (`becf682`) the lines were exact and the editor log confirmed that TextKit 2 called the styler. Simulator compile and smoke evidence is recorded in [validation](validation.md).
-
-**Limits:** no release-build input trials with 4 KiB, 100 KiB, and 1 MiB notes on a device; IME, dictation, hardware-keyboard, and undo behavior with styling on are unverified on a device; the styling has not been inspected visually, because Simulator screenshots are not reachable from the cloud environment.
+**Limits:** wikilinks are styled, but a tap on one does nothing yet (the view sets no `onOpenWikiLink` handler or resolver); image previews have no base folder; Laperm's link-menu titles come from its resource bundle, whose presence in the app is unverified; VoiceOver, IME, dictation, hardware keyboard, undo, and long notes (4 KiB, 100 KiB, 1 MiB) are unverified on a device; the package has one author and no releases.
 
 ## T06. SQLite index and metadata
 
