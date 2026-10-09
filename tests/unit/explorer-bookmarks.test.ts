@@ -9,7 +9,8 @@ import {
   removeBookmark,
   viewBookmarks,
 } from '@/features/bookmarks/bookmarks';
-import { ancestorFolders, buildTree, flattenTree } from '@/features/explorer/tree';
+import type { FileSort } from '@/features/explorer/file-sort';
+import { ancestorFolders, buildTree, type ExplorerRow, flattenTree } from '@/features/explorer/tree';
 
 import { generateVault } from '../../scripts/generate-vault';
 
@@ -75,6 +76,87 @@ describe('explorer tree', () => {
     const elapsed = performance.now() - start;
     expect(rows.filter((row) => row.kind === 'note')).toHaveLength(10_000);
     expect(elapsed).toBeLessThan(2_000);
+  });
+});
+
+// times are ms since 1970; each sort puts the root notes in a different order.
+const TIMED_NOTES = [
+  { path: 'Alpha.md', modified: 100, created: 200 },
+  { path: 'beta.md', modified: 300, created: 300 },
+  { path: 'Gamma.md', modified: 200, created: 100 },
+  { path: 'Undated.md' },
+  { path: 'Zoo/Old.md', modified: 1, created: 1 },
+  { path: 'Zoo/New.md', modified: 9, created: 9 },
+  { path: 'Zoo/Sub/Deep.md', modified: 5, created: 5 },
+  { path: 'archive/Index.md', modified: 999, created: 999 },
+  { path: 'Middle/Index.md' },
+];
+
+const outline = (rows: ExplorerRow[]) => rows.map((row) => `${'  '.repeat(row.depth)}${row.name}`);
+
+describe('explorer sort', () => {
+  const tree = buildTree(TIMED_NOTES);
+  const expanded = new Set(['Zoo']);
+  const sorted = (sort: FileSort) => outline(flattenTree(tree, expanded, sort));
+
+  test('file name a to z is the default; folders come first', () => {
+    const expected = ['archive', 'Middle', 'Zoo', '  Sub', '  New', '  Old', 'Alpha', 'beta', 'Gamma', 'Undated'];
+    expect(sorted('name-asc')).toEqual(expected);
+    expect(outline(flattenTree(tree, expanded))).toEqual(expected);
+  });
+
+  test('file name z to a reverses folders and notes; folders still come first', () => {
+    expect(sorted('name-desc')).toEqual(['Zoo', '  Sub', '  Old', '  New', 'Middle', 'archive', 'Undated', 'Gamma', 'beta', 'Alpha']);
+  });
+
+  test('modified time new to old; folders stay a to z and first', () => {
+    expect(sorted('modified-desc')).toEqual(['archive', 'Middle', 'Zoo', '  Sub', '  New', '  Old', 'beta', 'Gamma', 'Alpha', 'Undated']);
+  });
+
+  test('modified time old to new; a note without the time goes last', () => {
+    expect(sorted('modified-asc')).toEqual(['archive', 'Middle', 'Zoo', '  Sub', '  Old', '  New', 'Alpha', 'Gamma', 'beta', 'Undated']);
+  });
+
+  test('created time new to old', () => {
+    expect(sorted('created-desc')).toEqual(['archive', 'Middle', 'Zoo', '  Sub', '  New', '  Old', 'beta', 'Alpha', 'Gamma', 'Undated']);
+  });
+
+  test('created time old to new', () => {
+    expect(sorted('created-asc')).toEqual(['archive', 'Middle', 'Zoo', '  Sub', '  Old', '  New', 'Gamma', 'Alpha', 'beta', 'Undated']);
+  });
+
+  test('missing times go last in both directions; equal times sort by name a to z', () => {
+    const ties = buildTree([
+      { path: 'Gamma.md', modified: 200, created: 200 },
+      { path: 'Delta.md', modified: 200, created: 200 },
+      { path: 'Undated.md' },
+      { path: 'Also undated.md' },
+      { path: 'Early.md', modified: 100, created: 100 },
+      { path: 'Created only.md', created: 50 },
+      { path: 'Bad time.md', modified: Number.NaN, created: Number.POSITIVE_INFINITY },
+    ]);
+    const names = (sort: FileSort) => flattenTree(ties, new Set(), sort).map((row) => row.name);
+    expect(names('modified-desc')).toEqual(['Delta', 'Gamma', 'Early', 'Also undated', 'Bad time', 'Created only', 'Undated']);
+    expect(names('modified-asc')).toEqual(['Early', 'Delta', 'Gamma', 'Also undated', 'Bad time', 'Created only', 'Undated']);
+    expect(names('created-desc')).toEqual(['Delta', 'Gamma', 'Early', 'Created only', 'Also undated', 'Bad time', 'Undated']);
+    expect(names('created-asc')).toEqual(['Created only', 'Early', 'Delta', 'Gamma', 'Also undated', 'Bad time', 'Undated']);
+  });
+
+  test('a 10,000-note tree flattens quickly in every sort', () => {
+    // every seventh note has no times, so the missing-time path is exercised too.
+    const notes = [...generateVault({ count: 10_000 })].map((file, index) =>
+      index % 7 === 0 ? { path: file.path } : { path: file.path, modified: (index * 7_919) % 10_007, created: (index * 104_729) % 10_007 },
+    );
+    const tree = buildTree(notes);
+    const all = new Set<string>();
+    for (const note of notes) for (const folder of ancestorFolders(note.path)) all.add(folder);
+    for (const sort of ['name-asc', 'name-desc', 'modified-desc', 'modified-asc', 'created-desc', 'created-asc'] as const) {
+      const start = performance.now();
+      const rows = flattenTree(tree, all, sort);
+      const elapsed = performance.now() - start;
+      expect(rows.filter((row) => row.kind === 'note')).toHaveLength(10_000);
+      expect(elapsed).toBeLessThan(2_000);
+    }
   });
 });
 

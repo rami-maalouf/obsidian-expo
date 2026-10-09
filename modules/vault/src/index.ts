@@ -30,6 +30,8 @@ export type NativeNote = {
   placeholder: boolean;
   size?: number;
   modified?: number;
+  /** creation time in ms since 1970, when the file system reports one. */
+  created?: number;
   /** volume and inode; survives a rename on the same volume. */
   fileId?: string;
 };
