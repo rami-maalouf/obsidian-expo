@@ -4,13 +4,15 @@
  */
 import { GlassView, isLiquidGlassAvailable } from 'expo-glass-effect';
 import { Slot } from 'expo-router';
-import { type ReactNode, useEffect } from 'react';
+import { type ReactNode, useEffect, useMemo } from 'react';
 import { PlatformColor, StyleSheet, useColorScheme, useWindowDimensions, View } from 'react-native';
 import { Drawer } from 'react-native-drawer-layout';
 
 import { CalendarInspector } from '@/features/calendar/calendar-inspector';
-import { DEFAULT_DAILY_NOTE_SETTINGS } from '@/features/daily-notes/settings';
+import { detectDailyNotes, detectedSettings } from '@/features/daily-notes/detect';
+import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 import { NativeSidebar } from '@/features/explorer/native-sidebar';
+import { useNoteList } from '@/features/explorer/use-note-list';
 import { DailySettingsForm } from '@/features/settings/daily-settings-form';
 import { useDailySettings } from '@/features/settings/use-daily-settings';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
@@ -67,13 +69,28 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
     return <Busy label="Loading settings" />;
   }
   if (settings.state.phase === 'unset') {
-    return <DailySettingsForm vaultId={vault.id} initial={DEFAULT_DAILY_NOTE_SETTINGS} firstSetup onSave={settings.save} />;
+    return <FirstSetup vaultId={vault.id} onSave={settings.save} />;
   }
   return (
     <WorkspaceProvider vault={vault} settings={settings.state.settings} saveSettings={settings.save} chooseVault={chooseVault}>
       <WorkspacePanels />
     </WorkspaceProvider>
   );
+}
+
+/**
+ * first setup (flow f1): one scan of the vault's file names finds where daily notes and the
+ * daily template seem to be, and the form starts from that. if the scan fails, the form starts
+ * from the defaults.
+ */
+function FirstSetup({ vaultId, onSave }: { vaultId: string; onSave: (settings: DailyNoteSettings) => void }) {
+  const { listing, error } = useNoteList(vaultId);
+  const notes = listing?.notes ?? null;
+  const initial = useMemo(() => detectedSettings(detectDailyNotes(notes ?? [])), [notes]);
+  if (!listing && !error) {
+    return <Busy label="Looking for your daily notes" />;
+  }
+  return <DailySettingsForm vaultId={vaultId} initial={initial} notes={notes} firstSetup onSave={onSave} />;
 }
 
 /** how far from a screen edge a swipe starts opening a panel. */

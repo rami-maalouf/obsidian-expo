@@ -14,6 +14,7 @@ export function SettingsScreen() {
       <DailySettingsForm
         vaultId={workspace.vault.id}
         initial={workspace.settings}
+        notes={workspace.notes.listing?.notes ?? null}
         firstSetup={false}
         onSave={async (settings) => {
           await workspace.saveSettings(settings);
