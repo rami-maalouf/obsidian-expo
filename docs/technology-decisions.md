@@ -280,9 +280,52 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Limits:** the script writes the `icon.json` files, not Icon Composer. They use only keys that the SDK 58 template's icon used. No Xcode has compiled them yet; a Release Simulator build compiles `app.icon` for the release variant, and `app-dev.icon` compiles only in a development build. The Liquid Glass rendering on iOS 26 has not been seen.
 
+## T16. Android
+
+**Decided:** October 9, 2026, at the user's request to build the app for Android as well, with the design left to the executor.
+
+**Approach:** one JavaScript app for both platforms. The local module `modules/vault` has the same name (`Vault`), functions, results, and editor view on Android as on iOS, so the workspace, daily notes, templates, search, bookmarks, and drafts code is shared unchanged. Only screens whose iOS version uses SwiftUI have an `.android.tsx` version. A unit test fails when an `.ios` file has no Android counterpart.
+
+| Layer | iOS | Android |
+| --- | --- | --- |
+| Native module | Swift, Expo Modules API | Kotlin, Expo Modules API from `expo-modules-core@58.0.14` (`modules/vault/android`). Vault calls run in order on their own threads (`vault.files`, and `vault.listing` for the vault scan) through `runOnQueue(CoroutineScope)`, not on Expo's shared module queue |
+| Core and its tests | Foundation-only Swift core; `swift test` | Plain Kotlin core with no Android imports (`android/src/main/java/expo/modules/vault/core`), ported from the Swift core with its tests; `gradle test` through a standalone Kotlin JVM build (`modules/vault/android/core-tests`, Kotlin 2.2.0 as in React Native 0.88, Gradle 8.14.3 wrapper) |
+| Vault access | Security-scoped bookmark, `NSFileCoordinator` | Storage access framework: the system folder picker (`ACTION_OPEN_DOCUMENT_TREE`, starting in Documents), a persisted permission for that folder only, and `DocumentsContract` queries, one per folder |
+| Saves and creates | Coordinated reread, compare, and replace; `renamex_np(RENAME_EXCL)` | Reread and compare under a lock in the process, write in place (`"wt"`), sync, and read the bytes back. A create uses the provider's create and keeps the file only when it has exactly the wanted name |
+| Renaming a note | Coordinated move with `renamex_np(RENAME_EXCL)`; a change of case alone renames in place | `DocumentsContract.renameDocument` within the note's folder, after a listing shows the name free. A result with another name gets the old name back. A change of case alone goes through a temporary name |
+| Drafts, app data, vault list | App support folder | `filesDir/vault`: synced temporary file, rename, then a folder `fsync` (`android.system.Os`) |
+| Editor | LapermEditor (TextKit 2) with live preview | The platform `EditText` in a `ScrollView`, with restrained source styling as spans (`MarkdownStyles.kt`), the same `[[` completion ranking, and wikilinks that open on a tap while the keyboard is down |
+| Screens | SwiftUI from `@expo/ui` | React Native core components with small Material-style pieces (`src/features/workspace/android-ui.tsx`), Material Symbols from the font that `expo-symbols` installs, and an Obsidian light and dark palette |
+| App bar | `Stack.Toolbar` with SF Symbols | `Stack.Toolbar`, which Expo Router draws with Jetpack Compose on Android, with vector drawables generated from the Material Symbols font by `scripts/generate-android-icons.ts` |
+| Calendar | SwiftUI graphical `DatePicker` | A month grid from `src/features/calendar/month.ts`; days with a note have a dot |
+| Side panels, search index | `react-native-drawer-layout`, `expo-sqlite` FTS5 | The same; the index opener is shared (`open-index.native.ts`) |
+| Device builds | EAS, ad hoc | EAS profiles `development` and `preview` build APKs (`android.buildType: apk`) for direct installation |
+
+**Alternatives:**
+
+| Option | Why not chosen |
+| --- | --- |
+| All-files access (`MANAGE_EXTERNAL_STORAGE`) with `java.io` | Exclusive create and atomic rename would be available, but the app would ask for access to all shared files instead of one folder, and Google Play restricts this permission to a few kinds of apps. |
+| `androidx.documentfile` | Its tree documents ask the provider once per property of each file, so listing a 10,000-note vault would make tens of thousands of queries. `DocumentsContract` returns one folder's names, sizes, and times in one query. |
+| `expo-file-system`'s storage access framework API | A general file API: a save would compare and write in separate bridge calls, so another write could land between them. This is the same reason as for iOS (T04). |
+| Jetpack Compose screens through `@expo/ui/jetpack-compose` | The Material 3 counterpart of the iOS SwiftUI screens. Not chosen for the screens because no Android device or emulator was available in the authoring environment to check Compose layout inside React Native views; core components behave predictably. The app bar still uses Compose through Expo Router. Revisit after a device review. |
+| A WebView editor (CodeMirror 6) | As for iOS (T05): a separate web runtime and an asynchronous bridge between the text and its drafts. |
+| Kotlin Multiplatform for one core on both platforms | It would replace the tested Swift core and add a build system to the iOS app. Here, the Kotlin core is a port, and its tests are ports of the Swift tests. |
+
+**Validation:** the Kotlin core's 64 tests pass on L2 and on A1; the Release app compiles for x86_64 on A1 with the module autolinked; see [validation](validation.md#android-october-9-2026). On an Android 15 emulator, the Release app picked the fixture vault with the system folder picker, created today's note from the vault's template, saved typed text, reopened today after a relaunch, and searched, with every other fixture file byte-identical (run 37902235503).
+
+**Limits:**
+
+- Android has no file coordination between apps. A write by another app in the instant between the comparison and the write is not detected. Writes are in place, not atomic: an interrupted write can leave a partial file. The journal keeps the draft until a save reads back correctly, and the next open then offers recovery.
+- Only folders on this device were considered. Cloud document providers, virtual documents, and providers that write through pipes have not been tried.
+- The editor has no live preview. A lone carriage return shows as a space. Composing text is saved as shown. The editor keeps its text in the `EditText`, and notes of 100 KiB and 1 MiB have not been tried on a device.
+- Swiping from the screen's left edge is Android's back gesture with gesture navigation; the files panel also opens from the app bar.
+- The documents that the folder picker serves report no creation time and no stable identity across a rename, so "Created time" sorting keeps name order and bookmarks do not follow notes that another app renamed.
+- There are no hardware-keyboard shortcuts for app commands (the iPadOS menu bar has no Android counterpart yet).
+
 ## Pending decisions
 
-These need macOS with Xcode, the iOS Simulator, or physical devices. They are not decided.
+These need macOS with Xcode, the iOS Simulator, Android devices, or physical devices. They are not decided.
 
 | Option | Unit | Blocking need |
 | --- | --- | --- |
@@ -290,3 +333,4 @@ These need macOS with Xcode, the iOS Simulator, or physical devices. They are no
 | T05 final editor qualification | U3 | Release-build input trials on device |
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
 | T08, T09 device qualification | U5, U7 | Side panels on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar and shortcuts |
+| T16 device qualification | U2-U8 | Android phones and tablets: input methods, TalkBack, folder providers other than local storage, long notes, and performance |

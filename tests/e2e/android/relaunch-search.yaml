@@ -1,0 +1,27 @@
+# a relaunch restores the vault from its kept folder permission and opens today's note again,
+# then search finds a note by its content and opens it.
+appId: com.ramimaalouf.obsidianexpo
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 60000
+- assertVisible: "${TODAY}"
+- takeScreenshot: ${OUT}/relaunch
+- tapOn: "More"
+- tapOn: "Search"
+- inputText: "callout"
+- extendedWaitUntil:
+    visible: "Welcome"
+    timeout: 30000
+- takeScreenshot: ${OUT}/search
+- tapOn: "Welcome"
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 15000
+- assertVisible: "Welcome"
+- takeScreenshot: ${OUT}/welcome

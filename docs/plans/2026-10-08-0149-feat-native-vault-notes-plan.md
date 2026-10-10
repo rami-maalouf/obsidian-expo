@@ -97,7 +97,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 
 ### Scope Boundaries
 
-The first release edits Markdown source with restrained syntax styling. Full Obsidian Live Preview, rendered embeds, graph view, backlinks, plugin execution, arbitrary Templater JavaScript, bookmark synchronization with Obsidian, and a custom sync service are deferred. Mac, Android, and web are later platform work. No speed claim relative to Obsidian is justified until measured. Amended October 8, 2026, at the user's request: the editor shows line-level live preview (markers hidden except on the lines the caret touches) through the editor package recorded in T05 of the [technology decisions](../technology-decisions.md). Rendered embeds and the rest of the list above stay deferred.
+The first release edits Markdown source with restrained syntax styling. Full Obsidian Live Preview, rendered embeds, graph view, backlinks, plugin execution, arbitrary Templater JavaScript, bookmark synchronization with Obsidian, and a custom sync service are deferred. Mac, Android, and web are later platform work. No speed claim relative to Obsidian is justified until measured. Amended October 8, 2026, at the user's request: the editor shows line-level live preview (markers hidden except on the lines the caret touches) through the editor package recorded in T05 of the [technology decisions](../technology-decisions.md). Rendered embeds and the rest of the list above stay deferred. Amended October 9, 2026, at the user's request: Android is no longer later work. The Android app uses the same JavaScript, a Kotlin version of the vault module, and Android's storage access framework for the vault folder; its editor shows source with restrained styling, without live preview (T16 in the [technology decisions](../technology-decisions.md)). Mac and web remain later work.
 
 ### Repository References
 
@@ -109,7 +109,7 @@ The [technology options](../technology-options-2026-10.md) and [version snapshot
 
 ### Assumptions
 
-- A1. Start feature implementation with iPhone/iPad under the user-selected project name `obsidian-expo`. The working product name Vault Notes is provisional; Android and web feature work and acceptance requirements are out of scope for now. The starter's cross-platform bundle checks do not expand this iOS-only scope.
+- A1. Start feature implementation with iPhone/iPad under the user-selected project name `obsidian-expo`. The working product name Vault Notes is provisional; Android and web feature work and acceptance requirements are out of scope for now. The starter's cross-platform bundle checks do not expand this iOS-only scope. Amended October 9, 2026, at the user's request: Android phones and tablets are in scope with the same product requirements; iCloud-specific requirements (R1, R4) apply to the folders and document providers that Android's folder picker offers.
 - A2. Put Files and Bookmarks in the left sidebar. Show Calendar in a trailing panel on wide screens and a sheet on phones; only one navigation overlay is visible at a time.
 - A3. Default daily notes to `Daily/YYYY-MM-DD.md`, with the built-in template described in KTD6. Show these settings on first setup so existing vault conventions can be entered before creation.
 - A4. Performance thresholds below are engineering targets to validate, not observed results or framework guarantees.

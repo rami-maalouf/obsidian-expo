@@ -1,4 +1,4 @@
-/** the sidebar is native ios ui; other platforms show the app shell only. */
+/** the sidebar has ios and android versions; the web shell shows nothing. */
 export function NativeSidebar() {
   return null;
 }

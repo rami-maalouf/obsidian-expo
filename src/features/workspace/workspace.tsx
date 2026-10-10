@@ -127,7 +127,7 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
    */
   const createNote = useCallback(async (): Promise<string | null> => {
     const native = VaultNative;
-    if (!native) return 'Notes can be created only on iPhone and iPad.';
+    if (!native) return 'Notes can be created only in the iPhone, iPad, and Android apps.';
     let template: string | null = null;
     if (newNoteSettings.templatePath) {
       const read = await native.readText(vault.id, newNoteSettings.templatePath).catch(() => null);
