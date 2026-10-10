@@ -1,23 +1,22 @@
 /**
  * the note between the two side panels: drafts to recover first, then the open note (flow f2):
- * at launch, the note that was open last, or today's note. the note title is the native navigation title; it ends with "*" while edits wait
- * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens
- * the files panel, goes back and forward through the opened notes, and opens today's note; the
- * right group opens the native "more" menu with bookmark, search, and the rest, then the calendar
- * panel at the trailing edge (t08). on a phone, forward appears only when there is a note ahead,
- * so the title keeps its room. the navigation bar is see-through: the note scrolls under it, and
+ * at launch, the note that was open last, or today's note. the note's name is above its text, in
+ * the editor's scroll view, as obsidian's inline title; editing it renames the note, and "rename
+ * note" in the menu puts the caret there. the navigation bar has no title while a note is open.
+ * the toolbar's left group opens the files panel, goes back and forward through the opened notes,
+ * and opens today's note; the right group opens the native "more" menu with bookmark, search, and
+ * the rest, then the calendar panel at the trailing edge (t08). on a phone, forward appears only
+ * when there is a note ahead. the navigation bar is see-through: the note scrolls under it, and
  * liquid glass's soft scroll edge effect fades the text out below the bar.
  */
 import { Stack, useRouter } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
-import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
+import { type ComponentProps, type ReactNode, useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 
-import { SystemColors } from '@/constants/theme';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
-import { NoteEditor, type NoteEditorHandle, noteTitle } from '@/features/editor/note-editor';
-import { UNSAVED_MARK } from '@/features/editor/status';
-import { editableName, renamedPath, renameProblem } from '@/features/explorer/rename';
+import { NoteEditor, type NoteEditorHandle } from '@/features/editor/note-editor';
+import { useTitleRename } from '@/features/editor/use-title-rename';
 import { RecoveryList } from '@/features/recovery/recovery-list';
 
 import { Busy, Notice } from './status-views';
@@ -27,7 +26,6 @@ export function NotesScreen() {
   const workspace = useWorkspace();
   const router = useRouter();
   const { path, drafts, needsRecovery, dayProblem, today, bookmarks, showFirstScreen } = workspace;
-  const [unsaved, setUnsaved] = useState(false);
   const pending = drafts.drafts;
   // the recovery list or a problem is the first screen; the editor reports its own (onShown).
   const shownWithoutEditor = pending !== null && (needsRecovery || dayProblem !== null || (!path && today.state.phase === 'done'));
@@ -39,43 +37,7 @@ export function NotesScreen() {
   const editor = useRef<NoteEditorHandle>(null);
   const headerHeight = useHeaderHeight();
   const showForward = workspace.wide || workspace.canGoForward;
-
-  /** the native rename prompt: the name without ".md", in the note's folder. */
-  const rename = () => {
-    if (!path || !editing) return;
-    const from = path;
-    Alert.prompt(
-      'Rename Note',
-      undefined,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Rename', isPreferred: true, onPress: (typed?: string) => applyRename(from, typed ?? '') },
-      ],
-      'plain-text',
-      editableName(from),
-    );
-  };
-  const applyRename = async (from: string, typed: string) => {
-    const next = renamedPath(from, typed);
-    if (!next.ok) {
-      Alert.alert("Can't Rename the Note", next.error);
-      return;
-    }
-    if (next.value === null) return;
-    const to = next.value;
-    let problem: string | null;
-    try {
-      const outcome = editor.current ? await editor.current.rename(to) : null;
-      problem = renameProblem(outcome, to);
-    } catch (error) {
-      problem = error instanceof Error ? error.message : String(error);
-    }
-    if (problem) {
-      Alert.alert("Can't Rename the Note", problem);
-    } else {
-      workspace.noteRenamed(to);
-    }
-  };
+  const renameFromTitle = useTitleRename(editor, "Can't Rename the Note", workspace.noteRenamed);
 
   let title = 'Today';
   let content: ReactNode;
@@ -100,10 +62,11 @@ export function NotesScreen() {
   } else if (dayProblem) {
     content = <TodayProblem outcome={dayProblem.outcome} onRetry={workspace.retryDay} />;
   } else if (path) {
-    title = unsaved ? `${noteTitle(path)}${UNSAVED_MARK}` : noteTitle(path);
+    // the name is above the text, so the bar keeps only its buttons.
+    title = '';
     content = (
       <NoteEditor
-        key={path}
+        key={workspace.editorKey}
         ref={editor}
         vaultId={workspace.vault.id}
         path={path}
@@ -111,7 +74,9 @@ export function NotesScreen() {
         onShown={showFirstScreen}
         onRecoveryNeeded={workspace.onRecoveryNeeded}
         onOpenLink={workspace.openLink}
-        onUnsavedChange={setUnsaved}
+        onTitleSubmit={(typed) => renameFromTitle(path, typed)}
+        selectTitleOnLoad={path === workspace.newNote}
+        onTitleSelected={workspace.newNoteShown}
         headerInset={headerHeight}
       />
     );
@@ -128,7 +93,6 @@ export function NotesScreen() {
       <Stack.Screen
         options={{
           title,
-          headerTitle: editing ? () => <RenameTitle title={title} buttons={showForward ? 6 : 5} onPress={rename} /> : undefined,
           // the native text view and the swiftui status views inset themselves below the bar.
           // the editor sets its own soft scroll edge effect (VaultEditorView.swift).
           headerTransparent: true,
@@ -167,7 +131,7 @@ export function NotesScreen() {
             onPress={() => path && (marked ? bookmarks.remove(path) : bookmarks.add(path))}>
             {marked ? 'Remove bookmark' : 'Bookmark this note'}
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="pencil" hidden={!editing} onPress={rename}>
+          <Stack.Toolbar.MenuAction icon="pencil" hidden={!editing} onPress={() => editor.current?.focusTitle()}>
             Rename note
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="magnifyingglass" onPress={() => router.push('/search')}>
@@ -194,33 +158,6 @@ export function NotesScreen() {
       </Stack.Toolbar>
       {content}
     </>
-  );
-}
-
-/** the width the title leaves for each toolbar button, and for the bar's margins. */
-const TOOLBAR_BUTTON_WIDTH = 44;
-const TOOLBAR_MARGINS = 64;
-
-/**
- * the note's name as the navigation title, styled like the system title. a tap opens the rename
- * prompt; the width leaves room for the `buttons` toolbar buttons on both sides.
- */
-function RenameTitle({ title, buttons, onPress }: { title: string; buttons: number; onPress: () => void }) {
-  const { width } = useWindowDimensions();
-  const reserved = TOOLBAR_MARGINS + buttons * TOOLBAR_BUTTON_WIDTH;
-  return (
-    <Pressable
-      testID="note-title"
-      accessibilityRole="button"
-      accessibilityLabel={title}
-      accessibilityHint="Renames the note"
-      hitSlop={8}
-      onPress={onPress}
-      style={({ pressed }) => [{ maxWidth: Math.max(120, width - reserved) }, pressed && styles.pressed]}>
-      <Text numberOfLines={1} style={[styles.title, { color: SystemColors.label }]}>
-        {title}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -267,14 +204,3 @@ function TodayProblem({ outcome, onRetry }: { outcome: DailyNoteOutcome; onRetry
       return <Busy label="Opening the note" />;
   }
 }
-
-const styles = StyleSheet.create({
-  // the system navigation title: 17 points, semibold.
-  title: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.5,
-  },
-});

@@ -8,7 +8,7 @@
 # 2. runs the maestro flows in tests/e2e/android: the system folder picker grants the vault
 #    (storage access framework), first setup finds the daily-note settings, today's note is
 #    created from the fixture template, text is typed and saved, a relaunch reopens today and
-#    searches the vault, and a new note is written in and renamed from its title.
+#    searches the vault, and a new note is written in and renamed from the name above its text.
 # 3. checks today's note and the renamed note on disk, that every other fixture file is
 #    byte-identical, and that the app wrote nothing else into the vault.
 set -euo pipefail
@@ -124,8 +124,10 @@ run_flow tests/e2e/android/relaunch-search.yaml
 check_fixture relaunch
 
 run_flow tests/e2e/android/new-rename.yaml
-# the text typed just before the rename was saved into the file that was renamed.
+# the text typed just before the rename was saved into the file that was renamed, and the editor
+# followed the file, so the text typed right after the rename was saved there too.
 wait_for_text "$renamed" "Written before the rename."
+wait_for_text "$renamed" "Written after the rename."
 adb shell test ! -e "'$vault/Untitled.md'"
 check_fixture rename
 echo "--- Daily/$today.md after the flows"

@@ -1,5 +1,5 @@
-# types into today's note, waits for the save and for the title to lose its unsaved mark, then
-# types a heading. styling adds spans and never changes characters, so the script finds the
+# types into today's note, waits for the save, checks the name above the text, then types a
+# heading. styling adds spans and never changes characters, so the script finds the
 # lines on disk exactly as typed.
 appId: com.ramimaalouf.obsidianexpo
 ---
@@ -15,11 +15,9 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:saved"
     timeout: 15000
-# the title ends with "*" while edits wait for a save, and only then.
-- extendedWaitUntil:
-    notVisible: "${TODAY}\\*"
-    timeout: 5000
-- assertVisible: "${TODAY}"
+- assertVisible:
+    id: "note-title"
+    text: "${TODAY}"
 - takeScreenshot: ${OUT}/after-typing
 - pressKey: Enter
 - inputText: "## Styled heading"

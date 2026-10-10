@@ -32,6 +32,9 @@ export type EditorOpenLinkEvent = { target: string; path?: string };
 /** the text left its top (`scrolled`) or returned to it. android only. */
 export type EditorScrolledEvent = { scrolled: boolean };
 
+/** editing the name above the text ended with a changed `title`, as typed. */
+export type EditorTitleSubmitEvent = { title: string };
+
 export type NativeRenameResult =
   | { kind: 'moved' }
   /** another file already has the new path; nothing moved. */
@@ -46,7 +49,14 @@ export type VaultEditorHandle = {
   /** starts writing pending edits; status events report the result. */
   flush(): Promise<void>;
   focus(): Promise<void>;
-  /** saves the open note, then renames its file to a vault path; the caller opens that path. */
+  /** puts the caret in the name above the text, with the whole name selected. */
+  focusTitle(): Promise<void>;
+  /** shows the open note's name above the text again, for example after a refused rename. */
+  resetTitle(): Promise<void>;
+  /**
+   * saves the open note, then renames its file to a vault path. the view follows the file and
+   * keeps its text, caret, and keyboard; the caller then shows the new path.
+   */
   rename(newPath: string): Promise<NativeRenameResult>;
 };
 
@@ -57,6 +67,7 @@ export type VaultEditorViewProps = ViewProps & {
   onLoad?: (event: NativeSyntheticEvent<EditorLoadEvent>) => void;
   onOpenLink?: (event: NativeSyntheticEvent<EditorOpenLinkEvent>) => void;
   onScrolledChange?: (event: NativeSyntheticEvent<EditorScrolledEvent>) => void;
+  onTitleSubmit?: (event: NativeSyntheticEvent<EditorTitleSubmitEvent>) => void;
   ref?: Ref<VaultEditorHandle>;
 };
 

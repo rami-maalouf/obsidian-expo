@@ -1,7 +1,7 @@
 /**
- * the native editor. the note title shows whether edits wait for a save (status.ts); a notice
- * above the text appears only when a save went wrong or the note is read-only or unavailable.
- * the notice is a live region so voiceover announces problems (r17).
+ * the native editor, with the note's name above its text in the same scroll view. a notice above
+ * the editor appears only when a save went wrong or the note is read-only or unavailable
+ * (status.ts). the notice is a live region so voiceover announces problems (r17).
  */
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -15,7 +15,7 @@ import {
   type VaultEditorHandle,
   VaultEditorView,
 } from '../../../modules/vault/src/VaultEditorView';
-import { hasUnsavedEdits, statusNotice } from './status';
+import { statusNotice } from './status';
 
 type NoteEditorProps = {
   vaultId: string;
@@ -28,8 +28,12 @@ type NoteEditorProps = {
   onShown?: () => void;
   /** called when a wikilink to another note is tapped; `path` is the matching note, if any. */
   onOpenLink?: (target: string, path: string | null) => void;
-  /** called when edits start or stop waiting for a save, for the unsaved mark in the title. */
-  onUnsavedChange?: (unsaved: boolean) => void;
+  /** called when editing the name above the text ended with a changed name, as typed. */
+  onTitleSubmit?: (typed: string) => void;
+  /** puts the caret in the name, with the name selected, once the note is open (a new note). */
+  selectTitleOnLoad?: boolean;
+  /** called after `selectTitleOnLoad` selected the name. */
+  onTitleSelected?: () => void;
   /** called when the text leaves its top or returns to it, for the app bar's color. android only. */
   onScrolledChange?: (scrolled: boolean) => void;
   /**
@@ -41,8 +45,15 @@ type NoteEditorProps = {
 };
 
 export type NoteEditorHandle = {
-  /** saves the open note, then renames its file; null when no editor is on screen. */
+  /**
+   * saves the open note, then renames its file; null when no editor is on screen. the editor
+   * follows the file and keeps its text, caret, and keyboard.
+   */
   rename(newPath: string): Promise<NativeRenameResult | null>;
+  /** puts the caret in the name above the text, with the name selected. */
+  focusTitle(): void;
+  /** shows the open note's name above the text again, for example after a refused rename. */
+  resetTitle(): void;
 };
 
 export function noteTitle(path: string) {
@@ -50,7 +61,6 @@ export function noteTitle(path: string) {
   return name.toLowerCase().endsWith('.md') ? name.slice(0, -3) : name;
 }
 
-/** the note title is the navigation title; the editor reports its save state to it. */
 export function NoteEditor({
   vaultId,
   path,
@@ -58,25 +68,29 @@ export function NoteEditor({
   onSaved,
   onShown,
   onOpenLink,
-  onUnsavedChange,
   onScrolledChange,
+  onTitleSubmit,
+  selectTitleOnLoad = false,
+  onTitleSelected,
   headerInset = 0,
   ref,
 }: NoteEditorProps) {
   const editor = useRef<VaultEditorHandle>(null);
-  useImperativeHandle(ref, () => ({ rename: async (newPath) => (editor.current ? editor.current.rename(newPath) : null) }), []);
+  useImperativeHandle(
+    ref,
+    () => ({
+      rename: async (newPath) => (editor.current ? editor.current.rename(newPath) : null),
+      focusTitle: () => void editor.current?.focusTitle(),
+      resetTitle: () => void editor.current?.resetTitle(),
+    }),
+    [],
+  );
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
-  const [unsaved, setUnsaved] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
   const colors = useSystemColors();
   const notice = statusNotice(status);
   const topInset = notice || load?.kind === 'unavailable' ? headerInset : 0;
-  useEffect(() => {
-    onUnsavedChange?.(unsaved);
-    // a closed editor leaves no mark on the title of the next note.
-    return () => onUnsavedChange?.(false);
-  }, [onUnsavedChange, unsaved]);
   useEffect(() => {
     onScrolledChange?.(scrolled);
     // the next note opens at its top.
@@ -113,21 +127,27 @@ export function NoteEditor({
         onStatus={(event) => {
           const next = event.nativeEvent;
           setStatus(next);
-          setUnsaved((before) => hasUnsavedEdits(next.status, before));
           if (next.status === 'saved') {
             onSaved?.(path);
           }
         }}
         onLoad={(event) => {
-          setLoad(event.nativeEvent);
+          const loaded = event.nativeEvent;
+          setLoad(loaded);
           onShown?.();
-          // a note opens at its top without the keyboard; a tap in the text places the caret.
-          if (event.nativeEvent.kind === 'recovery-needed') {
+          // a note opens at its top without the keyboard; a tap in the text places the caret. a
+          // new note opens with its name selected instead.
+          if (selectTitleOnLoad && (loaded.kind === 'loaded' || loaded.kind === 'read-only')) {
+            editor.current?.focusTitle();
+            onTitleSelected?.();
+          }
+          if (loaded.kind === 'recovery-needed') {
             onRecoveryNeeded(path);
           }
         }}
         onOpenLink={(event) => onOpenLink?.(event.nativeEvent.target, event.nativeEvent.path ?? null)}
         onScrolledChange={(event) => setScrolled(event.nativeEvent.scrolled)}
+        onTitleSubmit={(event) => onTitleSubmit?.(event.nativeEvent.title)}
       />
     </View>
   );
