@@ -23,11 +23,15 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:opened"
     timeout: 15000
-- assertVisible: "Welcome"
+- assertVisible:
+    id: "note-title"
+    text: "Welcome"
 - takeScreenshot: ${OUT}/welcome
-# the app bar takes the surface color while the note is scrolled from its top.
+# the app bar takes the surface color while the note is scrolled from its top. the name above the
+# text scrolls away with it, so the check is that the note is still open.
 - swipe:
     start: 50%, 75%
     end: 50%, 35%
-- assertVisible: "Welcome"
+- assertVisible:
+    id: "note-status:opened"
 - takeScreenshot: ${OUT}/welcome-scrolled
