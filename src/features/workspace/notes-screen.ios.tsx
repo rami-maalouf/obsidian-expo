@@ -1,6 +1,6 @@
 /**
- * the note between the two side panels: drafts to recover before today, then the open note
- * (flow f2). the note title is the native navigation title; it ends with "*" while edits wait
+ * the note between the two side panels: drafts to recover first, then the open note (flow f2):
+ * at launch, the note that was open last, or today's note. the note title is the native navigation title; it ends with "*" while edits wait
  * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens
  * the files panel, goes back and forward through the opened notes, and opens today's note; the
  * right group opens the native "more" menu with bookmark, search, and the rest, then the calendar
@@ -111,6 +111,8 @@ export function NotesScreen() {
         onUnsavedChange={setUnsaved}
       />
     );
+  } else if (workspace.launching) {
+    content = <Busy label="Opening the last note" />;
   } else if (today.state.phase !== 'done') {
     content = <Busy label="Opening today's note" />;
   } else {

@@ -25,6 +25,8 @@ export function navigationKey(vaultId: string) {
 export function useNavigationHistory(vaultId: string, notes: { path: string; fileId?: string }[] | null = null) {
   /** null until the stored history has been read. */
   const [history, setHistory] = useState<NavigationHistory | null>(VaultNative ? null : EMPTY_HISTORY);
+  /** the history as it was stored by the last session, for the launch; null until read. */
+  const [stored, setStored] = useState<NavigationHistory | null>(VaultNative ? null : EMPTY_HISTORY);
   const latest = useRef<NavigationHistory>(EMPTY_HISTORY);
   // a change made before the stored value arrives wins over it.
   const changed = useRef(false);
@@ -34,7 +36,9 @@ export function useNavigationHistory(vaultId: string, notes: { path: string; fil
     let cancelled = false;
     const loaded = (json: string | null) => {
       if (cancelled) return;
-      if (!changed.current) latest.current = parseHistory(json);
+      const parsed = parseHistory(json);
+      if (!changed.current) latest.current = parsed;
+      setStored(parsed);
       setHistory(latest.current);
     };
     VaultNative.readAppData(navigationKey(vaultId)).then(loaded, () => loaded(null));
@@ -77,5 +81,5 @@ export function useNavigationHistory(vaultId: string, notes: { path: string; fil
     [update],
   );
 
-  return { history, record, rename, step };
+  return { history, stored, record, rename, step };
 }

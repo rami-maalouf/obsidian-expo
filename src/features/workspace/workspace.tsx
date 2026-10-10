@@ -1,8 +1,8 @@
 /**
  * the open vault's state, shared by the sidebar, the editor, and the calendar (t11). it keeps
- * the launch order of flow f2: restore vault access → resolve unsaved drafts → open today → write.
- * the vault scan and the search index wait until the first screen is shown, so they do not
- * compete with opening today's note.
+ * the launch order of flow f2: restore vault access → resolve unsaved drafts → reopen the last
+ * note, or open today → write. the vault scan and the search index wait until the first screen
+ * is shown, so they do not compete with opening the first note.
  */
 import { router } from 'expo-router';
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
@@ -15,6 +15,14 @@ import { createUntitledNote, linkedNotePath } from '@/features/explorer/new-note
 import { editableName } from '@/features/explorer/rename';
 import { useNoteList } from '@/features/explorer/use-note-list';
 import { stepTarget } from '@/features/navigation/history';
+import {
+  canReopen,
+  launchCandidate,
+  type LaunchCheck,
+  type LaunchSettings,
+  launchTarget,
+  type LaunchTarget,
+} from '@/features/navigation/launch';
 import { useNavigationHistory } from '@/features/navigation/use-navigation-history';
 import { newNoteContent, newNoteFolder, type NewNoteSettings } from '@/features/new-notes/settings';
 import { useDrafts } from '@/features/recovery/use-drafts';
@@ -42,12 +50,20 @@ type WorkspaceProps = {
   vault: VaultInfo;
   settings: DailyNoteSettings;
   newNoteSettings: NewNoteSettings;
+  launchSettings: LaunchSettings;
   saveSettings: (settings: NoteSettings) => Promise<void>;
   chooseVault: () => void;
   children: ReactNode;
 };
 
-function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, chooseVault }: Omit<WorkspaceProps, 'children'>) {
+function useWorkspaceState({
+  vault,
+  settings,
+  newNoteSettings,
+  launchSettings,
+  saveSettings,
+  chooseVault,
+}: Omit<WorkspaceProps, 'children'>) {
   const drafts = useDrafts(vault.id);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<CivilDate | null>(null);
@@ -77,8 +93,33 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   const navigation = useNavigationHistory(vault.id, notes.listing?.notes ?? null);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
-  const today = useTodayNote(vault.id, pending !== null && !needsRecovery, settings);
-  const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
+
+  // the first note is chosen once, with the settings at launch: a later change of the setting
+  // never replaces the note on screen. the last note's file is checked while unsaved drafts are
+  // still being read. "continue to today" from the recovery list opens today's note.
+  const [launchSettingsAtStart] = useState(launchSettings);
+  const [launchCheck, setLaunchCheck] = useState<LaunchCheck | null>(null);
+  const [launchToday, setLaunchToday] = useState(false);
+  const storedHistory = navigation.stored;
+  const candidate = storedHistory ? launchCandidate(storedHistory, launchSettingsAtStart) : null;
+  useEffect(() => {
+    const native = VaultNative;
+    if (!candidate || !native) return;
+    let cancelled = false;
+    native.fileState(vault.id, candidate).then(
+      (state) => !cancelled && setLaunchCheck({ path: candidate, reopen: canReopen(state) }),
+      () => !cancelled && setLaunchCheck({ path: candidate, reopen: false }),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate, vault.id]);
+  const launch: LaunchTarget = launchToday ? { kind: 'today' } : launchTarget(launchSettingsAtStart, storedHistory, launchCheck);
+  const deciding = launch.kind === 'deciding';
+
+  const today = useTodayNote(vault.id, pending !== null && !needsRecovery && launch.kind === 'today', settings);
+  const todayPath = today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null;
+  const path = selected ?? (launch.kind === 'note' ? launch.path : todayPath);
   const todayCreated = today.state.phase === 'done' && today.state.outcome.kind === 'open' && today.state.outcome.created;
   const searchIndex = search.phase === 'ready' ? search.index : null;
   const refreshNotes = notes.refresh;
@@ -260,6 +301,8 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
     vault,
     settings,
     newNoteSettings,
+    launchSettings,
+    launching: deciding,
     createNote,
     openLink,
     noteRenamed,
@@ -291,7 +334,10 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
     canGoForward,
     showFirstScreen,
     retryDay: () => (dayProblem ? selectDay(dayProblem.date) : today.retry()),
-    continueToToday: () => setContinued(true),
+    continueToToday: () => {
+      setContinued(true);
+      setLaunchToday(true);
+    },
     onSaved: (saved: string) => {
       if (searchIndex) searchIndex.refresh(saved).catch(() => undefined);
     },
