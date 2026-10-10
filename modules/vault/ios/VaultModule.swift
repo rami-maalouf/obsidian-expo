@@ -210,6 +210,10 @@ public class VaultModule: Module {
         view.path = path
       }
 
+      Prop("hidesToolbarOnScroll") { (view, hides: Bool?) in
+        view.hidesToolbarOnScroll = hides ?? false
+      }
+
       OnViewDidUpdateProps { view in
         view.openIfNeeded()
       }

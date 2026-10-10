@@ -7,9 +7,10 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:opened"
     timeout: 30000
-# a note opens without the keyboard; a tap below the short note puts the caret at its end.
+# a note opens without the keyboard; a tap below the short note, and above the bottom toolbar,
+# puts the caret at its end.
 - tapOn:
-    point: "50%,85%"
+    point: "50%,70%"
 - inputText: "Typed on the emulator."
 - extendedWaitUntil:
     visible:

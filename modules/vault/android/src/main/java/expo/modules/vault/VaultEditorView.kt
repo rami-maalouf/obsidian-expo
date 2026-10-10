@@ -14,6 +14,7 @@ import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -57,8 +58,30 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private val onScrolledChange by EventDispatcher()
   private var scrolled = false
 
+  /**
+   * the screen's bottom toolbar follows the user's scrolling, as safari's does: it slides away
+   * while the text moves toward its end and comes back when it moves toward its start or reaches
+   * the top. javascript moves the toolbar.
+   */
+  private val onToolbarHiddenChange by EventDispatcher()
+  private var toolbarHidden = false
+
+  /** how far the text has moved in its current direction, in pixels: positive toward the end. */
+  private var scrollTravel = 0
+
+  /** true while a finger is on the editor. */
+  private var touching = false
+
   var vaultId: String? = null
   var path: String? = null
+
+  /** the height in dp of a bar over the bottom of the editor; the end of the text scrolls above it. */
+  var bottomInset = 0f
+    set(value) {
+      if (field == value) return
+      field = value
+      updatePadding()
+    }
 
   override val shouldUseAndroidLayout = true
 
@@ -173,12 +196,13 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
       setOnFocusChangeListener { _, focused -> if (!focused) hideCompletion() }
     }
     scroll.addView(editText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
-    scroll.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+    scroll.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
       if (completion.visibility == View.VISIBLE) positionCompletion()
       if ((scrollY > 0) != scrolled) {
         scrolled = scrollY > 0
         onScrolledChange(mapOf("scrolled" to scrolled))
       }
+      followScroll(scrollY, oldScrollY)
     }
 
     completion.onSelect = { index -> acceptCompletion(index) }
@@ -221,9 +245,13 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
     super.onSizeChanged(w, h, oldw, oldh)
+    updatePadding()
+  }
+
+  private fun updatePadding() {
     // keep long lines readable on a tablet: at most about 70 characters wide.
-    val side = max(dp(16f), (w - dp(720f)) / 2f).toInt()
-    editText.setPadding(side, dp(16f).toInt(), side, dp(32f).toInt())
+    val side = max(dp(16f), (width - dp(720f)) / 2f).toInt()
+    editText.setPadding(side, dp(16f).toInt(), side, dp(32f + bottomInset).toInt())
   }
 
   override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -253,6 +281,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     document = null
     setEditable(false)
     setText("")
+    setToolbarHidden(false)
     emit(mapOf("status" to "loading"))
 
     val session = VaultRuntime.session(vaultId)
@@ -438,6 +467,45 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     val to = MarkdownStyles.lineEnd(text, min(text.length, from + STYLE_STEP))
     styler.style(text, from, to)
     if (to < text.length) post { styleStep(to + 1, generation) }
+  }
+
+  // MARK: - toolbar
+
+  override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+    when (event.actionMasked) {
+      MotionEvent.ACTION_DOWN -> touching = true
+      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> touching = false
+    }
+    return super.dispatchTouchEvent(event)
+  }
+
+  /**
+   * hides the toolbar once the text has moved 24 dp toward its end, and shows it once the text
+   * has moved that far back, or at the top. while the keyboard is up, the text follows the caret
+   * by itself, so only scrolls under a finger count then.
+   */
+  private fun followScroll(scrollY: Int, oldScrollY: Int) {
+    if (scrollY <= 0) {
+      scrollTravel = 0
+      setToolbarHidden(false)
+      return
+    }
+    val delta = scrollY - oldScrollY
+    if (delta == 0 || (editText.isFocused && !touching)) return
+    if ((delta > 0) != (scrollTravel > 0)) scrollTravel = 0
+    scrollTravel += delta
+    val travel = dp(24f)
+    if (scrollTravel >= travel) {
+      setToolbarHidden(true)
+    } else if (scrollTravel <= -travel) {
+      setToolbarHidden(false)
+    }
+  }
+
+  private fun setToolbarHidden(hidden: Boolean) {
+    if (hidden == toolbarHidden) return
+    toolbarHidden = hidden
+    onToolbarHiddenChange(mapOf("hidden" to hidden))
   }
 
   // MARK: - keyboard

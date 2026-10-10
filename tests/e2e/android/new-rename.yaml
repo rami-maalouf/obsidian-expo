@@ -1,10 +1,9 @@
-# after relaunch-search.yaml, Welcome is open. "New note" creates Untitled.md beside it, at the
-# top of the vault (the default new-note setting). text is typed, and a tap on the title at once
-# opens the rename dialog; the rename saves the text before the file moves.
+# after relaunch-search.yaml, Welcome is open. "New note" in the bottom toolbar creates Untitled.md
+# beside it, at the top of the vault (the default new-note setting). text is typed, and a tap on
+# the title at once opens the rename dialog; the rename saves the text before the file moves.
 # scripts/ci/emulator-smoke.sh checks the renamed file on disk.
 appId: com.ramimaalouf.obsidianexpo
 ---
-- tapOn: "More"
 - tapOn: "New note"
 - extendedWaitUntil:
     visible: "Untitled"

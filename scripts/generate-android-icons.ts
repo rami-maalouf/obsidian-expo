@@ -18,6 +18,7 @@ export const OUTPUT = join(root, 'assets/icons/android');
 
 /** file name → material symbol name. */
 export const ICONS: Record<string, string> = {
+  arrow_back: 'arrow_back',
   arrow_forward: 'arrow_forward',
   bookmark_add: 'bookmark_add',
   bookmark_remove: 'bookmark_remove',

@@ -18,7 +18,8 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 ## Note history and launch
 
 - The app records each note shown in a vault, in order: from the files panel, search, a bookmark, a link, the calendar, Today, New Note, or the launch. Showing the note that is already on screen adds nothing. Each vault keeps its newest 100 notes.
-- On iOS, Back and Forward in the toolbar, and Back (⌘[) and Forward (⌘]) in the iPad menu bar, move through these notes, as in a browser or Obsidian. On Android, see [Android](#android). Opening a note after going back removes the notes ahead. Notes that the vault listing no longer has are skipped. On an iPhone, Forward shows only when there is a note ahead, so the title keeps its room.
+- Back and Forward at the left of the bottom toolbar, and Back (⌘[) and Forward (⌘]) in the iPad menu bar, move through these notes, as in a browser or Obsidian. On Android, see also [Android](#android). Opening a note after going back removes the notes ahead. Notes that the vault listing no longer has are skipped. A button is dimmed when there is no note in its direction.
+- Search and New Note are at the right of the bottom toolbar. Like Safari's and Obsidian's bars, the toolbar slides away while you scroll toward the end of a note and comes back when you scroll back or reach the top. Scrolls that only follow the caret while you type do not move it. The keyboard covers the toolbar while it is up.
 - A rename in the app changes the note's path everywhere in the history. A note moved outside the app is followed by its file identity, as bookmarks are; without exactly one match it stays in the history and back and forward skip it.
 - On launch, unsaved edits to recover come first. Then the app reopens the note that was open last. The "On launch" option in Note Settings can open today's note instead. If the last note is gone, or its state cannot be checked, today's note opens; a note in iCloud that is not downloaded opens as it does from the files panel. "Continue to Today" in the recovery list opens today's note.
 - The history is stored by the app per vault. Obsidian's workspace file (`.obsidian/workspace.json`) is not read or written. The stored form can hold several tabs for later work; the app shows one.
@@ -90,7 +91,7 @@ The Android app uses the same JavaScript as the iOS app, so daily notes, templat
 - The keyboard's composing text (the word that the keyboard is still changing) is saved as it is shown, because Android keyboards compose most words.
 - The file system does not report creation times through the folder picker's documents, so "Created time" sorting keeps notes in name order. Document identities are paths, so a bookmark does not follow a note that another app renamed; it shows as missing with Locate and Remove.
 - There is no menu bar; the app bar and the side panels offer the same actions.
-- Android's back gesture or button first closes a side panel that covers the note, then goes back through the [note history](#note-history-and-launch). With no note to go back to, Android handles it as before. Forward is in the overflow menu while there is a note ahead, as in Chrome. The "On launch" choice is in Note settings.
+- Android's back gesture or button first closes a side panel that covers the note, then goes back through the [note history](#note-history-and-launch). With no note to go back to, Android handles it as before. The bottom toolbar is a Material 3 floating toolbar, with Back and Forward on its left and Search and New note on its right. The "On launch" choice is in Note settings.
 
 ## Not yet supported
 

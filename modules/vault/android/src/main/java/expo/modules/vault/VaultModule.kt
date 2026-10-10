@@ -224,7 +224,7 @@ class VaultModule : Module() {
     }.runOnQueue(fileScope)
 
     View(VaultEditorView::class) {
-      Events("onStatus", "onLoad", "onOpenLink", "onScrolledChange")
+      Events("onStatus", "onLoad", "onOpenLink", "onScrolledChange", "onToolbarHiddenChange")
 
       Prop("vaultId") { view: VaultEditorView, vaultId: String? ->
         view.vaultId = vaultId
@@ -232,6 +232,10 @@ class VaultModule : Module() {
 
       Prop("path") { view: VaultEditorView, path: String? ->
         view.path = path
+      }
+
+      Prop("bottomInset") { view: VaultEditorView, inset: Double? ->
+        view.bottomInset = (inset ?: 0.0).toFloat()
       }
 
       OnViewDidUpdateProps { view: VaultEditorView ->

@@ -27,6 +27,8 @@ export const AndroidColors = {
     secondary: '#5c5c5c',
     border: '#e3e3e3',
     accentSoft: 'rgba(127, 109, 242, 0.14)',
+    // material's disabled content: the text color at 38% opacity.
+    disabled: 'rgba(34, 34, 34, 0.38)',
     onAccent: '#ffffff',
     warning: '#c2410c',
     danger: '#d93025',
@@ -38,6 +40,7 @@ export const AndroidColors = {
     secondary: '#a3a3a3',
     border: '#363636',
     accentSoft: 'rgba(165, 148, 255, 0.2)',
+    disabled: 'rgba(218, 218, 218, 0.38)',
     onAccent: '#ffffff',
     warning: '#f0a35e',
     danger: '#f28b82',

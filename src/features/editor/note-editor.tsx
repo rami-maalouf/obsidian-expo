@@ -33,6 +33,15 @@ type NoteEditorProps = {
   /** called when the text leaves its top or returns to it, for the app bar's color. android only. */
   onScrolledChange?: (scrolled: boolean) => void;
   /**
+   * the screen's bottom toolbar follows the user's scrolling: it slides away while they scroll
+   * toward the end of the note and comes back when they scroll back or reach the top. on ios the
+   * editor moves the native toolbar itself; on android it calls `onToolbarHiddenChange`, and the
+   * text can scroll `bottomInset` dp above the toolbar.
+   */
+  hidesToolbarOnScroll?: boolean;
+  onToolbarHiddenChange?: (hidden: boolean) => void;
+  bottomInset?: number;
+  /**
    * the height of a see-through navigation bar over the editor. the text scrolls under the bar
    * and insets itself; a notice above the text starts below the bar.
    */
@@ -60,6 +69,9 @@ export function NoteEditor({
   onOpenLink,
   onUnsavedChange,
   onScrolledChange,
+  hidesToolbarOnScroll,
+  onToolbarHiddenChange,
+  bottomInset,
   headerInset = 0,
   ref,
 }: NoteEditorProps) {
@@ -68,6 +80,7 @@ export function NoteEditor({
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [unsaved, setUnsaved] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [toolbarHidden, setToolbarHidden] = useState(false);
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
   const colors = useSystemColors();
   const notice = statusNotice(status);
@@ -82,6 +95,11 @@ export function NoteEditor({
     // the next note opens at its top.
     return () => onScrolledChange?.(false);
   }, [onScrolledChange, scrolled]);
+  useEffect(() => {
+    onToolbarHiddenChange?.(toolbarHidden);
+    // the next note, or the screen that replaces the editor, starts with the toolbar.
+    return () => onToolbarHiddenChange?.(false);
+  }, [onToolbarHiddenChange, toolbarHidden]);
 
   if (!VaultEditorView) {
     return null;
@@ -128,6 +146,9 @@ export function NoteEditor({
         }}
         onOpenLink={(event) => onOpenLink?.(event.nativeEvent.target, event.nativeEvent.path ?? null)}
         onScrolledChange={(event) => setScrolled(event.nativeEvent.scrolled)}
+        hidesToolbarOnScroll={hidesToolbarOnScroll}
+        onToolbarHiddenChange={(event) => setToolbarHidden(event.nativeEvent.hidden)}
+        bottomInset={bottomInset}
       />
     </View>
   );

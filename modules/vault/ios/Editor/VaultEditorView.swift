@@ -17,6 +17,17 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
 
   var vaultId: String?
   var path: String?
+  /// the screen's bottom toolbar follows the user's scrolling, as safari's does: it slides away
+  /// while the text moves toward its end and comes back when it moves toward its start or reaches
+  /// the top. the editor moves the navigation controller's toolbar itself, without a round trip
+  /// through javascript.
+  var hidesToolbarOnScroll = false {
+    didSet {
+      if !hidesToolbarOnScroll {
+        setToolbarHidden(false)
+      }
+    }
+  }
 
   private let textView = MarkdownTextView(theme: VaultEditorView.theme(for: nil))
   private var document: DocumentSession?
@@ -38,6 +49,14 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   private var dismissedCompletionStart: Int?
   private var observers: [NSObjectProtocol] = []
   private static let settleDelay: TimeInterval = 0.2
+  /// true from the start of a drag until the text stops, so scrolls that follow the caret or open
+  /// a heading never move the toolbar.
+  private var userScrolling = false
+  private var lastScrollY: CGFloat = 0
+  /// how far the text has moved in its current direction: positive toward the end.
+  private var scrollTravel: CGFloat = 0
+  private var hidToolbar = false
+  private static let toolbarTravel: CGFloat = 24
 
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
@@ -136,6 +155,8 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     super.willMove(toSuperview: newSuperview)
     if newSuperview == nil {
       flush()
+      // what replaces the editor, such as the next note or the recovery list, starts with the toolbar.
+      setToolbarHidden(false)
     }
   }
 
@@ -165,6 +186,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     document = nil
     textView.isEditable = false
     textView.text = ""
+    setToolbarHidden(false)
     emit(["status": "loading"])
     LaunchTiming.mark("first note load started")
 
@@ -302,6 +324,82 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     if !completion.isHidden {
       positionCompletion()
     }
+    followScroll(scrollView)
+  }
+
+  // MARK: - toolbar
+
+  public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+    userScrolling = true
+    scrollTravel = 0
+  }
+
+  public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+    if !decelerate {
+      userScrolling = false
+    }
+  }
+
+  public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+    userScrolling = false
+  }
+
+  /// hides the toolbar once the user has moved the text `toolbarTravel` points toward its end, and
+  /// shows it once they have moved it that far back, or at the top. the bounce past the end is
+  /// not a change of direction.
+  private func followScroll(_ scrollView: UIScrollView) {
+    let y = scrollView.contentOffset.y
+    let delta = y - lastScrollY
+    lastScrollY = y
+    guard hidesToolbarOnScroll else {
+      return
+    }
+    let inset = scrollView.adjustedContentInset
+    let top = -inset.top
+    if y <= top {
+      scrollTravel = 0
+      setToolbarHidden(false)
+      return
+    }
+    let end = max(top, scrollView.contentSize.height + inset.bottom - scrollView.bounds.height)
+    guard userScrolling, delta != 0, y <= end, y - delta <= end else {
+      return
+    }
+    if (delta > 0) != (scrollTravel > 0) {
+      scrollTravel = 0
+    }
+    scrollTravel += delta
+    if scrollTravel >= VaultEditorView.toolbarTravel {
+      setToolbarHidden(true)
+    } else if scrollTravel <= -VaultEditorView.toolbarTravel {
+      setToolbarHidden(false)
+    }
+  }
+
+  /// slides the bottom toolbar of the screen's navigation controller away or back. the editor
+  /// shows only a toolbar that it hid, and a screen without toolbar items keeps its toolbar as it is.
+  private func setToolbarHidden(_ hidden: Bool) {
+    guard hidden ? hidesToolbarOnScroll : hidToolbar, let controller = screenController(),
+      let navigation = controller.navigationController, controller.toolbarItems?.isEmpty == false
+    else {
+      return
+    }
+    hidToolbar = hidden
+    if navigation.isToolbarHidden != hidden {
+      navigation.setToolbarHidden(hidden, animated: true)
+    }
+  }
+
+  /// the screen's view controller: the first one in the responder chain.
+  private func screenController() -> UIViewController? {
+    var responder = next
+    while let current = responder {
+      if let controller = current as? UIViewController {
+        return controller
+      }
+      responder = current.next
+    }
+    return nil
   }
 
   private func noteEdited() {

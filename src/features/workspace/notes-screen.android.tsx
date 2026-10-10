@@ -3,9 +3,11 @@
  * (flow f2): at launch, the note that was open last, or today's note. the note title is the app bar title; it ends with "*" while edits wait
  * for a save, and a tap on it renames the note in a dialog, as does "Rename note" in the
  * overflow menu. the app bar's left side opens the files panel and today's note; the right side
- * has the overflow menu (forward, bookmark, search, and the rest) and the calendar panel (t08).
- * android's back gesture goes back through the opened notes, and forward is in the overflow menu
- * while there is a note ahead, as in chrome. icons are material symbols drawn by
+ * has the overflow menu (bookmark, rename, and the rest) and the calendar panel (t08). a floating
+ * toolbar at the bottom has back and forward through the opened notes on its left and search and
+ * a new note on its right; like safari's bar, it slides away while the note scrolls toward its
+ * end and comes back when it scrolls back (VaultEditorView.kt). android's back gesture also goes
+ * back through the opened notes. icons are material symbols drawn by
  * scripts/generate-android-icons.ts. the app bar has no shadow and takes the surface color while
  * the note is scrolled from its top, as material 3's top app bar does.
  */
@@ -13,13 +15,16 @@ import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Animated,
   BackHandler,
+  Easing,
   KeyboardAvoidingView,
   Modal,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  useAnimatedValue,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -37,6 +42,7 @@ import { Busy, Notice } from './status-views';
 import { useWorkspace } from './workspace';
 
 const icons = {
+  back: require('../../../assets/icons/android/arrow_back.xml'),
   forward: require('../../../assets/icons/android/arrow_forward.xml'),
   files: require('../../../assets/icons/android/left_panel_open.xml'),
   today: require('../../../assets/icons/android/today.xml'),
@@ -72,6 +78,17 @@ export function NotesScreen() {
   const lifted = editing && scrolled;
   // the note the rename dialog is open for, or null.
   const [renaming, setRenaming] = useState<string | null>(null);
+  // the bottom toolbar slides down below the screen's edge while the editor asks for it.
+  const [toolbarHidden, setToolbarHidden] = useState(false);
+  const toolbarOffset = useAnimatedValue(0);
+  useEffect(() => {
+    Animated.timing(toolbarOffset, {
+      toValue: toolbarHidden ? TOOLBAR_HEIGHT + TOOLBAR_MARGIN + insets.bottom + 8 : 0,
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [toolbarHidden, toolbarOffset, insets.bottom]);
 
   // the back gesture first closes a panel that covers the note, then goes back through the opened
   // notes; with nothing to go back to, android handles it as before. it applies only while this
@@ -156,6 +173,8 @@ export function NotesScreen() {
         onOpenLink={workspace.openLink}
         onUnsavedChange={setUnsaved}
         onScrolledChange={setScrolled}
+        onToolbarHiddenChange={setToolbarHidden}
+        bottomInset={TOOLBAR_HEIGHT + TOOLBAR_MARGIN}
       />
     );
   } else if (workspace.launching) {
@@ -182,9 +201,6 @@ export function NotesScreen() {
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu icon={icons.more} accessibilityLabel="More">
-          <Stack.Toolbar.MenuAction icon={icons.forward} hidden={!workspace.canGoForward} onPress={workspace.goForward}>
-            Forward
-          </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction
             icon={marked ? icons.bookmarkRemove : icons.bookmarkAdd}
             hidden={!editing}
@@ -193,14 +209,6 @@ export function NotesScreen() {
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon={icons.rename} hidden={!editing} onPress={rename}>
             Rename note
-          </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon={icons.search} onPress={() => router.push('/search')}>
-            Search
-          </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction
-            icon={icons.newNote}
-            onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't create a note", problem))}>
-            New note
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon={icons.settings} onPress={() => router.push('/settings')}>
             Note settings
@@ -211,12 +219,49 @@ export function NotesScreen() {
         </Stack.Toolbar.Menu>
         <Stack.Toolbar.Button icon={icons.calendar} accessibilityLabel="Calendar" onPress={() => workspace.setCalendarOpen(!workspace.calendarOpen)} />
       </Stack.Toolbar>
-      {/* the note ends above the system's navigation bar; the editor keeps the keyboard clear itself. */}
-      <View style={{ flex: 1, paddingBottom: insets.bottom, backgroundColor: palette.background }}>{content}</View>
+      {/* the note ends above the system's navigation bar and scrolls under the toolbar; the editor
+          keeps the keyboard clear itself. other content ends above the toolbar. */}
+      <View
+        style={{ flex: 1, paddingBottom: insets.bottom + (editing ? 0 : TOOLBAR_HEIGHT + TOOLBAR_MARGIN), backgroundColor: palette.background }}>
+        {content}
+      </View>
+      {/* expo router draws the toolbar with compose at the bottom of this layer, above the
+          system's navigation bar. it stays behind the keyboard, which covers it while typing. */}
+      <Animated.View pointerEvents="box-none" style={[styles.toolbarLayer, { transform: [{ translateY: toolbarOffset }] }]}>
+        <Stack.Toolbar placement="bottom" disableImePadding tintColor={Accent} backgroundColor={palette.surface}>
+          <Stack.Toolbar.Button
+            icon={icons.back}
+            accessibilityLabel="Back"
+            disabled={!workspace.canGoBack}
+            tintColor={workspace.canGoBack ? Accent : palette.disabled}
+            onPress={workspace.goBack}
+          />
+          <Stack.Toolbar.Button
+            icon={icons.forward}
+            accessibilityLabel="Forward"
+            disabled={!workspace.canGoForward}
+            tintColor={workspace.canGoForward ? Accent : palette.disabled}
+            onPress={workspace.goForward}
+          />
+          <Stack.Toolbar.Spacer width={TOOLBAR_GAP} />
+          <Stack.Toolbar.Button icon={icons.search} accessibilityLabel="Search" onPress={() => router.push('/search')} />
+          <Stack.Toolbar.Button
+            icon={icons.newNote}
+            accessibilityLabel="New note"
+            onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't create a note", problem))}
+          />
+        </Stack.Toolbar>
+      </Animated.View>
       {renaming ? <RenameDialog key={renaming} from={renaming} onRename={applyRename} onClose={() => setRenaming(null)} /> : null}
     </>
   );
 }
+
+/** expo router's floating toolbar is 64 dp tall; it floats 16 dp above the navigation bar, as material 3 places it. */
+const TOOLBAR_HEIGHT = 64;
+const TOOLBAR_MARGIN = 16;
+/** the space between back and forward on the left and search and new note on the right. */
+const TOOLBAR_GAP = 48;
 
 /**
  * the note's name as the app bar title, in the style of the system title. a tap opens the rename
@@ -341,6 +386,10 @@ function TodayProblem({ outcome, onRetry }: { outcome: DailyNoteOutcome; onRetry
 }
 
 const styles = StyleSheet.create({
+  toolbarLayer: {
+    ...StyleSheet.absoluteFill,
+    bottom: TOOLBAR_MARGIN,
+  },
   titleButton: {
     borderRadius: 8,
     paddingVertical: 4,

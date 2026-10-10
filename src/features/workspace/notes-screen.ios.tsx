@@ -1,12 +1,13 @@
 /**
  * the note between the two side panels: drafts to recover first, then the open note (flow f2):
  * at launch, the note that was open last, or today's note. the note title is the native navigation title; it ends with "*" while edits wait
- * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens
- * the files panel, goes back and forward through the opened notes, and opens today's note; the
- * right group opens the native "more" menu with bookmark, search, and the rest, then the calendar
- * panel at the trailing edge (t08). on a phone, forward appears only when there is a note ahead,
- * so the title keeps its room. the navigation bar is see-through: the note scrolls under it, and
- * liquid glass's soft scroll edge effect fades the text out below the bar.
+ * for a save, and a tap on it renames the note in a native prompt. the navigation bar's left group
+ * opens the files panel and today's note; the right group opens the native "more" menu with
+ * bookmark, rename, and the rest, then the calendar panel at the trailing edge (t08). the
+ * navigation bar is see-through: the note scrolls under it, and liquid glass's soft scroll edge
+ * effect fades the text out below the bar. the bottom toolbar has back and forward through the
+ * opened notes on the left, and search and a new note on the right; like safari's, it slides away
+ * while the note scrolls toward its end and comes back when it scrolls back (VaultEditorView.swift).
  */
 import { Stack, useRouter } from 'expo-router';
 import { useHeaderHeight } from 'expo-router/react-navigation';
@@ -38,7 +39,6 @@ export function NotesScreen() {
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
   const editor = useRef<NoteEditorHandle>(null);
   const headerHeight = useHeaderHeight();
-  const showForward = workspace.wide || workspace.canGoForward;
 
   /** the native rename prompt: the name without ".md", in the note's folder. */
   const rename = () => {
@@ -113,6 +113,7 @@ export function NotesScreen() {
         onOpenLink={workspace.openLink}
         onUnsavedChange={setUnsaved}
         headerInset={headerHeight}
+        hidesToolbarOnScroll
       />
     );
   } else if (workspace.launching) {
@@ -128,7 +129,7 @@ export function NotesScreen() {
       <Stack.Screen
         options={{
           title,
-          headerTitle: editing ? () => <RenameTitle title={title} buttons={showForward ? 6 : 5} onPress={rename} /> : undefined,
+          headerTitle: editing ? () => <RenameTitle title={title} buttons={4} onPress={rename} /> : undefined,
           // the native text view and the swiftui status views inset themselves below the bar.
           // the editor sets its own soft scroll edge effect (VaultEditorView.swift).
           headerTransparent: true,
@@ -140,21 +141,6 @@ export function NotesScreen() {
           accessibilityLabel="Files"
           selected={workspace.wide && workspace.filesOpen}
           onPress={() => workspace.setFilesOpen(!workspace.filesOpen)}
-        />
-        <Stack.Toolbar.Button
-          icon="chevron.backward"
-          accessibilityLabel="Back"
-          accessibilityHint="Opens the previous note"
-          disabled={!workspace.canGoBack}
-          onPress={workspace.goBack}
-        />
-        <Stack.Toolbar.Button
-          icon="chevron.forward"
-          accessibilityLabel="Forward"
-          accessibilityHint="Opens the next note"
-          hidden={!showForward}
-          disabled={!workspace.canGoForward}
-          onPress={workspace.goForward}
         />
         {/* today's day number on a calendar page, like the calendar app's icon. */}
         <Stack.Toolbar.Button icon={todayIcon(workspace.civilToday.day)} accessibilityLabel="Open today's note" onPress={workspace.openToday} />
@@ -170,14 +156,6 @@ export function NotesScreen() {
           <Stack.Toolbar.MenuAction icon="pencil" hidden={!editing} onPress={rename}>
             Rename note
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="magnifyingglass" onPress={() => router.push('/search')}>
-            Search
-          </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction
-            icon="square.and.pencil"
-            onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't Create a Note", problem))}>
-            New note
-          </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="gearshape" onPress={() => router.push('/settings')}>
             Note settings
           </Stack.Toolbar.MenuAction>
@@ -190,6 +168,30 @@ export function NotesScreen() {
           accessibilityLabel="Calendar"
           selected={workspace.calendarOpen}
           onPress={() => workspace.setCalendarOpen(!workspace.calendarOpen)}
+        />
+      </Stack.Toolbar>
+      {/* a flexible space splits the items into two liquid glass groups at the edges. */}
+      <Stack.Toolbar placement="bottom">
+        <Stack.Toolbar.Button
+          icon="chevron.backward"
+          accessibilityLabel="Back"
+          accessibilityHint="Opens the previous note"
+          disabled={!workspace.canGoBack}
+          onPress={workspace.goBack}
+        />
+        <Stack.Toolbar.Button
+          icon="chevron.forward"
+          accessibilityLabel="Forward"
+          accessibilityHint="Opens the next note"
+          disabled={!workspace.canGoForward}
+          onPress={workspace.goForward}
+        />
+        <Stack.Toolbar.Spacer />
+        <Stack.Toolbar.Button icon="magnifyingglass" accessibilityLabel="Search" onPress={() => router.push('/search')} />
+        <Stack.Toolbar.Button
+          icon="square.and.pencil"
+          accessibilityLabel="New note"
+          onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't Create a Note", problem))}
         />
       </Stack.Toolbar>
       {content}

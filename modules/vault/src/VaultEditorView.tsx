@@ -32,6 +32,9 @@ export type EditorOpenLinkEvent = { target: string; path?: string };
 /** the text left its top (`scrolled`) or returned to it. android only. */
 export type EditorScrolledEvent = { scrolled: boolean };
 
+/** the bottom toolbar should slide away (`hidden`) or come back, from the user's scrolling. android only. */
+export type EditorToolbarHiddenEvent = { hidden: boolean };
+
 export type NativeRenameResult =
   | { kind: 'moved' }
   /** another file already has the new path; nothing moved. */
@@ -57,6 +60,14 @@ export type VaultEditorViewProps = ViewProps & {
   onLoad?: (event: NativeSyntheticEvent<EditorLoadEvent>) => void;
   onOpenLink?: (event: NativeSyntheticEvent<EditorOpenLinkEvent>) => void;
   onScrolledChange?: (event: NativeSyntheticEvent<EditorScrolledEvent>) => void;
+  onToolbarHiddenChange?: (event: NativeSyntheticEvent<EditorToolbarHiddenEvent>) => void;
+  /**
+   * ios only: the editor hides its screen's bottom toolbar while the user scrolls toward the end
+   * of the note and shows it again when they scroll back or reach the top.
+   */
+  hidesToolbarOnScroll?: boolean;
+  /** android only: the height in dp of a bar over the bottom of the editor; the end of the text scrolls above it. */
+  bottomInset?: number;
   ref?: Ref<VaultEditorHandle>;
 };
 

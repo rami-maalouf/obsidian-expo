@@ -1,7 +1,8 @@
 # relaunches the app on a fixture vault that scripts/ci/simulator-smoke.sh registered, types into today's
 # note, waits for the save and for the title to lose its unsaved mark, types a styled heading and a code
-# fence, then searches and opens another note, and goes back to today's note, so the next launch reopens
-# it. the script then checks the typed lines on disk and that every other fixture file is unchanged.
+# fence, then closes the keyboard, searches from the bottom toolbar, opens another note, and goes back to
+# today's note, so the next launch reopens it. the script then checks the typed lines on disk and that
+# every other fixture file is unchanged.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -41,7 +42,8 @@ appId: com.ramimaalouf.obsidianexpo
       id: "note-status:saved"
     timeout: 15000
 - takeScreenshot: ${OUT}/styled
-- tapOn: "More"
+# the bottom toolbar is behind the keyboard while it is up.
+- hideKeyboard
 - tapOn: "Search"
 # the native search field takes focus by itself; tapping it is only a fallback.
 - tapOn:
