@@ -29,12 +29,14 @@ enum class ToolbarAction(val icon: Int, val label: String) {
 /**
  * the row of buttons that sits on the keyboard while the note's text has focus. android has no
  * keyboard accessory view like ios's, so the editor places this row above the keyboard's insets.
+ * the editing buttons scroll sideways when they do not fit; hide keyboard stays at the right end.
  * the buttons never take focus, so the text keeps its caret and the keyboard stays up.
  */
 class EditorToolbar(context: Context) : FrameLayout(context) {
   var onAction: ((ToolbarAction) -> Unit)? = null
 
   private val divider = View(context)
+  private val separator = View(context)
   private val buttons: List<ImageButton>
 
   init {
@@ -55,20 +57,31 @@ class EditorToolbar(context: Context) : FrameLayout(context) {
         ViewCompat.setTooltipText(this, action.label)
         isFocusable = false
         setOnClickListener { onAction?.invoke(action) }
-        row.addView(this, LinearLayout.LayoutParams(dp(48), dp(48)))
       }
+    }
+    val pinned = buttons[ToolbarAction.HIDE_KEYBOARD.ordinal]
+    for (button in buttons) {
+      if (button !== pinned) row.addView(button, LinearLayout.LayoutParams(dp(48), dp(48)))
     }
     val scroll = HorizontalScrollView(context).apply {
       isHorizontalScrollBarEnabled = false
       addView(row, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.MATCH_PARENT))
     }
-    addView(scroll, LayoutParams(LayoutParams.MATCH_PARENT, dp(HEIGHT_DP)))
+    val bar = LinearLayout(context).apply {
+      orientation = LinearLayout.HORIZONTAL
+      gravity = Gravity.CENTER_VERTICAL
+      addView(scroll, LinearLayout.LayoutParams(0, LayoutParams.MATCH_PARENT, 1f))
+      addView(separator, LinearLayout.LayoutParams(dp(1), dp(24)))
+      addView(pinned, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(4) })
+    }
+    addView(bar, LayoutParams(LayoutParams.MATCH_PARENT, dp(HEIGHT_DP)))
     addView(divider, LayoutParams(LayoutParams.MATCH_PARENT, dp(1), Gravity.TOP))
   }
 
   fun setColors(icon: Int, surface: Int, line: Int) {
     setBackgroundColor(surface)
     divider.setBackgroundColor(line)
+    separator.setBackgroundColor(line)
     val tint = ColorStateList.valueOf(icon)
     for (button in buttons) button.imageTintList = tint
   }
