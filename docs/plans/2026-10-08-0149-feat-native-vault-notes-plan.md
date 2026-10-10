@@ -64,7 +64,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 #### Daily writing
 
 - R10. Show a month calendar whose selected day opens its existing daily note or creates the missing note once from the configured template.
-- R11. After vault setup, open Today by default unless recoverable unsaved work needs attention first; a date rollover updates Today without replacing the active note.
+- R11. After vault setup, open Today by default unless recoverable unsaved work needs attention first; a date rollover updates Today without replacing the active note. Amended October 10, 2026, at the user's request: a launch reopens the note that was open last, as Obsidian restores its workspace, unless a per-vault setting asks for Today. Recoverable unsaved work still comes first, and a note that is gone or cannot be checked opens Today. Back and forward move through the notes opened in the vault, and that history is app data stored per vault (KTD7). Its stored form can hold several tabs for later work; the app shows one. See [compatibility](../compatibility.md#note-history-and-launch).
 - R12. Configure the daily-note folder, filename format, and template path per vault, with a preview before settings take effect.
 - R13. Support the exact Templater subset in KTD6; validate the whole template before creating files or folders and show a useful error for unsupported syntax.
 - R14. Use the selected calendar day for the target path and title, while `tp.date.now()` uses actual creation time; existing notes never receive the template again.
@@ -79,7 +79,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 ### Core Flows
 
 - F1. Select vault -> configure daily-note location/template -> preview -> open Today. Cancelling selection preserves the previous vault. Covers R1, R10-R14.
-- F2. Launch -> restore access -> resolve recovery if present -> open Today -> type -> see local save completion. Covers R1-R5, R11.
+- F2. Launch -> restore access -> resolve recovery if present -> open Today -> type -> see local save completion. Covers R1-R5, R11. Amended October 10, 2026, at the user's request: the launch reopens the last open note, or Today when the vault's setting asks for it (R11).
 - F3. Search or browse -> open note -> edit -> bookmark -> return through the bookmark. Covers R5-R9.
 - F4. Tap a calendar day -> resolve its canonical path -> open existing content or validate and create -> show the note (amended October 9, 2026, at the user's request: a note opens at its top without the keyboard, and a tap places the caret). Covers R4, R10, R13-R15.
 
