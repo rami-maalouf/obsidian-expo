@@ -60,5 +60,8 @@
     "build:preview:android": "bunx eas-cli@latest build --profile preview --platform android",
     "update:preview": "APP_VARIANT=preview bunx eas-cli@latest update --channel preview --environment preview"
   },
-  "private": true
+  "private": true,
+  "patchedDependencies": {
+    "expo-router@58.0.17": "patches/expo-router@58.0.17.patch"
+  }
 }
