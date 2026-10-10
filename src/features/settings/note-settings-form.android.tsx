@@ -163,11 +163,15 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
   const footer = [styles.footer, { color: palette.secondary }];
 
   return (
-    <KeyboardAvoidingView behavior="padding" style={[styles.screen, { backgroundColor: palette.background }]}>
+    // first setup has no app bar: the status bar's height is kept clear, so scrolled text never
+    // runs under the clock.
+    <KeyboardAvoidingView
+      behavior="padding"
+      style={[styles.screen, { backgroundColor: palette.background, paddingTop: firstSetup ? insets.top : 0 }]}>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingTop: firstSetup ? insets.top + 16 : 8, paddingBottom: insets.bottom + 24 }}>
+        contentContainerStyle={{ paddingTop: firstSetup ? 16 : 8, paddingBottom: insets.bottom + 24 }}>
         {firstSetup ? (
           <View style={styles.intro}>
             <Text accessibilityRole="header" style={[styles.heading, { color: palette.text }]}>
