@@ -14,6 +14,7 @@ import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 import { createUntitledNote, linkedNotePath } from '@/features/explorer/new-note';
 import { editableName } from '@/features/explorer/rename';
 import { useNoteList } from '@/features/explorer/use-note-list';
+import { stepTarget } from '@/features/navigation/history';
 import { useNavigationHistory } from '@/features/navigation/use-navigation-history';
 import { newNoteContent, newNoteFolder, type NewNoteSettings } from '@/features/new-notes/settings';
 import { useDrafts } from '@/features/recovery/use-drafts';
@@ -91,7 +92,7 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   }, [todayCreated, refreshNotes]);
 
   // the note on screen is always the history's current note: a newly shown note is recorded,
-  // while a rename moves the history first, so recording it changes nothing.
+  // while back, forward, and rename move the history first, so recording them changes nothing.
   const shown = path && pending !== null && !needsRecovery && !dayProblem ? path : null;
   const historyLoaded = navigation.history !== null;
   const recordNote = navigation.record;
@@ -130,6 +131,28 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   );
 
   const openToday = useCallback(() => selectDay(civilToday), [civilToday, selectDay]);
+
+  /**
+   * shows the previous (-1) or next (1) note in the history, skipping notes that the listing no
+   * longer has. it works only while a note is on screen, so it never skips unsaved-edit recovery.
+   */
+  const stepHistory = navigation.step;
+  const go = useCallback(
+    (direction: -1 | 1) => {
+      if (!shown) return;
+      const target = stepHistory(direction, knownPaths);
+      if (!target) return;
+      // like opening a note, this wins over a daily-note request that is still running (r15).
+      dailyNotes.navigateAway();
+      setSelected(target);
+      setDayProblem(null);
+    },
+    [knownPaths, shown, stepHistory],
+  );
+  const goBack = useCallback(() => go(-1), [go]);
+  const goForward = useCallback(() => go(1), [go]);
+  const canGoBack = shown !== null && navigation.history !== null && stepTarget(navigation.history, -1, knownPaths) !== null;
+  const canGoForward = shown !== null && navigation.history !== null && stepTarget(navigation.history, 1, knownPaths) !== null;
 
   /**
    * creates "Untitled.md" (or the next free number) where the new-note settings say, from their
@@ -210,6 +233,12 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
         case 'today':
           openToday();
           break;
+        case 'back':
+          goBack();
+          break;
+        case 'forward':
+          goForward();
+          break;
         case 'search':
           router.push('/search');
           break;
@@ -225,7 +254,7 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
       }
     });
     return () => subscription?.remove();
-  }, [createNote, openToday]);
+  }, [createNote, goBack, goForward, openToday]);
 
   return {
     vault,
@@ -256,6 +285,10 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
     open,
     selectDay,
     openToday,
+    goBack,
+    goForward,
+    canGoBack,
+    canGoForward,
     showFirstScreen,
     retryDay: () => (dayProblem ? selectDay(dayProblem.date) : today.retry()),
     continueToToday: () => setContinued(true),

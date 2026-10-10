@@ -1,9 +1,11 @@
 /**
  * the note between the two side panels: drafts to recover before today, then the open note
  * (flow f2). the note title is the native navigation title; it ends with "*" while edits wait
- * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens the files panel and today's note; the right group
- * opens the native "more" menu with bookmark, search, and the rest, then the calendar panel at
- * the trailing edge (t08).
+ * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens
+ * the files panel, goes back and forward through the opened notes, and opens today's note; the
+ * right group opens the native "more" menu with bookmark, search, and the rest, then the calendar
+ * panel at the trailing edge (t08). on a phone, forward appears only when there is a note ahead,
+ * so the title keeps its room.
  */
 import { Stack, useRouter } from 'expo-router';
 import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
@@ -33,6 +35,7 @@ export function NotesScreen() {
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
   const editor = useRef<NoteEditorHandle>(null);
+  const showForward = workspace.wide || workspace.canGoForward;
 
   /** the native rename prompt: the name without ".md", in the note's folder. */
   const rename = () => {
@@ -116,13 +119,33 @@ export function NotesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title, headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerTitle: editing ? () => <RenameTitle title={title} buttons={showForward ? 6 : 5} onPress={rename} /> : undefined,
+        }}
+      />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
           icon="sidebar.left"
           accessibilityLabel="Files"
           selected={workspace.wide && workspace.filesOpen}
           onPress={() => workspace.setFilesOpen(!workspace.filesOpen)}
+        />
+        <Stack.Toolbar.Button
+          icon="chevron.backward"
+          accessibilityLabel="Back"
+          accessibilityHint="Opens the previous note"
+          disabled={!workspace.canGoBack}
+          onPress={workspace.goBack}
+        />
+        <Stack.Toolbar.Button
+          icon="chevron.forward"
+          accessibilityLabel="Forward"
+          accessibilityHint="Opens the next note"
+          hidden={!showForward}
+          disabled={!workspace.canGoForward}
+          onPress={workspace.goForward}
         />
         {/* today's day number on a calendar page, like the calendar app's icon. */}
         <Stack.Toolbar.Button icon={todayIcon(workspace.civilToday.day)} accessibilityLabel="Open today's note" onPress={workspace.openToday} />
@@ -165,12 +188,17 @@ export function NotesScreen() {
   );
 }
 
+/** the width the title leaves for each toolbar button, and for the bar's margins. */
+const TOOLBAR_BUTTON_WIDTH = 44;
+const TOOLBAR_MARGINS = 64;
+
 /**
  * the note's name as the navigation title, styled like the system title. a tap opens the rename
- * prompt; the width leaves room for the toolbar buttons on both sides.
+ * prompt; the width leaves room for the `buttons` toolbar buttons on both sides.
  */
-function RenameTitle({ title, onPress }: { title: string; onPress: () => void }) {
+function RenameTitle({ title, buttons, onPress }: { title: string; buttons: number; onPress: () => void }) {
   const { width } = useWindowDimensions();
+  const reserved = TOOLBAR_MARGINS + buttons * TOOLBAR_BUTTON_WIDTH;
   return (
     <Pressable
       accessibilityRole="button"
@@ -178,7 +206,7 @@ function RenameTitle({ title, onPress }: { title: string; onPress: () => void })
       accessibilityHint="Renames the note"
       hitSlop={8}
       onPress={onPress}
-      style={({ pressed }) => [{ maxWidth: Math.max(120, width - 240) }, pressed && styles.pressed]}>
+      style={({ pressed }) => [{ maxWidth: Math.max(120, width - reserved) }, pressed && styles.pressed]}>
       <Text numberOfLines={1} style={[styles.title, { color: SystemColors.label }]}>
         {title}
       </Text>

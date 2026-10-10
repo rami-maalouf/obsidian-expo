@@ -48,7 +48,15 @@ export type NativeDraft = {
 };
 
 /** commands from the ipad menu bar; names match `VaultMenu.Command` in ios/MainMenu.swift. */
-export type MenuCommand = 'new-note' | 'today' | 'search' | 'toggle-files' | 'toggle-calendar' | 'settings';
+export type MenuCommand =
+  | 'new-note'
+  | 'today'
+  | 'back'
+  | 'forward'
+  | 'search'
+  | 'toggle-files'
+  | 'toggle-calendar'
+  | 'settings';
 
 /** the native vault module. it exists only in ios builds; web and expo go return null. */
 export type VaultNativeModule = {
