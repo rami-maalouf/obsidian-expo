@@ -28,8 +28,10 @@ import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 import expo.modules.vault.core.DocumentSession
 import expo.modules.vault.core.DocumentStatus
+import expo.modules.vault.core.EditorCommands
 import expo.modules.vault.core.LoadOutcome
 import expo.modules.vault.core.MarkdownStyles
+import expo.modules.vault.core.TextEdit
 import expo.modules.vault.core.WikiLinkCompletion
 import expo.modules.vault.core.WikiLinkQuery
 import expo.modules.vault.core.WikiLinkReference
@@ -67,6 +69,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private val scroll = ScrollView(context)
   private val editText = VaultEditText(context)
   private val completion = CompletionPanel(context)
+  private val toolbar = EditorToolbar(context)
   private val styler: EditorStyler
   private var palette: EditorPalette
 
@@ -99,6 +102,9 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private var dismissedCompletionStart: Int? = null
   private var keyboardOverlap = 0
   private var keyboardShown = false
+
+  /** the navigation bar's part of this view; the toolbar stays above it when no keyboard is shown. */
+  private var navigationOverlap = 0
   private val flushTask = Runnable { flush() }
 
   private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { updateKeyboardOverlap() }
@@ -170,7 +176,10 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
       onSelectionChange = { updateCompletion() }
       onPopupKey = { keyCode -> popupKey(keyCode) }
       onRelease = { container.requestFocus() }
-      setOnFocusChangeListener { _, focused -> if (!focused) hideCompletion() }
+      setOnFocusChangeListener { _, focused ->
+        if (!focused) hideCompletion()
+        layoutBottom()
+      }
     }
     scroll.addView(editText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
     scroll.setOnScrollChangeListener { _, _, scrollY, _, _ ->
@@ -183,6 +192,9 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
     completion.onSelect = { index -> acceptCompletion(index) }
     container.addView(completion, FrameLayout.LayoutParams(dp(CompletionPanel.WIDTH_DP).toInt(), FrameLayout.LayoutParams.WRAP_CONTENT))
+    toolbar.onAction = { action -> runToolbar(action) }
+    toolbar.visibility = View.GONE
+    container.addView(toolbar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
     applyPalette()
     setEditable(false)
   }
@@ -420,6 +432,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     editable = on
     editText.showSoftInputOnFocus = on
     editText.isCursorVisible = on
+    layoutBottom()
   }
 
   /**
@@ -454,13 +467,77 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     val location = IntArray(2)
     getLocationInWindow(location)
     val overlap = if (keyboard > 0) max(0, location[1] + height - (rootView.height - keyboard)) else 0
-    if (overlap == keyboardOverlap) return
+    val navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+    val navigationPart = if (navigation > 0) max(0, location[1] + height - (rootView.height - navigation)) else 0
+    if (overlap == keyboardOverlap && navigationPart == navigationOverlap) return
     keyboardOverlap = overlap
-    (scroll.layoutParams as FrameLayout.LayoutParams).bottomMargin = overlap
+    navigationOverlap = navigationPart
+    layoutBottom()
+  }
+
+  /**
+   * keeps the text clear of the keyboard and, while the text has focus, of the toolbar that sits
+   * on the keyboard (or on the navigation bar, with a hardware keyboard).
+   */
+  private fun layoutBottom() {
+    val showing = editable && editText.isFocused
+    val toolbarBottom = if (keyboardOverlap > 0) keyboardOverlap else navigationOverlap
+    val reserved = if (showing) toolbarBottom + dp(EditorToolbar.HEIGHT_DP.toFloat()).toInt() else keyboardOverlap
+    toolbar.visibility = if (showing) View.VISIBLE else View.GONE
+    val toolbarParams = toolbar.layoutParams as FrameLayout.LayoutParams
+    if (toolbarParams.bottomMargin != toolbarBottom) {
+      toolbarParams.bottomMargin = toolbarBottom
+      toolbar.requestLayout()
+    }
+    val scrollParams = scroll.layoutParams as FrameLayout.LayoutParams
+    if (scrollParams.bottomMargin == reserved) return
+    scrollParams.bottomMargin = reserved
     scroll.requestLayout()
     if (editText.isFocused) {
       post { editText.bringPointIntoView(editText.selectionEnd) }
     }
+  }
+
+  /** the part at the bottom that the keyboard and the toolbar cover. */
+  private fun reservedBottom(): Int = (scroll.layoutParams as FrameLayout.LayoutParams).bottomMargin
+
+  // MARK: - toolbar
+
+  /**
+   * runs a toolbar button. undo and redo are the text field's own, as with ctrl+z; the other
+   * edits replace text like a paste, so the field records each one as one undo step, and the
+   * text watcher saves it and updates the link suggestions.
+   */
+  private fun runToolbar(action: ToolbarAction) {
+    if (action == ToolbarAction.HIDE_KEYBOARD) {
+      context.getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(editText.windowToken, 0)
+      editText.release()
+      return
+    }
+    if (!editable || document == null || !editText.isFocused) return
+    val text = editText.text
+    val start = min(editText.selectionStart, editText.selectionEnd).coerceIn(0, text.length)
+    val end = max(editText.selectionStart, editText.selectionEnd).coerceIn(start, text.length)
+    when (action) {
+      ToolbarAction.UNDO -> editText.onTextContextMenuItem(android.R.id.undo)
+      ToolbarAction.REDO -> editText.onTextContextMenuItem(android.R.id.redo)
+      ToolbarAction.OUTDENT -> applyEdit(EditorCommands.outdent(text, start, end))
+      ToolbarAction.INDENT -> applyEdit(EditorCommands.indent(text, start, end))
+      ToolbarAction.TASK -> applyEdit(EditorCommands.toggleTask(text, start, end))
+      ToolbarAction.LINK -> applyEdit(EditorCommands.insertLink(text, start, end))
+      ToolbarAction.TAG -> applyEdit(EditorCommands.insertTag(text, start, end))
+      ToolbarAction.BOLD -> applyEdit(EditorCommands.toggleEmphasis(text, start, end, strong = true))
+      ToolbarAction.ITALIC -> applyEdit(EditorCommands.toggleEmphasis(text, start, end, strong = false))
+      ToolbarAction.HIDE_KEYBOARD -> Unit
+    }
+  }
+
+  private fun applyEdit(edit: TextEdit?) {
+    edit ?: return
+    val text = editText.text
+    if (edit.end > text.length) return
+    text.replace(edit.start, edit.end, edit.text)
+    editText.setSelection(edit.selectionStart.coerceIn(0, text.length), edit.selectionEnd.coerceIn(0, text.length))
   }
 
   // MARK: - link completion
@@ -526,7 +603,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     val x = editText.totalPaddingLeft + layout.getPrimaryHorizontal(caret) - scroll.scrollX
     val lineTop = editText.top + editText.totalPaddingTop + layout.getLineTop(line) - scroll.scrollY
     val lineBottom = editText.top + editText.totalPaddingTop + layout.getLineBottom(line) - scroll.scrollY
-    val visibleBottom = container.height - keyboardOverlap
+    val visibleBottom = container.height - reservedBottom()
     val gap = dp(6f)
     val panelHeight = dp(CompletionPanel.ROW_HEIGHT_DP) * completion.items.size + dp(8f)
     val width = min(dp(CompletionPanel.WIDTH_DP), container.width - dp(16f))
@@ -661,6 +738,12 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     editText.setTextColor(palette.text)
     editText.highlightColor = (palette.accent and 0x00FFFFFF) or 0x55000000
     completion.setColors(palette, if (isNight()) 0xFF2A2A2A.toInt() else Color.WHITE)
+    // the shell's surface and border colors (src/constants/theme.ts), as the scrolled app bar.
+    if (isNight()) {
+      toolbar.setColors(palette.text, 0xFF262626.toInt(), 0xFF363636.toInt())
+    } else {
+      toolbar.setColors(palette.text, 0xFFF6F6F6.toInt(), 0xFFE3E3E3.toInt())
+    }
   }
 
   private fun dp(value: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, resources.displayMetrics)

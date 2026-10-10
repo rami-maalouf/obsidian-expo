@@ -29,3 +29,14 @@ appId: com.ramimaalouf.obsidianexpo
       id: "note-status:saved"
     timeout: 15000
 - takeScreenshot: ${OUT}/styled
+# the editing toolbar (t17) sits on the keyboard while the text has focus. indent and task change
+# the typed list line, and bold wraps the word at the caret; the script checks the line on disk.
+- inputText: "- Toolbar item"
+- tapOn: "Indent"
+- tapOn: "Task"
+- tapOn: "Bold"
+- extendedWaitUntil:
+    visible:
+      id: "note-status:saved"
+    timeout: 15000
+- takeScreenshot: ${OUT}/toolbar
