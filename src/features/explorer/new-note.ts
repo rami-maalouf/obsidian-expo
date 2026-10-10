@@ -1,6 +1,6 @@
 /**
- * new notes, as in obsidian: "Untitled.md", then "Untitled 1.md" and so on, in the open note's
- * folder (r9). creation is exclusive, so an existing file is never replaced.
+ * new notes, as in obsidian: "Untitled.md", then "Untitled 1.md" and so on, in the folder the
+ * new-note settings choose (r5). creation is exclusive, so an existing file is never replaced.
  */
 export type CreateResult = 'created' | 'exists' | 'failed';
 

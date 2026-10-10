@@ -21,7 +21,7 @@ const INDENT = 16;
 type Item =
   | { kind: 'title'; key: string; title: string; sort?: boolean }
   | { kind: 'message'; key: string; text: string }
-  | { kind: 'action'; key: string; icon: 'edit_calendar' | 'folder_open'; title: string; run: () => void }
+  | { kind: 'action'; key: string; icon: 'settings' | 'folder_open'; title: string; run: () => void }
   | { kind: 'locate'; key: string; path: string }
   | { kind: 'bookmark'; key: string; mark: BookmarkView }
   | { kind: 'sort'; key: string; value: FileSort; label: string }
@@ -69,13 +69,13 @@ export function NativeSidebar() {
   );
 
   const newNote = async () => {
-    setProblem((await workspace.createNote()) ? null : 'The note could not be created.');
+    setProblem(await workspace.createNote());
   };
 
   const items = useMemo(() => {
     const list: Item[] = [];
     if (showActions) {
-      list.push({ kind: 'action', key: 'action:settings', icon: 'edit_calendar', title: 'Daily note settings', run: () => router.push('/settings') });
+      list.push({ kind: 'action', key: 'action:settings', icon: 'settings', title: 'Note settings', run: () => router.push('/settings') });
       list.push({ kind: 'action', key: 'action:vault', icon: 'folder_open', title: 'Choose another vault', run: workspace.chooseVault });
     }
     if (locating) list.push({ kind: 'locate', key: 'locate', path: locating });

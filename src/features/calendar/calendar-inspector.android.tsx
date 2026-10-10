@@ -42,7 +42,7 @@ export function CalendarInspector() {
         <Text accessibilityRole="header" style={[styles.title, { color: palette.text }]}>
           Calendar
         </Text>
-        <IconButton icon="edit_calendar" label="Daily note settings" onPress={() => router.push('/settings')} />
+        <IconButton icon="settings" label="Note settings" onPress={() => router.push('/settings')} />
         <IconButton icon="right_panel_close" label="Close calendar" onPress={() => workspace.setCalendarOpen(false)} />
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}>

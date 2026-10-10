@@ -22,9 +22,10 @@ appId: com.ramimaalouf.obsidianexpo
 - takeScreenshot: ${OUT}/picker
 - tapOn: "(?i)use this folder"
 - tapOn: "(?i)allow"
-# first setup: the folder, file name format, and template come from the vault's file names.
+# first setup: the daily-note folder, file name format, and template come from the vault's file
+# names; the new-note settings below keep their defaults.
 - extendedWaitUntil:
-    visible: "Daily notes"
+    visible: "Set Up Notes"
     timeout: 30000
 - takeScreenshot: ${OUT}/first-setup
 - scrollUntilVisible:

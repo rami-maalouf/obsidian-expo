@@ -21,12 +21,12 @@ export const ICONS: Record<string, string> = {
   bookmark_add: 'bookmark_add',
   bookmark_remove: 'bookmark_remove',
   calendar_month: 'calendar_month',
-  edit_calendar: 'edit_calendar',
   edit_square: 'edit_square',
   folder_open: 'folder_open',
   left_panel_open: 'left_panel_open',
   more_vert: 'more_vert',
   search: 'search',
+  settings: 'settings',
   today: 'today',
 };
 

@@ -82,7 +82,7 @@ export function NativeSidebar() {
   );
 
   const newNote = async () => {
-    setProblem((await workspace.createNote()) ? null : 'The note could not be created.');
+    setProblem(await workspace.createNote());
   };
 
   const renderRow = useCallback(
@@ -188,7 +188,7 @@ export function NativeSidebar() {
             </ToolbarItem>
             <ToolbarItem placement="topBarTrailing">
               <Menu label="Vault" systemImage="ellipsis.circle">
-                <Button label="Daily Note Settings" systemImage="calendar.badge.clock" onPress={() => router.push('/settings')} />
+                <Button label="Note Settings" systemImage="gearshape" onPress={() => router.push('/settings')} />
                 <Button label="Choose Another Vault" systemImage="folder" onPress={workspace.chooseVault} />
               </Menu>
             </ToolbarItem>

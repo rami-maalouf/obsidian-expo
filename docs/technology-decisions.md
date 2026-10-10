@@ -56,11 +56,11 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Decided provisionally:** October 8, 2026, for U2. iCloud qualification remains open (U8).
 
-**Choice:** an explicit `NSFileCoordinator` service rather than per-note `UIDocument`. Every read, exclusive create, and conditional save runs inside one coordinated access. A save rereads the file inside the coordinated write and replaces it only when the bytes still match the base revision. New files are staged in the system's item-replacement directory and moved into place with `renamex_np(RENAME_EXCL)`, so a create never replaces an existing file. Folder access uses a security-scoped bookmark from the system folder picker, stored with a stable vault ID in app-private storage. A session keeps access until running operations finish.
+**Choice:** an explicit `NSFileCoordinator` service rather than per-note `UIDocument`. Every read, exclusive create, and conditional save runs inside one coordinated access. A save rereads the file inside the coordinated write and replaces it only when the bytes still match the base revision. New files are staged in the system's item-replacement directory and moved into place with `renamex_np(RENAME_EXCL)`, so a create never replaces an existing file. A rename is a coordinated move (`.forMoving` on the old path, `.forReplacing` on the new one, with `item(at:willMoveTo:)` and `item(at:didMoveTo:)`) that also uses `renamex_np(RENAME_EXCL)`; only a change of case on a volume that ignores case, where both paths name the same file, renames without the exclusive flag. The editor's `rename` view function first saves pending edits and waits for the document's queue, and moves the file only when the document is clean or read-only. Folder access uses a security-scoped bookmark from the system folder picker, stored with a stable vault ID in app-private storage. A session keeps access until running operations finish.
 
 **Alternatives:** per-note `UIDocument`, or a composition of a directory service with per-note documents. `UIDocument` supplies autosave and conflict-version handling, but its save path writes without exposing a compare-then-replace step inside the same coordinated write. The Persistence Protocol needs that step. A composition remains possible for the editor's document lifecycle in U3.
 
-**Validation:** `swift test` on the macOS runner covers path containment (including dangling and relative symlinks), file states (readable, legacy cloud stub, absent, unlistable folder), exact-byte reads, exclusive create with 16 concurrent writers, conditional save conflicts, deleted and renamed targets, failed writes, the draft journal, enumeration, the bookmark registry, and session release ordering.
+**Validation:** `swift test` on the macOS runner covers path containment (including dangling and relative symlinks), file states (readable, legacy cloud stub, absent, unlistable folder), exact-byte reads, exclusive create with 16 concurrent writers, conditional save conflicts, deleted and renamed targets, renames that never replace a file (including a change of case), failed writes, the draft journal, enumeration, the bookmark registry, and session release ordering.
 
 **Limits and open work:**
 
@@ -137,7 +137,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The ios workflow's Simulator job checked both settings after `expo prebuild` until it was removed on October 9, 2026; no CI job checks them now.
 
-**Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Daily Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Today's Note (⌘T) and Search Notes (⇧⌘F). The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
+**Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Today's Note (⌘T) and Search Notes (⇧⌘F). The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
 
 **Limits:** closing the keyboard when a panel opens has not run on a Simulator or a device. VoiceOver order with open panels, keyboard focus, Stage Manager window sizes, and the menu bar and its shortcuts have not been checked on a device; the Simulator tests do not open the menu bar.
 
@@ -145,7 +145,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Decided:** October 8, 2026, at the user's direction, replacing the React Native month grid.
 
-**Choice:** the native SwiftUI graphical `DatePicker` from `@expo/ui@58.0.14` in the right-hand panel, with the daily-note settings in the panel's toolbar; Today is a button in the note's navigation bar. A picked day opens or creates that day's note through the existing daily-note resolver.
+**Choice:** the native SwiftUI graphical `DatePicker` from `@expo/ui@58.0.14` in the right-hand panel, with the note settings in the panel's toolbar; Today is a button in the note's navigation bar. A picked day opens or creates that day's note through the existing daily-note resolver.
 
 **Trade-offs:** the native picker cannot mark days that have a note, and picking the already selected day sends no change, so Today is a separate button. The pure month-grid code (`src/features/calendar/month.ts`) and its tests remain for these labels and for a later marked-day view.
 

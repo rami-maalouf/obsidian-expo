@@ -1,5 +1,5 @@
 /**
- * launch → restore vault access → daily-note settings → the workspace (flow f2) on android: the
+ * launch → restore vault access → note settings → the workspace (flow f2) on android: the
  * note in the middle, files in a panel on the left, the calendar in a panel on the right (t08).
  * the vault is a folder picked with the system folder picker; its permission is kept across
  * restarts (t04).
@@ -11,11 +11,11 @@ import { Drawer } from 'react-native-drawer-layout';
 
 import { CalendarInspector } from '@/features/calendar/calendar-inspector';
 import { detectDailyNotes, detectedSettings } from '@/features/daily-notes/detect';
-import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 import { NativeSidebar } from '@/features/explorer/native-sidebar';
 import { useNoteList } from '@/features/explorer/use-note-list';
-import { DailySettingsForm } from '@/features/settings/daily-settings-form';
-import { useDailySettings } from '@/features/settings/use-daily-settings';
+import type { NewNoteSettings } from '@/features/new-notes/settings';
+import { NoteSettingsForm } from '@/features/settings/note-settings-form';
+import { type NoteSettings, useNoteSettings } from '@/features/settings/use-note-settings';
 import { type VaultInfo, useVault } from '@/features/vault/use-vault';
 
 import { VaultNative } from '../../../modules/vault/src';
@@ -61,7 +61,7 @@ export function VaultGate() {
 }
 
 function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVault: () => void }) {
-  const settings = useDailySettings(vault.id);
+  const settings = useNoteSettings(vault.id);
   const firstSetup = settings.state.phase === 'unset';
   useEffect(() => {
     if (firstSetup) revealApp();
@@ -70,10 +70,15 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
     return <Busy label="Loading settings" />;
   }
   if (settings.state.phase === 'unset') {
-    return <FirstSetup vaultId={vault.id} onSave={settings.save} />;
+    return <FirstSetup vaultId={vault.id} newNote={settings.state.newNote} onSave={settings.save} />;
   }
   return (
-    <WorkspaceProvider vault={vault} settings={settings.state.settings} saveSettings={settings.save} chooseVault={chooseVault}>
+    <WorkspaceProvider
+      vault={vault}
+      settings={settings.state.settings.daily}
+      newNoteSettings={settings.state.settings.newNote}
+      saveSettings={settings.save}
+      chooseVault={chooseVault}>
       <WorkspacePanels />
     </WorkspaceProvider>
   );
@@ -81,16 +86,24 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
 
 /**
  * first setup (flow f1): one scan of the vault's file names finds where daily notes and the
- * daily template seem to be, and the form starts from that.
+ * daily template seem to be, and the form starts from that, with the new-note settings below.
  */
-function FirstSetup({ vaultId, onSave }: { vaultId: string; onSave: (settings: DailyNoteSettings) => void }) {
+function FirstSetup({
+  vaultId,
+  newNote,
+  onSave,
+}: {
+  vaultId: string;
+  newNote: NewNoteSettings;
+  onSave: (settings: NoteSettings) => void;
+}) {
   const { listing, error } = useNoteList(vaultId);
   const notes = listing?.notes ?? null;
-  const initial = useMemo(() => detectedSettings(detectDailyNotes(notes ?? [])), [notes]);
+  const initial = useMemo(() => ({ daily: detectedSettings(detectDailyNotes(notes ?? [])), newNote }), [newNote, notes]);
   if (!listing && !error) {
     return <Busy label="Looking for your daily notes" />;
   }
-  return <DailySettingsForm vaultId={vaultId} initial={initial} notes={notes} firstSetup onSave={onSave} />;
+  return <NoteSettingsForm vaultId={vaultId} initial={initial} notes={notes} firstSetup onSave={onSave} />;
 }
 
 /** how far from a screen edge a swipe starts opening a panel; android's back gesture starts at the very edge. */

@@ -1,16 +1,17 @@
 /** the settings form has ios and android versions; the web shell shows nothing. */
 import type { ListedNote } from '@/features/daily-notes/detect';
-import type { DailyNoteSettings } from '@/features/daily-notes/settings';
+
+import type { NoteSettings } from './use-note-settings';
 
 type Props = {
   vaultId: string;
-  initial: DailyNoteSettings;
+  initial: NoteSettings;
   notes: readonly ListedNote[] | null;
   firstSetup: boolean;
-  onSave: (settings: DailyNoteSettings) => void;
+  onSave: (settings: NoteSettings) => void;
   onCancel?: () => void;
 };
 
-export function DailySettingsForm(_props: Props) {
+export function NoteSettingsForm(_props: Props) {
   return null;
 }

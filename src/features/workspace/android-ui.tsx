@@ -5,7 +5,7 @@
  */
 import { type AndroidSymbol, SymbolView } from 'expo-symbols';
 import type { ReactNode } from 'react';
-import { Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { type AccessibilityRole, type AccessibilityState, Pressable, type StyleProp, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { Accent, useAndroidColors } from '@/constants/theme';
 
@@ -52,6 +52,8 @@ export function Row({
   indent = 0,
   strong = false,
   accessibilityLabel,
+  accessibilityRole,
+  accessibilityState,
   testID,
 }: {
   icon?: AndroidSymbol;
@@ -63,13 +65,17 @@ export function Row({
   indent?: number;
   strong?: boolean;
   accessibilityLabel?: string;
+  /** a pressable row is a button unless this says otherwise, for example a radio choice. */
+  accessibilityRole?: AccessibilityRole;
+  accessibilityState?: AccessibilityState;
   testID?: string;
 }) {
   const palette = useAndroidColors();
   return (
     <Pressable
-      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityRole={accessibilityRole ?? (onPress ? 'button' : undefined)}
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
       testID={testID}
       onPress={onPress}
       disabled={!onPress}

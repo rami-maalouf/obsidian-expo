@@ -1,16 +1,19 @@
 /**
  * the note between the two side panels: drafts to recover before today, then the open note
  * (flow f2). the note title is the native navigation title; it ends with "*" while edits wait
- * for a save. the toolbar's left group opens the files panel and today's note; the right group
+ * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens the files panel and today's note; the right group
  * opens the native "more" menu with bookmark, search, and the rest, then the calendar panel at
  * the trailing edge (t08).
  */
 import { Stack, useRouter } from 'expo-router';
-import { type ComponentProps, type ReactNode, useEffect, useState } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
+import { Alert, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
+import { SystemColors } from '@/constants/theme';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
-import { NoteEditor, noteTitle } from '@/features/editor/note-editor';
+import { NoteEditor, type NoteEditorHandle, noteTitle } from '@/features/editor/note-editor';
 import { UNSAVED_MARK } from '@/features/editor/status';
+import { editableName, renamedPath, renameProblem } from '@/features/explorer/rename';
 import { RecoveryList } from '@/features/recovery/recovery-list';
 
 import { Busy, Notice } from './status-views';
@@ -29,6 +32,44 @@ export function NotesScreen() {
   }, [shownWithoutEditor, showFirstScreen]);
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
+  const editor = useRef<NoteEditorHandle>(null);
+
+  /** the native rename prompt: the name without ".md", in the note's folder. */
+  const rename = () => {
+    if (!path || !editing) return;
+    const from = path;
+    Alert.prompt(
+      'Rename Note',
+      undefined,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Rename', isPreferred: true, onPress: (typed?: string) => applyRename(from, typed ?? '') },
+      ],
+      'plain-text',
+      editableName(from),
+    );
+  };
+  const applyRename = async (from: string, typed: string) => {
+    const next = renamedPath(from, typed);
+    if (!next.ok) {
+      Alert.alert("Can't Rename the Note", next.error);
+      return;
+    }
+    if (next.value === null) return;
+    const to = next.value;
+    let problem: string | null;
+    try {
+      const outcome = editor.current ? await editor.current.rename(to) : null;
+      problem = renameProblem(outcome, to);
+    } catch (error) {
+      problem = error instanceof Error ? error.message : String(error);
+    }
+    if (problem) {
+      Alert.alert("Can't Rename the Note", problem);
+    } else {
+      workspace.noteRenamed(to);
+    }
+  };
 
   let title = 'Today';
   let content: ReactNode;
@@ -57,6 +98,7 @@ export function NotesScreen() {
     content = (
       <NoteEditor
         key={path}
+        ref={editor}
         vaultId={workspace.vault.id}
         path={path}
         onSaved={workspace.onSaved}
@@ -74,7 +116,7 @@ export function NotesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title }} />
+      <Stack.Screen options={{ title, headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined }} />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
           icon="sidebar.left"
@@ -93,14 +135,19 @@ export function NotesScreen() {
             onPress={() => path && (marked ? bookmarks.remove(path) : bookmarks.add(path))}>
             {marked ? 'Remove bookmark' : 'Bookmark this note'}
           </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction icon="pencil" hidden={!editing} onPress={rename}>
+            Rename note
+          </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="magnifyingglass" onPress={() => router.push('/search')}>
             Search
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="square.and.pencil" onPress={() => workspace.createNote()}>
+          <Stack.Toolbar.MenuAction
+            icon="square.and.pencil"
+            onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't Create a Note", problem))}>
             New note
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon="calendar.badge.clock" onPress={() => router.push('/settings')}>
-            Daily note settings
+          <Stack.Toolbar.MenuAction icon="gearshape" onPress={() => router.push('/settings')}>
+            Note settings
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon="folder" onPress={workspace.chooseVault}>
             Choose another vault
@@ -115,6 +162,27 @@ export function NotesScreen() {
       </Stack.Toolbar>
       {content}
     </>
+  );
+}
+
+/**
+ * the note's name as the navigation title, styled like the system title. a tap opens the rename
+ * prompt; the width leaves room for the toolbar buttons on both sides.
+ */
+function RenameTitle({ title, onPress }: { title: string; onPress: () => void }) {
+  const { width } = useWindowDimensions();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint="Renames the note"
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [{ maxWidth: Math.max(120, width - 240) }, pressed && styles.pressed]}>
+      <Text numberOfLines={1} style={[styles.title, { color: SystemColors.label }]}>
+        {title}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -161,3 +229,14 @@ function TodayProblem({ outcome, onRetry }: { outcome: DailyNoteOutcome; onRetry
       return <Busy label="Opening the note" />;
   }
 }
+
+const styles = StyleSheet.create({
+  // the system navigation title: 17 points, semibold.
+  title: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.5,
+  },
+});

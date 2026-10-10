@@ -53,7 +53,7 @@ export function CalendarInspector() {
           </ScrollView>
           <Toolbar.Content>
             <ToolbarItem placement="topBarTrailing">
-              <Button label="Daily Note Settings" systemImage="gearshape" onPress={() => router.push('/settings')} />
+              <Button label="Note Settings" systemImage="gearshape" onPress={() => router.push('/settings')} />
             </ToolbarItem>
             <ToolbarItem placement="topBarLeading">
               <Button label="Close Calendar" systemImage="sidebar.right" onPress={() => workspace.setCalendarOpen(false)} />

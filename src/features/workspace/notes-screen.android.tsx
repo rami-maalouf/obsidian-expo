@@ -7,7 +7,7 @@
  */
 import { Stack, useRouter } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAndroidColors } from '@/constants/theme';
@@ -28,7 +28,7 @@ const icons = {
   bookmarkRemove: require('../../../assets/icons/android/bookmark_remove.xml'),
   search: require('../../../assets/icons/android/search.xml'),
   newNote: require('../../../assets/icons/android/edit_square.xml'),
-  settings: require('../../../assets/icons/android/edit_calendar.xml'),
+  settings: require('../../../assets/icons/android/settings.xml'),
   vault: require('../../../assets/icons/android/folder_open.xml'),
 };
 
@@ -108,11 +108,13 @@ export function NotesScreen() {
           <Stack.Toolbar.MenuAction icon={icons.search} onPress={() => router.push('/search')}>
             Search
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction icon={icons.newNote} onPress={() => workspace.createNote()}>
+          <Stack.Toolbar.MenuAction
+            icon={icons.newNote}
+            onPress={() => workspace.createNote().then((problem) => problem && Alert.alert("Can't create a note", problem))}>
             New note
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon={icons.settings} onPress={() => router.push('/settings')}>
-            Daily note settings
+            Note settings
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon={icons.vault} onPress={workspace.chooseVault}>
             Choose another vault

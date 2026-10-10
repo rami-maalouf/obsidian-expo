@@ -6,16 +6,19 @@
  */
 import { router } from 'expo-router';
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { Alert, useWindowDimensions } from 'react-native';
 
 import { useBookmarks } from '@/features/bookmarks/use-bookmarks';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
 import type { DailyNoteSettings } from '@/features/daily-notes/settings';
-import { createUntitledNote, folderOf, linkedNotePath } from '@/features/explorer/new-note';
+import { createUntitledNote, linkedNotePath } from '@/features/explorer/new-note';
+import { editableName } from '@/features/explorer/rename';
 import { useNoteList } from '@/features/explorer/use-note-list';
+import { newNoteContent, newNoteFolder, type NewNoteSettings } from '@/features/new-notes/settings';
 import { useDrafts } from '@/features/recovery/use-drafts';
 import { useSearchIndex } from '@/features/search/use-search-index';
-import type { CivilDate } from '@/features/templates/civil-time';
+import type { NoteSettings } from '@/features/settings/use-note-settings';
+import { captureClock, type CivilDate } from '@/features/templates/civil-time';
 import { useCivilToday } from '@/features/today/use-civil-today';
 import { dailyNotes, useTodayNote } from '@/features/today/use-today-note';
 import { dailyNoteVault } from '@/features/vault/daily-note-vault';
@@ -36,12 +39,13 @@ export const BACKGROUND_START_LIMIT_MS = 1000;
 type WorkspaceProps = {
   vault: VaultInfo;
   settings: DailyNoteSettings;
-  saveSettings: (settings: DailyNoteSettings) => Promise<void>;
+  newNoteSettings: NewNoteSettings;
+  saveSettings: (settings: NoteSettings) => Promise<void>;
   chooseVault: () => void;
   children: ReactNode;
 };
 
-function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<WorkspaceProps, 'children'>) {
+function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, chooseVault }: Omit<WorkspaceProps, 'children'>) {
   const drafts = useDrafts(vault.id);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<CivilDate | null>(null);
@@ -116,19 +120,34 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
 
   const openToday = useCallback(() => selectDay(civilToday), [civilToday, selectDay]);
 
-  /** creates "Untitled.md" (or the next free number) beside the open note and opens it. */
-  const createNote = useCallback(async (): Promise<boolean> => {
+  /**
+   * creates "Untitled.md" (or the next free number) where the new-note settings say, from their
+   * template, and opens it. the template is read and checked before anything is created.
+   * returns null on success, or what went wrong.
+   */
+  const createNote = useCallback(async (): Promise<string | null> => {
     const native = VaultNative;
-    if (!native) return false;
-    const created = await createUntitledNote(folderOf(path), async (notePath) => {
-      const result = await native.createExclusive(vault.id, notePath, '');
+    if (!native) return 'Notes can be created only in the iPhone, iPad, and Android apps.';
+    let template: string | null = null;
+    if (newNoteSettings.templatePath) {
+      const read = await native.readText(vault.id, newNoteSettings.templatePath).catch(() => null);
+      if (read?.kind !== 'text') return `The new-note template ${newNoteSettings.templatePath} can't be read. Nothing was created.`;
+      template = read.text;
+    }
+    const now = captureClock();
+    const checked = newNoteContent(template, 'Untitled', now);
+    if (!checked.ok) return `The new-note template has a problem. Nothing was created. ${checked.error.message}`;
+    const created = await createUntitledNote(newNoteFolder(newNoteSettings, path), async (notePath) => {
+      const content = newNoteContent(template, editableName(notePath), now);
+      if (!content.ok) return 'failed';
+      const result = await native.createExclusive(vault.id, notePath, content.value);
       return result.kind === 'created' ? 'created' : result.kind === 'exists' ? 'exists' : 'failed';
     });
-    if (!created) return false;
+    if (!created) return 'The note could not be created.';
     refreshNotes();
     open(created);
-    return true;
-  }, [open, path, refreshNotes, vault.id]);
+    return null;
+  }, [newNoteSettings, open, path, refreshNotes, vault.id]);
 
   /**
    * opens the note a tapped wikilink names. with no matching note, it creates the note, as
@@ -153,12 +172,26 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
     [open, path, refreshNotes, vault.id],
   );
 
+  /**
+   * shows the open note at its new path after its file was renamed. the new listing removes the
+   * old path from search and moves its bookmark, which follows the file's identity.
+   */
+  const noteRenamed = useCallback(
+    (to: string) => {
+      dailyNotes.navigateAway();
+      setSelected(to);
+      setDayProblem(null);
+      refreshNotes();
+    },
+    [refreshNotes],
+  );
+
   // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
   useEffect(() => {
     const subscription = VaultNative?.addListener('onMenuCommand', ({ command }) => {
       switch (command) {
         case 'new-note':
-          createNote();
+          createNote().then((problem) => problem && Alert.alert("Can't Create a Note", problem));
           break;
         case 'today':
           openToday();
@@ -183,8 +216,10 @@ function useWorkspaceState({ vault, settings, saveSettings, chooseVault }: Omit<
   return {
     vault,
     settings,
+    newNoteSettings,
     createNote,
     openLink,
+    noteRenamed,
     saveSettings,
     chooseVault,
     drafts,
