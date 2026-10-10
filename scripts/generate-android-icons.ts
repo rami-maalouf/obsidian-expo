@@ -1,5 +1,7 @@
 /**
- * writes the android toolbar icons as vector drawables (assets/icons/android/*.xml).
+ * writes the android toolbar icons as vector drawables (assets/icons/android/*.xml), and the
+ * editing toolbar's icons as drawables of the vault module
+ * (modules/vault/android/src/main/res/drawable/vault_toolbar_*.xml).
  *
  * expo router's android toolbar draws icons with compose, from xml vector drawables; sf symbols
  * exist only on ios. the icons are google's material symbols (apache license 2.0), read from the
@@ -31,6 +33,22 @@ export const ICONS: Record<string, string> = {
   search: 'search',
   settings: 'settings',
   today: 'today',
+};
+
+/** the editing toolbar's drawables (t17), named for android's resource rules. */
+export const EDITOR_OUTPUT = join(root, 'modules/vault/android/src/main/res/drawable');
+
+export const EDITOR_ICONS: Record<string, string> = {
+  vault_toolbar_bold: 'format_bold',
+  vault_toolbar_hide_keyboard: 'keyboard_hide',
+  vault_toolbar_indent: 'format_indent_increase',
+  vault_toolbar_italic: 'format_italic',
+  vault_toolbar_link: 'link',
+  vault_toolbar_outdent: 'format_indent_decrease',
+  vault_toolbar_redo: 'redo',
+  vault_toolbar_tag: 'tag',
+  vault_toolbar_task: 'checklist',
+  vault_toolbar_undo: 'undo',
 };
 
 type Point = { x: number; y: number; onCurve: boolean };
@@ -234,12 +252,12 @@ export function iconXml(font: Font, codePoint: number): string {
   ].join('\n');
 }
 
-/** writes every icon into `folder`; returns the written paths. */
-export function generate(folder: string = OUTPUT): string[] {
+/** writes every icon of a set into `folder`; returns the written paths. */
+export function generate(folder: string = OUTPUT, icons: Record<string, string> = ICONS): string[] {
   const font = new Font(new Uint8Array(readFileSync(FONT)));
   const codePoints = JSON.parse(readFileSync(CODEPOINTS, 'utf8')) as Record<string, number>;
   mkdirSync(folder, { recursive: true });
-  return Object.entries(ICONS).map(([file, symbol]) => {
+  return Object.entries(icons).map(([file, symbol]) => {
     const codePoint = codePoints[symbol];
     if (codePoint === undefined) throw new Error(`unknown material symbol ${symbol}`);
     const target = join(folder, `${file}.xml`);
@@ -250,5 +268,5 @@ export function generate(folder: string = OUTPUT): string[] {
 }
 
 if (import.meta.main) {
-  for (const written of generate()) console.log(written.slice(root.length + 1));
+  for (const written of [...generate(), ...generate(EDITOR_OUTPUT, EDITOR_ICONS)]) console.log(written.slice(root.length + 1));
 }
