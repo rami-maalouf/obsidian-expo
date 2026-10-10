@@ -14,6 +14,7 @@ import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 import { createUntitledNote, linkedNotePath } from '@/features/explorer/new-note';
 import { editableName } from '@/features/explorer/rename';
 import { useNoteList } from '@/features/explorer/use-note-list';
+import { useNavigationHistory } from '@/features/navigation/use-navigation-history';
 import { newNoteContent, newNoteFolder, type NewNoteSettings } from '@/features/new-notes/settings';
 import { useDrafts } from '@/features/recovery/use-drafts';
 import { useSearchIndex } from '@/features/search/use-search-index';
@@ -72,6 +73,7 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   const search = useSearchIndex(vault.id, notes.listing);
   const bookmarks = useBookmarks(vault.id, notes.listing?.notes ?? null);
   const knownPaths = useMemo(() => (notes.listing ? new Set(notes.listing.notes.map((note) => note.path)) : null), [notes.listing]);
+  const navigation = useNavigationHistory(vault.id, notes.listing?.notes ?? null);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
   const today = useTodayNote(vault.id, pending !== null && !needsRecovery, settings);
@@ -87,6 +89,15 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   useEffect(() => {
     if (todayCreated) refreshNotes();
   }, [todayCreated, refreshNotes]);
+
+  // the note on screen is always the history's current note: a newly shown note is recorded,
+  // while a rename moves the history first, so recording it changes nothing.
+  const shown = path && pending !== null && !needsRecovery && !dayProblem ? path : null;
+  const historyLoaded = navigation.history !== null;
+  const recordNote = navigation.record;
+  useEffect(() => {
+    if (shown && historyLoaded) recordNote(shown);
+  }, [shown, historyLoaded, recordNote]);
 
   const open = useCallback(
     (next: string) => {
@@ -174,16 +185,19 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
 
   /**
    * shows the open note at its new path after its file was renamed. the new listing removes the
-   * old path from search and moves its bookmark, which follows the file's identity.
+   * old path from search and moves its bookmark, which follows the file's identity. the history
+   * renames the note at once, so back and forward reach it at its new path.
    */
+  const renameInHistory = navigation.rename;
   const noteRenamed = useCallback(
     (to: string) => {
       dailyNotes.navigateAway();
+      if (path) renameInHistory(path, to);
       setSelected(to);
       setDayProblem(null);
       refreshNotes();
     },
-    [refreshNotes],
+    [path, refreshNotes, renameInHistory],
   );
 
   // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
