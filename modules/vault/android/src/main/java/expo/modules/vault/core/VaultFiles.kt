@@ -31,6 +31,18 @@ sealed class SaveResult {
   data class Unavailable(val state: FileState) : SaveResult()
 }
 
+sealed class MoveResult {
+  data object Moved : MoveResult()
+
+  /** another file already has the new name; nothing moved. */
+  data object Exists : MoveResult()
+
+  /** the file to move is gone. */
+  data object Missing : MoveResult()
+
+  data class Unavailable(val state: FileState) : MoveResult()
+}
+
 class VaultFileException(message: String) : IOException(message)
 
 /** a markdown file found by enumeration. contents are not read. */
@@ -150,6 +162,76 @@ class VaultFiles(val tree: DocumentTree) {
       }
     }
     SaveResult.Saved(next)
+  }
+
+  /**
+   * renames a file in its folder. another file is never replaced, and a name that differs from
+   * another item's only in case or accents is refused, because android's shared storage can treat
+   * those as one file. unlike ios, a file is not moved to another folder: the app only renames a
+   * note where it is.
+   */
+  fun move(path: String, newPath: String): MoveResult = synchronized(lock) {
+    val from = VaultPath.segments(path)
+    val to = VaultPath.segments(newPath)
+    if (from.dropLast(1) != to.dropLast(1)) {
+      return MoveResult.Unavailable(FileState.Unknown("a note can be renamed only within its folder"))
+    }
+    val folderId = if (from.size == 1) {
+      tree.rootId
+    } else {
+      when (val found = lookup(from.dropLast(1))) {
+        is Lookup.Found -> found.entry.takeIf { it.isDirectory }?.id ?: return MoveResult.Unavailable(FileState.Unknown("the note's folder is a file"))
+        Lookup.Absent -> return MoveResult.Missing
+        is Lookup.Unknown -> return MoveResult.Unavailable(FileState.Unknown(found.reason))
+      }
+    }
+    val children = listOrNull(folderId) ?: return MoveResult.Unavailable(FileState.Unknown("the note's folder cannot be listed"))
+    val name = from.last()
+    val newName = to.last()
+    val source = children.firstOrNull { it.name == name }
+      ?: return if (children.any { similar(it.name, name) }) MoveResult.Unavailable(FileState.Unknown(similarReason(name))) else MoveResult.Missing
+    val state = stateOf(source)
+    if (state != FileState.Readable) {
+      return MoveResult.Unavailable(state)
+    }
+    if (newName == name) {
+      return MoveResult.Moved
+    }
+    val others = children.filter { it.id != source.id }
+    if (others.any { it.name == newName }) {
+      return MoveResult.Exists
+    }
+    if (others.any { similar(it.name, newName) }) {
+      return MoveResult.Unavailable(FileState.Unknown(similarReason(newName)))
+    }
+    if (!similar(name, newName)) {
+      if (tree.rename(source.id, newName) != null) {
+        return MoveResult.Moved
+      }
+      // the tree kept the old name; the new one was taken since the listing, or not accepted.
+      return if (listOrNull(folderId)?.any { it.name == newName } == true) {
+        MoveResult.Exists
+      } else {
+        MoveResult.Unavailable(FileState.Unknown("the storage provider did not accept the name $newName"))
+      }
+    }
+    // a change of case or accents only goes through a temporary name: a provider that ignores
+    // case sees the new name as taken by the file itself. the temporary name keeps the note
+    // visible in the vault if the app stops in between.
+    val dot = newName.lastIndexOf('.').takeIf { it > 0 } ?: newName.length
+    val temporary = "${newName.substring(0, dot)} (renaming)${newName.substring(dot)}"
+    if (others.any { similar(it.name, temporary) }) {
+      return MoveResult.Unavailable(FileState.Unknown("$temporary is taken, so $name cannot be renamed"))
+    }
+    val moving = tree.rename(source.id, temporary)
+      ?: return MoveResult.Unavailable(FileState.Unknown("the storage provider did not accept the name $temporary"))
+    if (tree.rename(moving.id, newName) != null) {
+      return MoveResult.Moved
+    }
+    if (tree.rename(moving.id, name) == null) {
+      throw VaultFileException("the note was left as $temporary")
+    }
+    MoveResult.Unavailable(FileState.Unknown("the storage provider did not accept the name $newName"))
   }
 
   /**

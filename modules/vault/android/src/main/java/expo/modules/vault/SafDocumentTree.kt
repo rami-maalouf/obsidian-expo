@@ -65,6 +65,25 @@ class SafDocumentTree(private val resolver: ContentResolver, val treeUri: Uri) :
 
   override fun createFolder(folderId: String, name: String): TreeEntry? = create(folderId, name, Document.MIME_TYPE_DIR)
 
+  /**
+   * a provider that finds the name taken can rename to "Name (1).md" instead of failing, and one
+   * that ignores case can do that for a change of case alone. the old name is then put back, so a
+   * rename never ends under a name the vault did not ask for.
+   */
+  override fun rename(id: String, name: String): TreeEntry? {
+    val before = query(documentUri(id)) { it } ?: throw IOException("the note could not be found")
+    val renamed = DocumentsContract.renameDocument(resolver, documentUri(id), name) ?: throw IOException("the note could not be renamed")
+    val entry = query(renamed) { it } ?: throw IOException("the renamed note could not be found")
+    if (entry.name == name) {
+      return entry
+    }
+    val restored = DocumentsContract.renameDocument(resolver, renamed, before.name)?.let { uri -> query(uri) { it } }
+    if (restored?.name != before.name) {
+      throw IOException("the note was renamed to ${entry.name}, and its old name could not be restored")
+    }
+    return null
+  }
+
   override fun delete(id: String) {
     if (!DocumentsContract.deleteDocument(resolver, documentUri(id))) {
       throw IOException("the document could not be deleted")

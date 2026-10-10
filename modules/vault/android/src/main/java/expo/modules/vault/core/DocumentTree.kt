@@ -38,5 +38,12 @@ interface DocumentTree {
   /** creates a folder named exactly [name], or returns null when the name is taken. */
   fun createFolder(folderId: String, name: String): TreeEntry?
 
+  /**
+   * renames a document in its folder to exactly [name] and returns it; its id can change. returns
+   * null, with the old name kept, when the tree could not give it that name, for example because
+   * the name is taken: a tree never replaces another document here.
+   */
+  fun rename(id: String, name: String): TreeEntry?
+
   fun delete(id: String)
 }

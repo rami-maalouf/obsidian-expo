@@ -366,6 +366,12 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     document.persist()
   }
 
+  /** writes pending edits and returns the open document, so a rename can wait for its save. */
+  fun flushForRename(): DocumentSession? {
+    flush()
+    return document
+  }
+
   fun focusEditor() {
     if (!editable) return
     editText.requestFocus()

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.view.inputmethod.InputMethodManager
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
 import expo.modules.kotlin.exception.CodedException
 import expo.modules.kotlin.functions.Coroutine
@@ -15,10 +16,13 @@ import expo.modules.vault.core.CreateResult
 import expo.modules.vault.core.DecodedText
 import expo.modules.vault.core.DraftJournal
 import expo.modules.vault.core.DraftRecord
+import expo.modules.vault.core.DocumentSession
+import expo.modules.vault.core.DocumentStatus
 import expo.modules.vault.core.DocumentTree
 import expo.modules.vault.core.FileDocumentTree
 import expo.modules.vault.core.FileRevision
 import expo.modules.vault.core.FileState
+import expo.modules.vault.core.MoveResult
 import expo.modules.vault.core.ReadResult
 import expo.modules.vault.core.SaveResult
 import expo.modules.vault.core.TextCodec
@@ -31,6 +35,7 @@ import expo.modules.vault.core.WikiLinkTargets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.concurrent.Executors
@@ -245,6 +250,18 @@ class VaultModule : Module() {
       AsyncFunction("focus") { view: VaultEditorView ->
         view.focusEditor()
       }.runOnQueue(Queues.MAIN)
+
+      // saves the open note, waits for that save, then renames its file. nothing moves while
+      // edits are unsaved, so no later save of this document can target the old path.
+      AsyncFunction("rename") { view: VaultEditorView, newPath: String, promise: Promise ->
+        val vaultId = view.vaultId
+        val path = view.path
+        if (vaultId == null || path == null) {
+          promise.resolve(mapOf("kind" to "missing"))
+        } else {
+          renameAfterSave(view.flushForRename(), vaultId, path, newPath, promise)
+        }
+      }.runOnQueue(Queues.MAIN)
     }
 
     OnCreate {
@@ -406,7 +423,35 @@ class VaultModule : Module() {
   private fun isEmulator(): Boolean =
     Build.HARDWARE == "ranchu" || Build.HARDWARE == "goldfish" || Build.PRODUCT.startsWith("sdk_gphone")
 
+  // MARK: - renaming
+
+  /** on the file queue: waits for the document's save, then renames the file if it was saved. */
+  private fun renameAfterSave(document: DocumentSession?, vaultId: String, path: String, newPath: String, promise: Promise) {
+    fileScope.launch {
+      document?.waitUntilIdle()
+      if (document != null && !isSettled(document.status)) {
+        promise.resolve(mapOf("kind" to "unsaved"))
+        return@launch
+      }
+      try {
+        promise.resolve(encode(withFiles(vaultId) { it.move(path, newPath) }))
+      } catch (error: Exception) {
+        promise.reject(VaultException("The note could not be renamed. (${error.message})"))
+      }
+    }
+  }
+
+  /** true when the document has nothing left to save: its text is on disk, or it is read-only. */
+  private fun isSettled(status: DocumentStatus): Boolean = status == DocumentStatus.Clean || status is DocumentStatus.ReadOnly
+
   // MARK: - encoding
+
+  private fun encode(result: MoveResult): Map<String, Any> = when (result) {
+    MoveResult.Moved -> mapOf("kind" to "moved")
+    MoveResult.Exists -> mapOf("kind" to "exists")
+    MoveResult.Missing -> mapOf("kind" to "missing")
+    is MoveResult.Unavailable -> mapOf("kind" to "unavailable", "state" to encode(result.state))
+  }
 
   private fun encode(revision: FileRevision): Map<String, Any> = mapOf("sha256" to revision.sha256, "size" to revision.size)
 

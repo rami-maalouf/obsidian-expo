@@ -3,6 +3,8 @@ package expo.modules.vault.core
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.file.FileAlreadyExistsException
+import java.nio.file.Files
 
 /**
  * a vault in an ordinary folder. tests use it, and so does the emulator-only test vault in the
@@ -60,6 +62,19 @@ class FileDocumentTree(root: File) : DocumentTree {
       return null
     }
     return TreeEntry(id, name, isDirectory = true)
+  }
+
+  override fun rename(id: String, name: String): TreeEntry? {
+    val source = file(id)
+    val targetId = childId(id.substringBeforeLast('/', ""), name)
+    val target = file(targetId)
+    try {
+      // without REPLACE_EXISTING, an existing target is refused rather than replaced.
+      Files.move(source.toPath(), target.toPath())
+    } catch (_: FileAlreadyExistsException) {
+      return null
+    }
+    return TreeEntry(targetId, name, isDirectory = target.isDirectory, size = target.length(), modified = target.lastModified())
   }
 
   override fun delete(id: String) {
