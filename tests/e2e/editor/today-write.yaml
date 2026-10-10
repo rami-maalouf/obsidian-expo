@@ -1,5 +1,5 @@
 # relaunches the app on a fixture vault that scripts/ci/simulator-smoke.sh registered, types into today's
-# note, waits for the save, checks the name above the text, types a styled heading and a code fence,
+# note after checking the name above it, waits for the save, types a styled heading and a code fence,
 # edits a list line with the editing toolbar, then closes the keyboard, searches from the bottom
 # toolbar, opens another note, and goes back to today's note, so the next launch reopens it. the
 # script then checks the typed lines on disk and that every other fixture file is unchanged.
@@ -12,6 +12,10 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:opened"
     timeout: 30000
+# the name is at the top of the note, which opens at its top.
+- assertVisible:
+    id: "note-title"
+    text: "${TODAY}"
 # a note opens without the keyboard; a tap in the editor, below the short note, puts the caret
 # at its end.
 - tapOn: "Note text"
@@ -20,9 +24,6 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:saved"
     timeout: 15000
-- assertVisible:
-    id: "note-title"
-    text: "${TODAY}"
 - takeScreenshot: ${OUT}/after-typing
 # styling and live preview change attributes, never characters, so these lines must reach the
 # file exactly as typed.

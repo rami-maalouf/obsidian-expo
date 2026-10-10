@@ -3,6 +3,7 @@ package expo.modules.vault
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
@@ -43,6 +44,17 @@ import expo.modules.vault.core.WikiLinkTargets
 import java.util.concurrent.Executors
 import kotlin.math.max
 import kotlin.math.min
+
+/**
+ * the editor's scroll view. when the text takes focus, ScrollView scrolls a field taller than the
+ * screen until the field's top is at the top of the screen, which would hide the name above the
+ * text. a rectangle that tall is left where it is; the caret's own, smaller rectangle still keeps
+ * the caret on screen.
+ */
+private class NoteScrollView(context: Context) : ScrollView(context) {
+  override fun computeScrollDeltaToGetChildRectOnScreen(rect: Rect): Int =
+    if (rect.height() > height) 0 else super.computeScrollDeltaToGetChildRectOnScreen(rect)
+}
 
 /**
  * native markdown source editor for android (ktd3). native code owns the text, selection,
@@ -95,7 +107,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   private val main = Handler(Looper.getMainLooper())
   private val container = FrameLayout(context)
-  private val scroll = ScrollView(context)
+  private val scroll = NoteScrollView(context)
   private val column = LinearLayout(context)
   private val title = NoteTitleField(context)
   private val editText = VaultEditText(context)
