@@ -52,7 +52,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 - R2. Read and edit UTF-8 Markdown without altering untouched content, frontmatter, wikilinks, embeds, or unsupported syntax; unsupported encodings remain readable where possible but cannot be overwritten through a lossy conversion.
 - R3. Preserve edits through navigation, backgrounding, save errors, and process restart after a durable draft checkpoint; never silently overwrite a conflicting external revision.
 - R4. Treat cloud placeholders and uncertain availability as existing or unknown files, never as permission to create replacements.
-- R5. Offer native text selection, composition, undo/redo, dictation, hardware-keyboard input, and simple note creation with a user-chosen title and folder.
+- R5. Offer native text selection, composition, undo/redo, dictation, hardware-keyboard input, and simple note creation with a user-chosen title and folder (amended October 10, 2026, at the user's request: an editing toolbar above the keyboard, like Obsidian's, with undo, redo, list indentation, tasks, links, tags, bold, and italic; see T17).
 
 #### Finding and navigating
 

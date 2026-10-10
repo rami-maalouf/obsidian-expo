@@ -34,6 +34,20 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 - Edits are recorded in an app-private journal before every save. A save replaces the file only if its bytes still match the version the edits started from. If another app changed the file, or it was moved or deleted, the edits stay in the journal and the app says so; the file is never overwritten or recreated silently. The note title ends with an asterisk (`*`) while edits wait for a save. When the asterisk goes away, the file on this device was written; it does not mean iCloud has uploaded it.
 - Unsaved drafts from an earlier session are shown before Today. A draft whose file is unchanged can be opened and saved; otherwise it can be written beside the original as a "recovered" copy, or discarded.
 
+## Editing toolbar
+
+While the keyboard is up, a row of buttons sits on it, as in Obsidian's mobile toolbar ([T17](technology-decisions.md#t17-editing-toolbar)). The row scrolls sideways when it does not fit. Each edit is one undo step, and it is saved like typing.
+
+- **Undo** and **Redo** take back and redo edits. On iOS they dim when there is nothing to undo or redo.
+- **Outdent** and **Indent** move list items (`-`, `*`, `+`, `1.`, `1)`) left or right by four spaces, on the caret's line or every list line in the selection. Plain lines do not move. Lists indented with tabs do not outdent.
+- **Task** makes the line a task (`- [ ] `), adds a box to a list item, or checks and clears a box.
+- **Link** inserts `[[]]` and opens the link suggestions; with a selection, the selection becomes the link.
+- **Tag** inserts `#`, with a space before it when needed. It does not suggest existing tags.
+- **Bold** and **Italic** add or remove `**` and `*` around the selection or the word at the caret.
+- **Hide Keyboard** closes the keyboard.
+
+The buttons cannot be chosen or reordered yet.
+
 ## Daily notes and templates
 
 - A day's note path is `<folder>/<date>.md`, with the date as `YYYY-MM-DD` (default) or `YYYYMMDD`. The default folder is `Daily`.
@@ -89,6 +103,7 @@ The Android app uses the same JavaScript as the iOS app, so daily notes, templat
 - The editor shows Markdown source with the same light styling as the first iOS release (headings, dimmed marks, monospaced code, colored links and tags, bold, italic, and strikethrough), without live preview. Tapping a wikilink while the keyboard is down opens the note; with the keyboard up, a tap places the caret. `[[` opens the same link suggestions as on iOS; with a hardware keyboard, the arrow keys, Tab, Enter, and Escape work as on iOS.
 - A line break typed into a note follows the note's first line break, as on iOS. A lone carriage return (`\r`) is kept but shows as a space, not a line break.
 - The keyboard's composing text (the word that the keyboard is still changing) is saved as it is shown, because Android keyboards compose most words.
+- The [editing toolbar](#editing-toolbar) sits on the keyboard, or at the bottom of the screen with a hardware keyboard, while the text has focus. Undo and Redo are the text field's own (as with Ctrl+Z) and never dim, because Android does not tell apps whether there is something to undo.
 - The file system does not report creation times through the folder picker's documents, so "Created time" sorting keeps notes in name order. Document identities are paths, so a bookmark does not follow a note that another app renamed; it shows as missing with Locate and Remove.
 - There is no menu bar; the app bar and the side panels offer the same actions.
 - Android's back gesture or button first closes a side panel that covers the note, then goes back through the [note history](#note-history-and-launch). With no note to go back to, Android handles it as before. The bottom toolbar is a Material 3 floating toolbar, with Back and Forward on its left and Search and New note on its right. The "On launch" choice is in Note settings.
