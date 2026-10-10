@@ -3,6 +3,8 @@ package expo.modules.vault
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Rect
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -14,12 +16,14 @@ import android.text.TextWatcher
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -28,8 +32,11 @@ import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
 import expo.modules.vault.core.DocumentSession
 import expo.modules.vault.core.DocumentStatus
+import expo.modules.vault.core.EditorCommands
+import expo.modules.vault.core.FileState
 import expo.modules.vault.core.LoadOutcome
 import expo.modules.vault.core.MarkdownStyles
+import expo.modules.vault.core.TextEdit
 import expo.modules.vault.core.WikiLinkCompletion
 import expo.modules.vault.core.WikiLinkQuery
 import expo.modules.vault.core.WikiLinkReference
@@ -39,12 +46,23 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+ * the editor's scroll view. when the text takes focus, ScrollView scrolls a field taller than the
+ * screen until the field's top is at the top of the screen, which would hide the name above the
+ * text. a rectangle that tall is left where it is; the caret's own, smaller rectangle still keeps
+ * the caret on screen.
+ */
+private class NoteScrollView(context: Context) : ScrollView(context) {
+  override fun computeScrollDeltaToGetChildRectOnScreen(rect: Rect): Int =
+    if (rect.height() > height) 0 else super.computeScrollDeltaToGetChildRectOnScreen(rect)
+}
+
+/**
  * native markdown source editor for android (ktd3). native code owns the text, selection,
  * composition, and undo; javascript receives status events, never the full text on each
  * keystroke. the document session, drafts, saves, and newline rules are the same as on ios
  * (VaultEditorView.swift). the source is shown with restrained styling: spans only, never
  * changed characters. live preview, which hides markers on ios, is not part of the android
- * editor yet.
+ * editor yet. the note's name is above the text, in the same scroll view (NoteTitleField.kt).
  */
 class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   private val onStatus by EventDispatcher()
@@ -55,18 +73,46 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   /** the text left its top or returned to it; the app bar takes a surface color while scrolled. */
   private val onScrolledChange by EventDispatcher()
+
+  /** editing the name above the text ended with a new `title`; javascript renames the note. */
+  private val onTitleSubmit by EventDispatcher()
   private var scrolled = false
+
+  /**
+   * the screen's bottom toolbar follows the user's scrolling, as safari's does: it slides away
+   * while the text moves toward its end and comes back when it moves toward its start or reaches
+   * the top. javascript moves the toolbar.
+   */
+  private val onToolbarHiddenChange by EventDispatcher()
+  private var toolbarHidden = false
+
+  /** how far the text has moved in its current direction, in pixels: positive toward the end. */
+  private var scrollTravel = 0
+
+  /** true while a finger is on the editor. */
+  private var touching = false
 
   var vaultId: String? = null
   var path: String? = null
+
+  /** the height in dp of a bar over the bottom of the editor; the end of the text scrolls above it. */
+  var bottomInset = 0f
+    set(value) {
+      if (field == value) return
+      field = value
+      updatePadding()
+    }
 
   override val shouldUseAndroidLayout = true
 
   private val main = Handler(Looper.getMainLooper())
   private val container = FrameLayout(context)
-  private val scroll = ScrollView(context)
+  private val scroll = NoteScrollView(context)
+  private val column = LinearLayout(context)
+  private val title = NoteTitleField(context)
   private val editText = VaultEditText(context)
   private val completion = CompletionPanel(context)
+  private val toolbar = EditorToolbar(context)
   private val styler: EditorStyler
   private var palette: EditorPalette
 
@@ -76,6 +122,16 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private var hasPendingEdits = false
   private var lastStatus: String? = null
   private var editable = false
+  private var titleEditable = false
+
+  /**
+   * renames that are moving this note's file. typed edits wait meanwhile, so none is saved to
+   * the old path; the document that follows the file takes them (endRename).
+   */
+  private var pendingRenames = 0
+
+  /** the text that the last rename saved before the file moved. */
+  private var renamedText = ""
 
   /** true while the text is set by the editor itself, not typed. */
   private var applying = false
@@ -99,6 +155,9 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private var dismissedCompletionStart: Int? = null
   private var keyboardOverlap = 0
   private var keyboardShown = false
+
+  /** the navigation bar's part of this view; the toolbar stays above it when no keyboard is shown. */
+  private var navigationOverlap = 0
   private val flushTask = Runnable { flush() }
 
   private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { updateKeyboardOverlap() }
@@ -170,19 +229,59 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
       onSelectionChange = { updateCompletion() }
       onPopupKey = { keyCode -> popupKey(keyCode) }
       onRelease = { container.requestFocus() }
-      setOnFocusChangeListener { _, focused -> if (!focused) hideCompletion() }
+      setOnFocusChangeListener { _, focused ->
+        if (!focused) hideCompletion()
+        layoutBottom()
+      }
     }
-    scroll.addView(editText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
-    scroll.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+    title.apply {
+      background = null
+      gravity = Gravity.TOP or Gravity.START
+      // one line of input that wraps on screen: return is an action, never a line break.
+      inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+      setHorizontallyScrolling(false)
+      maxLines = Int.MAX_VALUE
+      imeOptions = EditorInfo.IME_ACTION_NEXT or EditorInfo.IME_FLAG_NO_FULLSCREEN
+      // bold, at the size of a first-level heading: 1.6 times the text (EditorSpans.kt).
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f * 1.6f)
+      setTypeface(typeface, Typeface.BOLD)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+      }
+      // a pasted name stays on one line: its line breaks become spaces.
+      filters = arrayOf(
+        InputFilter { source, start, end, _, _, _ ->
+          val inserted = source.subSequence(start, end)
+          if (inserted.any { it == '\n' || it == '\r' }) inserted.toString().replace("\r\n", " ").replace('\n', ' ').replace('\r', ' ') else null
+        },
+      )
+      setOnEditorActionListener { _, _, _ ->
+        beginEditingText()
+        true
+      }
+      setOnFocusChangeListener { _, focused -> if (!focused) titleEdited() }
+      onRelease = { container.requestFocus() }
+    }
+    setTitleEditable(false)
+    // the text takes the rest of the screen below the name, so a tap under a short note edits it.
+    column.orientation = LinearLayout.VERTICAL
+    column.addView(title, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
+    column.addView(editText, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+    scroll.addView(column, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+    scroll.setOnScrollChangeListener { _, _, scrollY, _, oldScrollY ->
       if (completion.visibility == View.VISIBLE) positionCompletion()
       if ((scrollY > 0) != scrolled) {
         scrolled = scrollY > 0
         onScrolledChange(mapOf("scrolled" to scrolled))
       }
+      followScroll(scrollY, oldScrollY)
     }
 
     completion.onSelect = { index -> acceptCompletion(index) }
     container.addView(completion, FrameLayout.LayoutParams(dp(CompletionPanel.WIDTH_DP).toInt(), FrameLayout.LayoutParams.WRAP_CONTENT))
+    toolbar.onAction = { action -> runToolbar(action) }
+    toolbar.visibility = View.GONE
+    container.addView(toolbar, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
     applyPalette()
     setEditable(false)
   }
@@ -205,6 +304,9 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   /** the view is gone for good: write what is pending, then let the document's thread end. */
   fun destroy() {
+    // edits that wait for a rename go to the document now, which keeps them as a draft if its
+    // file has moved; the view no longer follows the file.
+    pendingRenames = 0
     flush()
     document?.close()
     document = null
@@ -221,9 +323,14 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
     super.onSizeChanged(w, h, oldw, oldh)
+    updatePadding()
+  }
+
+  private fun updatePadding() {
     // keep long lines readable on a tablet: at most about 70 characters wide.
-    val side = max(dp(16f), (w - dp(720f)) / 2f).toInt()
-    editText.setPadding(side, dp(16f).toInt(), side, dp(32f).toInt())
+    val side = max(dp(16f), (width - dp(720f)) / 2f).toInt()
+    title.setPadding(side, dp(16f).toInt(), side, dp(4f).toInt())
+    editText.setPadding(side, dp(8f).toInt(), side, dp(32f + bottomInset).toInt())
   }
 
   override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -244,6 +351,9 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     val path = path ?: return
     val target = "$vaultId\u0000$path"
     if (target == openedTarget) return
+    // another note replaces this one while a rename runs: waiting edits go to the document now,
+    // which keeps them as a draft if its file has moved.
+    pendingRenames = 0
     flush()
     document?.close()
     openedTarget = target
@@ -253,27 +363,17 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     document = null
     setEditable(false)
     setText("")
+    setToolbarHidden(false)
+    title.setText(name(path))
+    setTitleEditable(false)
     emit(mapOf("status" to "loading"))
 
-    val session = VaultRuntime.session(vaultId)
-    val journal = VaultRuntime.journal
-    if (session == null || journal == null) {
+    val document = documentSession(vaultId, path, target) ?: run {
       onLoad(mapOf("kind" to "unavailable", "reason" to "The vault is not open."))
       return
     }
-    val document = DocumentSession(vaultId, path, session, journal) { status ->
-      main.post {
-        if (openedTarget != target) return@post
-        if (status == DocumentStatus.Saving) savedSinceOpen = true
-        emit(payload(status, savedSinceOpen))
-      }
-    }
     loader.execute {
-      val outcome = try {
-        document.load()
-      } catch (error: Exception) {
-        LoadOutcome.Unavailable(expo.modules.vault.core.FileState.Unknown(error.message ?: "the note could not be read"))
-      }
+      val outcome = load(document)
       main.post {
         // a later navigation replaced this request; its result must not take over the editor.
         if (openedTarget != target) {
@@ -285,6 +385,25 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     }
   }
 
+  /** a session for the note at [path] whose status reaches the view while it shows [target]. */
+  private fun documentSession(vaultId: String, path: String, target: String): DocumentSession? {
+    val session = VaultRuntime.session(vaultId) ?: return null
+    val journal = VaultRuntime.journal ?: return null
+    return DocumentSession(vaultId, path, session, journal) { status ->
+      main.post {
+        if (openedTarget != target) return@post
+        if (status == DocumentStatus.Saving) savedSinceOpen = true
+        emit(payload(status, savedSinceOpen))
+      }
+    }
+  }
+
+  private fun load(document: DocumentSession): LoadOutcome = try {
+    document.load()
+  } catch (error: Exception) {
+    LoadOutcome.Unavailable(FileState.Unknown(error.message ?: "the note could not be read"))
+  }
+
   private fun apply(outcome: LoadOutcome, document: DocumentSession) {
     when (outcome) {
       is LoadOutcome.Loaded -> {
@@ -292,6 +411,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
         newline = outcome.document.newline
         setText(outcome.document.text)
         setEditable(true)
+        setTitleEditable(true)
         if (!showPendingHeading()) showStartOfNote()
         onLoad(mapOf("kind" to "loaded", "restoredDraft" to outcome.document.restoredDraft))
         if (outcome.document.restoredDraft) document.persist()
@@ -299,6 +419,8 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
       is LoadOutcome.ReadOnly -> {
         document.close()
         setText(outcome.preview)
+        // a read-only note can still be renamed.
+        setTitleEditable(true)
         showStartOfNote()
         onLoad(mapOf("kind" to "read-only", "encoding" to outcome.encoding))
       }
@@ -330,7 +452,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     editText.setSelection(found.first)
     post {
       val layout = editText.layout ?: return@post
-      scroll.scrollTo(0, layout.getLineTop(layout.getLineForOffset(found.first)))
+      scroll.scrollTo(0, editText.top + layout.getLineTop(layout.getLineForOffset(found.first)))
     }
     return true
   }
@@ -364,10 +486,12 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
 
   /**
    * hands the current text to the document, which journals and then saves it. also retries a
-   * save that failed earlier; persisting does nothing when everything is saved.
+   * save that failed earlier; persisting does nothing when everything is saved. while a rename
+   * moves the file, edits wait for it (endRename).
    */
   fun flush() {
     main.removeCallbacks(flushTask)
+    if (pendingRenames > 0) return
     val document = document ?: return
     if (hasPendingEdits) {
       hasPendingEdits = false
@@ -376,16 +500,130 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     document.persist()
   }
 
-  /** writes pending edits and returns the open document, so a rename can wait for its save. */
-  fun flushForRename(): DocumentSession? {
+  /**
+   * writes pending edits and returns the open document, so a rename can wait for its save.
+   * edits typed after this wait until [endRename].
+   */
+  fun beginRename(): DocumentSession? {
     flush()
+    pendingRenames += 1
+    renamedText = editText.text.toString()
     return document
+  }
+
+  /**
+   * a rename of [oldPath] ended. when the file moved to [newPath] and this view still shows it,
+   * the view follows the file: a new document session takes over, and the text, caret, undo,
+   * and keyboard stay. otherwise waiting edits go to the same document.
+   */
+  fun endRename(oldPath: String, newPath: String?) {
+    pendingRenames = max(0, pendingRenames - 1)
+    val vaultId = vaultId
+    if (newPath != null && vaultId != null && path == oldPath && openedTarget != null) {
+      follow(vaultId, newPath)
+    } else if (pendingRenames == 0 && hasPendingEdits) {
+      main.removeCallbacks(flushTask)
+      main.postDelayed(flushTask, SETTLE_DELAY_MS)
+    }
+  }
+
+  private fun follow(vaultId: String, newPath: String) {
+    val previous = document
+    val target = "$vaultId\u0000$newPath"
+    path = newPath
+    openedTarget = target
+    if (!title.isFocused) title.setText(name(newPath))
+    val next = documentSession(vaultId, newPath, target) ?: run {
+      previous?.close()
+      document = null
+      setEditable(false)
+      setTitleEditable(false)
+      onLoad(mapOf("kind" to "unavailable", "reason" to "The vault is not open."))
+      return
+    }
+    // edits keep waiting until the document at the new path has read its file.
+    pendingRenames += 1
+    val expected = renamedText
+    loader.execute {
+      val outcome = load(next)
+      main.post {
+        if (openedTarget != target) {
+          next.close()
+          return@post
+        }
+        pendingRenames = max(0, pendingRenames - 1)
+        if (outcome is LoadOutcome.Loaded && !outcome.document.restoredDraft && previous != null && outcome.document.text == expected) {
+          previous.close()
+          document = next
+          newline = outcome.document.newline
+          if (pendingRenames == 0 && hasPendingEdits) flush()
+          return@post
+        }
+        // the file changed meanwhile, a draft waits for the new path, or the note is read-only:
+        // it opens as any note does. edits typed during the rename go to the old document, which
+        // keeps them as a draft for the old path.
+        if (hasPendingEdits && previous != null) {
+          hasPendingEdits = false
+          previous.update(editText.text.toString())
+          previous.persist()
+        }
+        previous?.close()
+        document = null
+        setEditable(false)
+        setTitleEditable(false)
+        apply(outcome, next)
+      }
+    }
   }
 
   fun focusEditor() {
     if (!editable) return
     editText.requestFocus()
     context.getSystemService(InputMethodManager::class.java)?.showSoftInput(editText, 0)
+  }
+
+  /** puts the caret in the name above the text, with the whole name selected. */
+  fun focusTitle() {
+    if (!titleEditable) return
+    scroll.scrollTo(0, 0)
+    title.requestFocus()
+    title.selectAll()
+    context.getSystemService(InputMethodManager::class.java)?.showSoftInput(title, 0)
+  }
+
+  /** shows the open note's name again, for example after a rename was refused. */
+  fun resetTitle() {
+    val path = path ?: return
+    if (!title.isFocused) title.setText(name(path))
+  }
+
+  /** return in the name: the caret moves to the start of the text, after any front matter. */
+  private fun beginEditingText() {
+    if (!editable) {
+      title.release()
+      return
+    }
+    editText.setSelection(MarkdownStyles.frontMatterEnd(editText.text).coerceIn(0, editText.text.length))
+    focusEditor()
+  }
+
+  /**
+   * the name lost focus. a changed name goes to javascript, which renames the note. the check
+   * waits a moment, so a view that is leaving the screen, and loses focus on the way, sends nothing.
+   */
+  private fun titleEdited() {
+    main.post {
+      val path = path ?: return@post
+      val typed = title.text.toString()
+      if (!isAttachedToWindow || typed == name(path)) return@post
+      onTitleSubmit(mapOf("title" to typed))
+    }
+  }
+
+  private fun setTitleEditable(on: Boolean) {
+    titleEditable = on
+    title.isFocusable = on
+    title.isFocusableInTouchMode = on
   }
 
   private fun reconcile() {
@@ -420,6 +658,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     editable = on
     editText.showSoftInputOnFocus = on
     editText.isCursorVisible = on
+    layoutBottom()
   }
 
   /**
@@ -440,6 +679,45 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     if (to < text.length) post { styleStep(to + 1, generation) }
   }
 
+  // MARK: - toolbar
+
+  override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+    when (event.actionMasked) {
+      MotionEvent.ACTION_DOWN -> touching = true
+      MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> touching = false
+    }
+    return super.dispatchTouchEvent(event)
+  }
+
+  /**
+   * hides the toolbar once the text has moved 24 dp toward its end, and shows it once the text
+   * has moved that far back, or at the top. while the keyboard is up, the text follows the caret
+   * by itself, so only scrolls under a finger count then.
+   */
+  private fun followScroll(scrollY: Int, oldScrollY: Int) {
+    if (scrollY <= 0) {
+      scrollTravel = 0
+      setToolbarHidden(false)
+      return
+    }
+    val delta = scrollY - oldScrollY
+    if (delta == 0 || (editText.isFocused && !touching)) return
+    if ((delta > 0) != (scrollTravel > 0)) scrollTravel = 0
+    scrollTravel += delta
+    val travel = dp(24f)
+    if (scrollTravel >= travel) {
+      setToolbarHidden(true)
+    } else if (scrollTravel <= -travel) {
+      setToolbarHidden(false)
+    }
+  }
+
+  private fun setToolbarHidden(hidden: Boolean) {
+    if (hidden == toolbarHidden) return
+    toolbarHidden = hidden
+    onToolbarHiddenChange(mapOf("hidden" to hidden))
+  }
+
   // MARK: - keyboard
 
   /** the part of this view the keyboard covers, kept clear so the caret stays visible. */
@@ -449,18 +727,82 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     // the back button closes the keyboard but leaves the text focused; giving up focus then
     // makes the note behave as it does after opening, where a tap on a link opens it.
     val shown = insets.isVisible(WindowInsetsCompat.Type.ime())
-    if (keyboardShown && !shown && editText.isFocused) container.requestFocus()
+    if (keyboardShown && !shown && (editText.isFocused || title.isFocused)) container.requestFocus()
     keyboardShown = shown
     val location = IntArray(2)
     getLocationInWindow(location)
     val overlap = if (keyboard > 0) max(0, location[1] + height - (rootView.height - keyboard)) else 0
-    if (overlap == keyboardOverlap) return
+    val navigation = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+    val navigationPart = if (navigation > 0) max(0, location[1] + height - (rootView.height - navigation)) else 0
+    if (overlap == keyboardOverlap && navigationPart == navigationOverlap) return
     keyboardOverlap = overlap
-    (scroll.layoutParams as FrameLayout.LayoutParams).bottomMargin = overlap
+    navigationOverlap = navigationPart
+    layoutBottom()
+  }
+
+  /**
+   * keeps the text clear of the keyboard and, while the text has focus, of the toolbar that sits
+   * on the keyboard (or on the navigation bar, with a hardware keyboard).
+   */
+  private fun layoutBottom() {
+    val showing = editable && editText.isFocused
+    val toolbarBottom = if (keyboardOverlap > 0) keyboardOverlap else navigationOverlap
+    val reserved = if (showing) toolbarBottom + dp(EditorToolbar.HEIGHT_DP.toFloat()).toInt() else keyboardOverlap
+    toolbar.visibility = if (showing) View.VISIBLE else View.GONE
+    val toolbarParams = toolbar.layoutParams as FrameLayout.LayoutParams
+    if (toolbarParams.bottomMargin != toolbarBottom) {
+      toolbarParams.bottomMargin = toolbarBottom
+      toolbar.requestLayout()
+    }
+    val scrollParams = scroll.layoutParams as FrameLayout.LayoutParams
+    if (scrollParams.bottomMargin == reserved) return
+    scrollParams.bottomMargin = reserved
     scroll.requestLayout()
     if (editText.isFocused) {
       post { editText.bringPointIntoView(editText.selectionEnd) }
     }
+  }
+
+  /** the part at the bottom that the keyboard and the toolbar cover. */
+  private fun reservedBottom(): Int = (scroll.layoutParams as FrameLayout.LayoutParams).bottomMargin
+
+  // MARK: - toolbar
+
+  /**
+   * runs a toolbar button. undo and redo are the text field's own, as with ctrl+z; the other
+   * edits replace text like a paste, so the field records each one as one undo step, and the
+   * text watcher saves it and updates the link suggestions.
+   */
+  private fun runToolbar(action: ToolbarAction) {
+    if (action == ToolbarAction.HIDE_KEYBOARD) {
+      context.getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(editText.windowToken, 0)
+      editText.release()
+      return
+    }
+    if (!editable || document == null || !editText.isFocused) return
+    val text = editText.text
+    val start = min(editText.selectionStart, editText.selectionEnd).coerceIn(0, text.length)
+    val end = max(editText.selectionStart, editText.selectionEnd).coerceIn(start, text.length)
+    when (action) {
+      ToolbarAction.UNDO -> editText.onTextContextMenuItem(android.R.id.undo)
+      ToolbarAction.REDO -> editText.onTextContextMenuItem(android.R.id.redo)
+      ToolbarAction.OUTDENT -> applyEdit(EditorCommands.outdent(text, start, end))
+      ToolbarAction.INDENT -> applyEdit(EditorCommands.indent(text, start, end))
+      ToolbarAction.TASK -> applyEdit(EditorCommands.toggleTask(text, start, end))
+      ToolbarAction.LINK -> applyEdit(EditorCommands.insertLink(text, start, end))
+      ToolbarAction.TAG -> applyEdit(EditorCommands.insertTag(text, start, end))
+      ToolbarAction.BOLD -> applyEdit(EditorCommands.toggleEmphasis(text, start, end, strong = true))
+      ToolbarAction.ITALIC -> applyEdit(EditorCommands.toggleEmphasis(text, start, end, strong = false))
+      ToolbarAction.HIDE_KEYBOARD -> Unit
+    }
+  }
+
+  private fun applyEdit(edit: TextEdit?) {
+    edit ?: return
+    val text = editText.text
+    if (edit.end > text.length) return
+    text.replace(edit.start, edit.end, edit.text)
+    editText.setSelection(edit.selectionStart.coerceIn(0, text.length), edit.selectionEnd.coerceIn(0, text.length))
   }
 
   // MARK: - link completion
@@ -526,7 +868,7 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
     val x = editText.totalPaddingLeft + layout.getPrimaryHorizontal(caret) - scroll.scrollX
     val lineTop = editText.top + editText.totalPaddingTop + layout.getLineTop(line) - scroll.scrollY
     val lineBottom = editText.top + editText.totalPaddingTop + layout.getLineBottom(line) - scroll.scrollY
-    val visibleBottom = container.height - keyboardOverlap
+    val visibleBottom = container.height - reservedBottom()
     val gap = dp(6f)
     val panelHeight = dp(CompletionPanel.ROW_HEIGHT_DP) * completion.items.size + dp(8f)
     val width = min(dp(CompletionPanel.WIDTH_DP), container.width - dp(16f))
@@ -660,13 +1002,27 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   private fun applyPalette() {
     editText.setTextColor(palette.text)
     editText.highlightColor = (palette.accent and 0x00FFFFFF) or 0x55000000
+    title.setTextColor(palette.text)
+    title.highlightColor = editText.highlightColor
     completion.setColors(palette, if (isNight()) 0xFF2A2A2A.toInt() else Color.WHITE)
+    // the shell's surface and border colors (src/constants/theme.ts), as the scrolled app bar.
+    if (isNight()) {
+      toolbar.setColors(palette.text, 0xFF262626.toInt(), 0xFF363636.toInt())
+    } else {
+      toolbar.setColors(palette.text, 0xFFF6F6F6.toInt(), 0xFFE3E3E3.toInt())
+    }
   }
 
   private fun dp(value: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, resources.displayMetrics)
 
   private companion object {
     const val SETTLE_DELAY_MS = 200L
+
+    /** the note's name: its file name without the folder or ".md". */
+    fun name(path: String): String {
+      val file = path.substringAfterLast('/')
+      return if (file.endsWith(".md", ignoreCase = true)) file.dropLast(3) else file
+    }
     const val MAX_SUGGESTIONS = 6
 
     /** about this many characters are styled per step after a note opens. */

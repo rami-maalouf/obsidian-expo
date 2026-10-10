@@ -365,20 +365,23 @@ describe('civil time', () => {
 
   test('captureClock follows the device time zone across DST and date lines', () => {
     const instants = ['2026-03-08T06:30:00Z', '2026-03-08T07:30:00Z', '2026-10-08T03:30:00Z'];
-    const script = `import { captureClock } from '@/features/templates/civil-time';
-      console.log(JSON.stringify(${JSON.stringify(instants)}.map((iso) => captureClock(new Date(iso)))));`;
+    const previousTimeZone = process.env.TZ;
+    const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
     const capture = (timeZone: string) => {
-      const run = Bun.spawnSync([process.execPath, '-e', script], {
-        cwd: join(import.meta.dir, '../..'),
-        env: { ...process.env, TZ: timeZone },
-      });
-      return JSON.parse(run.stdout.toString()) as CivilDateTime[];
+      process.env.TZ = timeZone;
+      return instants.map((iso) => captureClock(new Date(iso)));
     };
     const short = (value: CivilDateTime) =>
       `${value.month}-${value.day} ${value.hour}:${String(value.minute).padStart(2, '0')}`;
-    // new york leaves standard time at 07:00Z on 2026-03-08.
-    expect(capture('America/New_York').map(short)).toEqual(['3-8 1:30', '3-8 3:30', '10-7 23:30']);
-    expect(capture('Asia/Tokyo').map(short)).toEqual(['3-8 15:30', '3-8 16:30', '10-8 12:30']);
+    try {
+      // new york leaves standard time at 07:00z on 2026-03-08.
+      expect(capture('America/New_York').map(short)).toEqual(['3-8 1:30', '3-8 3:30', '10-7 23:30']);
+      expect(capture('Asia/Tokyo').map(short)).toEqual(['3-8 15:30', '3-8 16:30', '10-8 12:30']);
+    } finally {
+      // assigning restores bun's date cache; deleting tz alone leaves it stale.
+      process.env.TZ = previousTimeZone ?? defaultTimeZone;
+      if (previousTimeZone === undefined) delete process.env.TZ;
+    }
   });
 });
 

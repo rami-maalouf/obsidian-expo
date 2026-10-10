@@ -1,5 +1,5 @@
-# types into today's note, waits for the save and for the title to lose its unsaved mark, then
-# types a heading. styling adds spans and never changes characters, so the script finds the
+# checks the name above today's note, types into the note, waits for the save, then types a
+# heading. styling adds spans and never changes characters, so the script finds the
 # lines on disk exactly as typed.
 appId: com.ramimaalouf.obsidianexpo
 ---
@@ -7,19 +7,19 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:opened"
     timeout: 30000
-# a note opens without the keyboard; a tap below the short note puts the caret at its end.
+# the name is at the top of the note, which opens at its top.
+- assertVisible:
+    id: "note-title"
+    text: "${TODAY}"
+# a note opens without the keyboard; a tap below the short note, and above the bottom toolbar,
+# puts the caret at its end.
 - tapOn:
-    point: "50%,85%"
+    point: "50%,70%"
 - inputText: "Typed on the emulator."
 - extendedWaitUntil:
     visible:
       id: "note-status:saved"
     timeout: 15000
-# the title ends with "*" while edits wait for a save, and only then.
-- extendedWaitUntil:
-    notVisible: "${TODAY}\\*"
-    timeout: 5000
-- assertVisible: "${TODAY}"
 - takeScreenshot: ${OUT}/after-typing
 - pressKey: Enter
 - inputText: "## Styled heading"
@@ -29,3 +29,14 @@ appId: com.ramimaalouf.obsidianexpo
       id: "note-status:saved"
     timeout: 15000
 - takeScreenshot: ${OUT}/styled
+# the editing toolbar (t17) sits on the keyboard while the text has focus. indent and task change
+# the typed list line, and bold wraps the word at the caret; the script checks the line on disk.
+- inputText: "- Toolbar item"
+- tapOn: "Indent"
+- tapOn: "Task"
+- tapOn: "Bold"
+- extendedWaitUntil:
+    visible:
+      id: "note-status:saved"
+    timeout: 15000
+- takeScreenshot: ${OUT}/toolbar

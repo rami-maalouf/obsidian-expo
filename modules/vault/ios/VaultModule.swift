@@ -200,7 +200,7 @@ public class VaultModule: Module {
     }.runOnQueue(VaultModule.fileQueue)
 
     View(VaultEditorView.self) {
-      Events("onStatus", "onLoad", "onOpenLink")
+      Events("onStatus", "onLoad", "onOpenLink", "onTitleSubmit")
 
       Prop("vaultId") { (view, vaultId: String?) in
         view.vaultId = vaultId
@@ -208,6 +208,10 @@ public class VaultModule: Module {
 
       Prop("path") { (view, path: String?) in
         view.path = path
+      }
+
+      Prop("hidesToolbarOnScroll") { (view, hides: Bool?) in
+        view.hidesToolbarOnScroll = hides ?? false
       }
 
       OnViewDidUpdateProps { view in
@@ -224,25 +228,43 @@ public class VaultModule: Module {
         view.focus()
       }.runOnQueue(.main)
 
+      AsyncFunction("focusTitle") { (view: VaultEditorView) in
+        view.focusTitle()
+      }.runOnQueue(.main)
+
+      AsyncFunction("resetTitle") { (view: VaultEditorView) in
+        view.resetTitle()
+      }.runOnQueue(.main)
+
       // saves the open note, waits for that save, then renames its file. nothing moves while
-      // edits are unsaved, so no later save of this document can target the old path.
+      // edits are unsaved, and edits typed meanwhile wait, so no save of this document can target
+      // the old path. the view then follows the file to its new path; the promise resolves after.
       AsyncFunction("rename") { (view: VaultEditorView, newPath: String, promise: Promise) in
         guard let vaultId = view.vaultId, let path = view.path else {
           promise.resolve(["kind": "missing"])
           return
         }
-        let document = view.flushForRename()
+        let document = view.beginRename()
         VaultModule.fileQueue.async {
           document?.waitUntilIdle()
           if let status = document?.status, !VaultModule.isSettled(status) {
-            promise.resolve(["kind": "unsaved"])
+            DispatchQueue.main.async {
+              view.endRename(from: path, movedTo: nil)
+              promise.resolve(["kind": "unsaved"])
+            }
             return
           }
           do {
             let moved = try self.withFiles(vaultId) { files in try files.move(path, to: newPath) }
-            promise.resolve(VaultModule.encode(moved))
+            DispatchQueue.main.async {
+              view.endRename(from: path, movedTo: moved == .moved ? newPath : nil)
+              promise.resolve(VaultModule.encode(moved))
+            }
           } catch {
-            promise.reject(VaultException("The note could not be renamed. (\(error))"))
+            DispatchQueue.main.async {
+              view.endRename(from: path, movedTo: nil)
+              promise.reject(VaultException("The note could not be renamed. (\(error))"))
+            }
           }
         }
       }.runOnQueue(.main)

@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import LapermEditor
+import SwiftUI
 import UIKit
 
 /// native markdown source editor (ktd3). native code owns the text, selection, composition,
@@ -8,17 +9,32 @@ import UIKit
 /// the text view is laperm's TextKit 2 editor (t05). its live preview hides markdown markers on
 /// every line except the ones the caret or selection touches, and on every line while the
 /// keyboard is down. it styles the text storage's attributes only, so the saved text is the
-/// typed markdown. this view keeps the document session, drafts, saves, and newlines.
+/// typed markdown. this view keeps the document session, drafts, saves, and newlines. the note's
+/// name is above the text, in the same scroll view (NoteTitleView.swift).
 public final class VaultEditorView: ExpoView, UITextViewDelegate {
   let onStatus = EventDispatcher()
   let onLoad = EventDispatcher()
   /// a tap on a wikilink to another note: `target` as written, and `path` when a note matches.
   let onOpenLink = EventDispatcher()
+  /// editing the name above the text ended with a new `title`; javascript renames the note.
+  let onTitleSubmit = EventDispatcher()
 
   var vaultId: String?
   var path: String?
+  /// the screen's bottom toolbar follows the user's scrolling, as safari's does: it slides away
+  /// while the text moves toward its end and comes back when it moves toward its start or reaches
+  /// the top. the editor moves the navigation controller's toolbar itself, without a round trip
+  /// through javascript.
+  var hidesToolbarOnScroll = false {
+    didSet {
+      if !hidesToolbarOnScroll {
+        setToolbarHidden(false)
+      }
+    }
+  }
 
   private let textView = MarkdownTextView(theme: VaultEditorView.theme(for: nil))
+  private let title = NoteTitleView()
   private var document: DocumentSession?
   private var openedTarget: String?
   private var newline = "\n"
@@ -37,12 +53,31 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   /// the start of a link whose popup was dismissed with escape; it stays closed for that link.
   private var dismissedCompletionStart: Int?
   private var observers: [NSObjectProtocol] = []
+  /// the editing toolbar above the keyboard (t17), and whether its undo and redo can run.
+  private let toolbarState = EditorToolbarState()
+  private var toolbarHost: UIHostingController<EditorToolbarView>?
+  /// renames that are moving this note's file. typed edits wait meanwhile, so none is saved to
+  /// the old path; the document that follows the file takes them (endRename).
+  private var pendingRenames = 0
+  /// the text that the last rename saved before the file moved.
+  private var renamedText = ""
+  /// true while the view leaves its window; the name's editing then ends without a rename.
+  private var leaving = false
   private static let settleDelay: TimeInterval = 0.2
+  /// true from the start of a drag until the text stops, so scrolls that follow the caret or open
+  /// a heading never move the toolbar.
+  private var userScrolling = false
+  private var lastScrollY: CGFloat = 0
+  /// how far the text has moved in its current direction: positive toward the end.
+  private var scrollTravel: CGFloat = 0
+  private var hidToolbar = false
+  private static let toolbarTravel: CGFloat = 24
 
   public required init(appContext: AppContext? = nil) {
     super.init(appContext: appContext)
     textView.delegate = self
-    // top and bottom only: `margins` sets the sides and keeps long lines readable on ipad.
+    // top and bottom only: `margins` sets the sides and keeps long lines readable on ipad. the
+    // name above the text replaces the top inset with its own height (`headerHeight`).
     textView.textContainerInset = UIEdgeInsets(top: 16, left: 0, bottom: 32, right: 0)
     textView.margins = .readable
     textView.showsLineNumbers = false
@@ -61,14 +96,38 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     textView.isEditable = false
     textView.accessibilityLabel = "Note text"
     textView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    // the name scrolls with the text, so the navigation bar keeps only its buttons.
+    title.font = VaultEditorView.titleFont(for: nil)
+    title.onHeightChange = { [weak self] height in
+      self?.textView.headerHeight = height
+    }
+    title.onReturn = { [weak self] in
+      self?.beginEditingText()
+    }
+    title.onEndEditing = { [weak self] typed in
+      self?.titleEdited(typed)
+    }
+    textView.headerHeight = title.height(for: 0)
+    textView.headerView = title
     addSubview(textView)
     completion.onSelect = { [weak self] index in
       self?.acceptCompletion(at: index)
     }
     addSubview(completion)
+    // the toolbar rides on the keyboard as the text view's input accessory, the way laperm's
+    // own `keyboardAccessory` hosts one: a clear SwiftUI view sized by its content.
+    let toolbar = UIHostingController(rootView: EditorToolbarView(state: toolbarState) { [weak self] action in
+      self?.performToolbar(action)
+    })
+    toolbar.view.backgroundColor = .clear
+    toolbar.sizingOptions = .intrinsicContentSize
+    toolbar.view.translatesAutoresizingMaskIntoConstraints = false
+    textView.inputAccessoryView = toolbar.view
+    toolbarHost = toolbar
     // the theme's fonts are fixed sizes, so a dynamic type change builds a new theme.
     registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: VaultEditorView, _: UITraitCollection) in
       view.textView.theme = VaultEditorView.theme(for: view.traitCollection)
+      view.title.font = VaultEditorView.titleFont(for: view.traitCollection)
     }
 
     let center = NotificationCenter.default
@@ -80,6 +139,13 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     observers.append(center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
       MainActor.assumeIsolated { self?.reconcile() }
     })
+    // undo and redo dim when there is nothing to undo or redo. typing closes undo groups; the
+    // keyboard's own undo (shake, three fingers, or a hardware keyboard) posts these too.
+    for name in [Notification.Name.NSUndoManagerDidUndoChange, .NSUndoManagerDidRedoChange, .NSUndoManagerDidCloseUndoGroup] {
+      observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        MainActor.assumeIsolated { self?.refreshUndoState() }
+      })
+    }
 
     // wikilinks resolve against the vault's last note listing (VaultRuntime). a link shown as
     // rendered text opens on a tap; a missing note's link takes laperm's unresolved color.
@@ -124,6 +190,18 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     return theme
   }
 
+  /// the name above the text: bold, at the size of a first-level heading.
+  static func titleFont(for traits: UITraitCollection?) -> UIFont {
+    let body = UIFontMetrics(forTextStyle: .body).scaledFont(for: .systemFont(ofSize: 17), compatibleWith: traits)
+    return .systemFont(ofSize: (body.pointSize * 1.6).rounded(), weight: .bold)
+  }
+
+  /// the note's name: its file name without the folder or ".md".
+  static func name(of path: String) -> String {
+    let file = path.split(separator: "/", omittingEmptySubsequences: false).last.map(String.init) ?? path
+    return file.lowercased().hasSuffix(".md") ? String(file.dropLast(3)) : file
+  }
+
   deinit {
     for observer in observers {
       NotificationCenter.default.removeObserver(observer)
@@ -134,8 +212,11 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   /// user opens search or another note.
   public override func willMove(toSuperview newSuperview: UIView?) {
     super.willMove(toSuperview: newSuperview)
+    leaving = newSuperview == nil
     if newSuperview == nil {
       flush()
+      // what replaces the editor, such as the next note or the recovery list, starts with the toolbar.
+      setToolbarHidden(false)
     }
   }
 
@@ -157,6 +238,9 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     guard target != openedTarget else {
       return
     }
+    // another note replaces this one while a rename runs: waiting edits go to the document
+    // now, which keeps them as a draft if its file has moved.
+    pendingRenames = 0
     flush()
     openedTarget = target
     hideCompletion()
@@ -165,21 +249,15 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     document = nil
     textView.isEditable = false
     textView.text = ""
+    setToolbarHidden(false)
+    title.isEditable = false
+    title.text = VaultEditorView.name(of: path)
     emit(["status": "loading"])
     LaunchTiming.mark("first note load started")
 
-    guard let session = VaultRuntime.shared.session(vaultId), let journal = VaultRuntime.shared.journal else {
+    guard let document = documentSession(vaultId: vaultId, path: path, target: target) else {
       onLoad(["kind": "unavailable", "reason": "The vault is not open."])
       return
-    }
-    let document = DocumentSession(vaultId: vaultId, path: path, session: session, journal: journal) { [weak self] status in
-      DispatchQueue.main.async {
-        guard let self, self.openedTarget == target else { return }
-        if status == .saving {
-          self.savedSinceOpen = true
-        }
-        self.emit(VaultEditorView.payload(status, savedSinceOpen: self.savedSinceOpen))
-      }
     }
     DispatchQueue.global(qos: .userInitiated).async { [weak self] in
       let outcome = document.load()
@@ -193,6 +271,22 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     }
   }
 
+  /// a session for the note at `path` whose status reaches the view while it shows `target`.
+  private func documentSession(vaultId: String, path: String, target: String) -> DocumentSession? {
+    guard let session = VaultRuntime.shared.session(vaultId), let journal = VaultRuntime.shared.journal else {
+      return nil
+    }
+    return DocumentSession(vaultId: vaultId, path: path, session: session, journal: journal) { [weak self] status in
+      DispatchQueue.main.async {
+        guard let self, self.openedTarget == target else { return }
+        if status == .saving {
+          self.savedSinceOpen = true
+        }
+        self.emit(VaultEditorView.payload(status, savedSinceOpen: self.savedSinceOpen))
+      }
+    }
+  }
+
   private func apply(_ outcome: LoadOutcome, document: DocumentSession) {
     switch outcome {
     case let .loaded(loaded):
@@ -201,6 +295,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
       let followingHeading = pendingHeading != nil
       textView.text = loaded.text
       textView.isEditable = true
+      title.isEditable = true
       // a `[[note#heading]]` link that already moved to its heading keeps that place.
       if !(followingHeading && pendingHeading == nil) {
         showStartOfNote()
@@ -211,6 +306,8 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
       }
     case let .readOnly(preview, encoding):
       textView.text = preview
+      // a read-only note can still be renamed.
+      title.isEditable = true
       showStartOfNote()
       onLoad(["kind": "read-only", "encoding": encoding])
     case let .unavailable(state):
@@ -288,6 +385,11 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   public func textViewDidChange(_ textView: UITextView) {
     noteEdited()
     updateCompletion()
+    refreshUndoState()
+  }
+
+  public func textViewDidBeginEditing(_ textView: UITextView) {
+    refreshUndoState()
   }
 
   public func textViewDidChangeSelection(_ textView: UITextView) {
@@ -302,6 +404,82 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     if !completion.isHidden {
       positionCompletion()
     }
+    followScroll(scrollView)
+  }
+
+  // MARK: - toolbar
+
+  public func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+    userScrolling = true
+    scrollTravel = 0
+  }
+
+  public func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+    if !decelerate {
+      userScrolling = false
+    }
+  }
+
+  public func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+    userScrolling = false
+  }
+
+  /// hides the toolbar once the user has moved the text `toolbarTravel` points toward its end, and
+  /// shows it once they have moved it that far back, or at the top. the bounce past the end is
+  /// not a change of direction.
+  private func followScroll(_ scrollView: UIScrollView) {
+    let y = scrollView.contentOffset.y
+    let delta = y - lastScrollY
+    lastScrollY = y
+    guard hidesToolbarOnScroll else {
+      return
+    }
+    let inset = scrollView.adjustedContentInset
+    let top = -inset.top
+    if y <= top {
+      scrollTravel = 0
+      setToolbarHidden(false)
+      return
+    }
+    let end = max(top, scrollView.contentSize.height + inset.bottom - scrollView.bounds.height)
+    guard userScrolling, delta != 0, y <= end, y - delta <= end else {
+      return
+    }
+    if (delta > 0) != (scrollTravel > 0) {
+      scrollTravel = 0
+    }
+    scrollTravel += delta
+    if scrollTravel >= VaultEditorView.toolbarTravel {
+      setToolbarHidden(true)
+    } else if scrollTravel <= -VaultEditorView.toolbarTravel {
+      setToolbarHidden(false)
+    }
+  }
+
+  /// slides the bottom toolbar of the screen's navigation controller away or back. the editor
+  /// shows only a toolbar that it hid, and a screen without toolbar items keeps its toolbar as it is.
+  private func setToolbarHidden(_ hidden: Bool) {
+    guard hidden ? hidesToolbarOnScroll : hidToolbar, let controller = screenController(),
+      let navigation = controller.navigationController, controller.toolbarItems?.isEmpty == false
+    else {
+      return
+    }
+    hidToolbar = hidden
+    if navigation.isToolbarHidden != hidden {
+      navigation.setToolbarHidden(hidden, animated: true)
+    }
+  }
+
+  /// the screen's view controller: the first one in the responder chain.
+  private func screenController() -> UIViewController? {
+    var responder = next
+    while let current = responder {
+      if let controller = current as? UIViewController {
+        return controller
+      }
+      responder = current.next
+    }
+    return nil
   }
 
   private func noteEdited() {
@@ -329,11 +507,12 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   }
 
   /// hands the current text to the document, which journals and then saves it. also retries a
-  /// save that failed earlier; persisting is a no-op when everything is saved.
+  /// save that failed earlier; persisting is a no-op when everything is saved. while a rename
+  /// moves the file, edits wait for it (endRename).
   func flush() {
     debounce?.cancel()
     debounce = nil
-    guard let document else {
+    guard pendingRenames == 0, let document else {
       return
     }
     if hasPendingEdits {
@@ -344,14 +523,109 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   }
 
   /// writes pending edits and returns the open document, so a rename can wait for its save.
-  func flushForRename() -> DocumentSession? {
+  /// edits typed after this wait until `endRename`.
+  func beginRename() -> DocumentSession? {
     flush()
+    pendingRenames += 1
+    renamedText = textView.text
     return document
+  }
+
+  /// a rename of `oldPath` ended. when the file moved to `newPath` and this view still shows it,
+  /// the view follows the file: a new document session takes over, and the text, caret, undo,
+  /// and keyboard stay. otherwise waiting edits go to the same document.
+  func endRename(from oldPath: String, movedTo newPath: String?) {
+    pendingRenames = max(0, pendingRenames - 1)
+    if let newPath, let vaultId, path == oldPath {
+      follow(vaultId: vaultId, to: newPath)
+    } else if pendingRenames == 0, hasPendingEdits {
+      scheduleFlush()
+    }
+  }
+
+  private func follow(vaultId: String, to newPath: String) {
+    let previous = document
+    let target = "\(vaultId)\u{0}\(newPath)"
+    path = newPath
+    openedTarget = target
+    if !title.field.isFirstResponder {
+      title.text = VaultEditorView.name(of: newPath)
+    }
+    guard let next = documentSession(vaultId: vaultId, path: newPath, target: target) else {
+      document = nil
+      textView.isEditable = false
+      title.isEditable = false
+      onLoad(["kind": "unavailable", "reason": "The vault is not open."])
+      return
+    }
+    // edits keep waiting until the document at the new path has read its file.
+    pendingRenames += 1
+    let expected = renamedText
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      let outcome = next.load()
+      DispatchQueue.main.async {
+        guard let self, self.openedTarget == target else { return }
+        self.pendingRenames = max(0, self.pendingRenames - 1)
+        if case let .loaded(loaded) = outcome, !loaded.restoredDraft, previous != nil, loaded.text == expected {
+          self.document = next
+          self.newline = loaded.newline
+          if self.pendingRenames == 0, self.hasPendingEdits {
+            self.flush()
+          }
+          return
+        }
+        // the file changed meanwhile, a draft waits for the new path, or the note is read-only:
+        // it opens as any note does. edits typed during the rename go to the old document, which
+        // keeps them as a draft for the old path.
+        if self.hasPendingEdits, let previous {
+          self.hasPendingEdits = false
+          previous.update(text: self.textView.text)
+          previous.persist()
+        }
+        self.document = nil
+        self.textView.isEditable = false
+        self.title.isEditable = false
+        self.apply(outcome, document: next)
+      }
+    }
   }
 
   func focus() {
     // laperm's override of this method does not mark its result as discardable.
     _ = textView.becomeFirstResponder()
+  }
+
+  /// puts the caret in the name above the text, with the whole name selected.
+  func focusTitle() {
+    scrollToTop()
+    title.beginEditingWithNameSelected()
+  }
+
+  /// shows the open note's name again, for example after a rename was refused.
+  func resetTitle() {
+    guard let path, !title.field.isFirstResponder else { return }
+    title.text = VaultEditorView.name(of: path)
+  }
+
+  /// return in the name: the caret moves to the start of the text, after any front matter.
+  private func beginEditingText() {
+    guard textView.isEditable else {
+      title.field.resignFirstResponder()
+      return
+    }
+    let text = textView.textStorage.mutableString
+    let start = FrontMatterParser.parse(text)?.endIncludingNewline(in: text) ?? 0
+    textView.selectedRange = NSRange(location: min(start, text.length), length: 0)
+    focus()
+  }
+
+  /// editing the name ended. a changed name goes to javascript, which renames the note; a note
+  /// that is leaving the screen is not renamed.
+  private func titleEdited(_ typed: String) {
+    guard !leaving, let path, typed != VaultEditorView.name(of: path) else {
+      return
+    }
+    onTitleSubmit(["title": typed])
   }
 
   // MARK: - lifecycle
@@ -390,6 +664,79 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
         self.textView.selectedRange = NSRange(location: location, length: min(selection.length, length - location))
         self.newline = DocumentSession.newline(of: text)
       }
+    }
+  }
+
+  // MARK: - toolbar
+
+  /// runs a toolbar button. each edit is one undo step through laperm's `perform`, which
+  /// replaces the text through UITextInput; nothing runs while the keyboard composes text.
+  private func performToolbar(_ action: EditorToolbarAction) {
+    if action == .hideKeyboard {
+      _ = textView.resignFirstResponder()
+      return
+    }
+    guard document != nil, textView.isEditable, textView.isFirstResponder, textView.markedTextRange == nil else {
+      return
+    }
+    let text = textView.textStorage.mutableString
+    let selection = textView.selectedRange
+    switch action {
+    case .undo, .redo:
+      guard let undoManager = textView.undoManager, action == .undo ? undoManager.canUndo : undoManager.canRedo else {
+        return
+      }
+      if action == .undo {
+        undoManager.undo()
+      } else {
+        undoManager.redo()
+      }
+      toolbarEdited()
+    case .indent:
+      applyEdit(EditingAssistant.indent(text: text, selection: selection))
+    case .outdent:
+      applyEdit(EditingAssistant.outdent(text: text, selection: selection))
+    case .bold, .italic:
+      if textView.toggleEmphasis(action == .bold ? .strong : .emphasis) {
+        toolbarEdited()
+      }
+    case .task:
+      applyEdit(EditorCommands.toggleTask(in: text, selection: selection))
+    case .link:
+      applyEdit(EditorCommands.insertLink(in: text, selection: selection))
+    case .tag:
+      applyEdit(EditorCommands.insertTag(in: text, selection: selection))
+    case .hideKeyboard:
+      break
+    }
+  }
+
+  private func applyEdit(_ edit: TextEdit?) {
+    applyEdit(edit.map { EditCommand(replacementRange: $0.range, replacementString: $0.text, selectedRange: $0.selection) })
+  }
+
+  private func applyEdit(_ command: EditCommand?) {
+    guard let command, textView.perform(command) else {
+      return
+    }
+    toolbarEdited()
+  }
+
+  /// a toolbar edit saves like typing; a link's empty brackets open the suggestions.
+  private func toolbarEdited() {
+    noteEdited()
+    updateCompletion()
+    refreshUndoState()
+  }
+
+  private func refreshUndoState() {
+    let canUndo = textView.undoManager?.canUndo ?? false
+    let canRedo = textView.undoManager?.canRedo ?? false
+    if toolbarState.canUndo != canUndo {
+      toolbarState.canUndo = canUndo
+    }
+    if toolbarState.canRedo != canRedo {
+      toolbarState.canRedo = canRedo
     }
   }
 

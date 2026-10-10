@@ -1,5 +1,7 @@
 # a relaunch restores the vault from its kept folder permission and opens today's note again,
-# then search finds a note by its content and opens it, and the note scrolls under the app bar.
+# then search, from the bottom toolbar, finds a note by its content and opens it. the note
+# scrolls under the app bar, and the bottom toolbar slides away while the note scrolls toward its
+# end and comes back when it scrolls back.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -11,7 +13,6 @@ appId: com.ramimaalouf.obsidianexpo
     timeout: 60000
 - assertVisible: "${TODAY}"
 - takeScreenshot: ${OUT}/relaunch
-- tapOn: "More"
 - tapOn: "Search"
 - inputText: "callout"
 - extendedWaitUntil:
@@ -23,11 +24,27 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:opened"
     timeout: 15000
-- assertVisible: "Welcome"
+- assertVisible:
+    id: "note-title"
+    text: "Welcome"
 - takeScreenshot: ${OUT}/welcome
-# the app bar takes the surface color while the note is scrolled from its top.
+# the app bar takes the surface color while the note is scrolled from its top. the name above the
+# text scrolls away with it, so the check is that the note is still open. the bottom toolbar
+# slides away.
 - swipe:
     start: 50%, 75%
     end: 50%, 35%
-- assertVisible: "Welcome"
+- assertVisible:
+    id: "note-status:opened"
+- extendedWaitUntil:
+    notVisible: "New note"
+    timeout: 5000
 - takeScreenshot: ${OUT}/welcome-scrolled
+# a shorter scroll back, which leaves the note below its top, brings the toolbar back.
+- swipe:
+    start: 50%, 40%
+    end: 50%, 55%
+- extendedWaitUntil:
+    visible: "New note"
+    timeout: 5000
+- takeScreenshot: ${OUT}/toolbar-shown

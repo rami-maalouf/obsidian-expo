@@ -1,6 +1,7 @@
 /**
- * renaming a note from its title: the user edits the name without `.md`, and the note stays in
- * its folder. the native rename saves pending edits first and never replaces another file.
+ * renaming a note from the name above its text: the user edits the name without `.md`, and the
+ * note stays in its folder. the native rename saves pending edits first and never replaces
+ * another file.
  */
 import { joinVaultPath, normalizeNotePath } from '@/features/daily-notes/vault-path';
 import type { Result } from '@/features/templates/template';
@@ -51,7 +52,7 @@ export function renameProblem(outcome: RenameOutcome, newPath: string): string |
     case 'missing':
       return 'The note was moved or deleted outside the app.';
     case 'unsaved':
-      return 'The note has edits that could not be saved yet, so it was not renamed. Try again when the title has no "*".';
+      return 'The note has edits that could not be saved yet, so it was not renamed. Try again after they are saved.';
     case 'unavailable':
       return 'The note is not available right now.';
     default:
