@@ -1,5 +1,6 @@
 import ExpoModulesCore
 import LapermEditor
+import SwiftUI
 import UIKit
 
 /// native markdown source editor (ktd3). native code owns the text, selection, composition,
@@ -48,6 +49,9 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   /// the start of a link whose popup was dismissed with escape; it stays closed for that link.
   private var dismissedCompletionStart: Int?
   private var observers: [NSObjectProtocol] = []
+  /// the editing toolbar above the keyboard (t17), and whether its undo and redo can run.
+  private let toolbarState = EditorToolbarState()
+  private var toolbarHost: UIHostingController<EditorToolbarView>?
   private static let settleDelay: TimeInterval = 0.2
   /// true from the start of a drag until the text stops, so scrolls that follow the caret or open
   /// a heading never move the toolbar.
@@ -85,6 +89,16 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
       self?.acceptCompletion(at: index)
     }
     addSubview(completion)
+    // the toolbar rides on the keyboard as the text view's input accessory, the way laperm's
+    // own `keyboardAccessory` hosts one: a clear SwiftUI view sized by its content.
+    let toolbar = UIHostingController(rootView: EditorToolbarView(state: toolbarState) { [weak self] action in
+      self?.performToolbar(action)
+    })
+    toolbar.view.backgroundColor = .clear
+    toolbar.sizingOptions = .intrinsicContentSize
+    toolbar.view.translatesAutoresizingMaskIntoConstraints = false
+    textView.inputAccessoryView = toolbar.view
+    toolbarHost = toolbar
     // the theme's fonts are fixed sizes, so a dynamic type change builds a new theme.
     registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: VaultEditorView, _: UITraitCollection) in
       view.textView.theme = VaultEditorView.theme(for: view.traitCollection)
@@ -99,6 +113,13 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     observers.append(center.addObserver(forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main) { [weak self] _ in
       MainActor.assumeIsolated { self?.reconcile() }
     })
+    // undo and redo dim when there is nothing to undo or redo. typing closes undo groups; the
+    // keyboard's own undo (shake, three fingers, or a hardware keyboard) posts these too.
+    for name in [UndoManager.didUndoChangeNotification, UndoManager.didRedoChangeNotification, UndoManager.didCloseUndoGroupNotification] {
+      observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+        MainActor.assumeIsolated { self?.refreshUndoState() }
+      })
+    }
 
     // wikilinks resolve against the vault's last note listing (VaultRuntime). a link shown as
     // rendered text opens on a tap; a missing note's link takes laperm's unresolved color.
@@ -310,6 +331,11 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   public func textViewDidChange(_ textView: UITextView) {
     noteEdited()
     updateCompletion()
+    refreshUndoState()
+  }
+
+  public func textViewDidBeginEditing(_ textView: UITextView) {
+    refreshUndoState()
   }
 
   public func textViewDidChangeSelection(_ textView: UITextView) {
@@ -488,6 +514,79 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
         self.textView.selectedRange = NSRange(location: location, length: min(selection.length, length - location))
         self.newline = DocumentSession.newline(of: text)
       }
+    }
+  }
+
+  // MARK: - toolbar
+
+  /// runs a toolbar button. each edit is one undo step through laperm's `perform`, which
+  /// replaces the text through UITextInput; nothing runs while the keyboard composes text.
+  private func performToolbar(_ action: EditorToolbarAction) {
+    if action == .hideKeyboard {
+      _ = textView.resignFirstResponder()
+      return
+    }
+    guard document != nil, textView.isEditable, textView.markedTextRange == nil else {
+      return
+    }
+    let text = textView.textStorage.mutableString
+    let selection = textView.selectedRange
+    switch action {
+    case .undo, .redo:
+      guard let undoManager = textView.undoManager, action == .undo ? undoManager.canUndo : undoManager.canRedo else {
+        return
+      }
+      if action == .undo {
+        undoManager.undo()
+      } else {
+        undoManager.redo()
+      }
+      toolbarEdited()
+    case .indent:
+      applyEdit(EditingAssistant.indent(text: text, selection: selection))
+    case .outdent:
+      applyEdit(EditingAssistant.outdent(text: text, selection: selection))
+    case .bold, .italic:
+      if textView.toggleEmphasis(action == .bold ? .strong : .emphasis) {
+        toolbarEdited()
+      }
+    case .task:
+      applyEdit(EditorCommands.toggleTask(in: text, selection: selection))
+    case .link:
+      applyEdit(EditorCommands.insertLink(in: text, selection: selection))
+    case .tag:
+      applyEdit(EditorCommands.insertTag(in: text, selection: selection))
+    case .hideKeyboard:
+      break
+    }
+  }
+
+  private func applyEdit(_ edit: TextEdit?) {
+    applyEdit(edit.map { EditCommand(replacementRange: $0.range, replacementString: $0.text, selectedRange: $0.selection) })
+  }
+
+  private func applyEdit(_ command: EditCommand?) {
+    guard let command, textView.perform(command) else {
+      return
+    }
+    toolbarEdited()
+  }
+
+  /// a toolbar edit saves like typing; a link's empty brackets open the suggestions.
+  private func toolbarEdited() {
+    noteEdited()
+    updateCompletion()
+    refreshUndoState()
+  }
+
+  private func refreshUndoState() {
+    let canUndo = textView.undoManager?.canUndo ?? false
+    let canRedo = textView.undoManager?.canRedo ?? false
+    if toolbarState.canUndo != canUndo {
+      toolbarState.canUndo = canUndo
+    }
+    if toolbarState.canRedo != canRedo {
+      toolbarState.canRedo = canRedo
     }
   }
 

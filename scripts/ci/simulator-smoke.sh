@@ -184,7 +184,7 @@ if [ "$#" -gt 0 ]; then
   echo "--- Daily/$today.md after the flows"
   cat "$note"
   grep -q 'Typed in the simulator.' "$note"
-  for line in '## Styled heading' '```' '# Inside code'; do
+  for line in '## Styled heading' '```' '# Inside code' '    - [ ] Toolbar item'; do
     grep -qxF -- "$line" "$note"
   done
   if [[ " $* " == *" @external-edit "* ]]; then
