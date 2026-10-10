@@ -676,7 +676,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
       _ = textView.resignFirstResponder()
       return
     }
-    guard document != nil, textView.isEditable, textView.markedTextRange == nil else {
+    guard document != nil, textView.isEditable, textView.isFirstResponder, textView.markedTextRange == nil else {
       return
     }
     let text = textView.textStorage.mutableString

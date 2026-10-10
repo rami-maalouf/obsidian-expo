@@ -34,6 +34,9 @@ final class NoteTitleView: UIView, UITextViewDelegate {
     field.smartInsertDeleteType = .no
     field.isEditable = false
     field.accessibilityIdentifier = "note-title"
+    // the editing toolbar edits the note's text. without an accessory of its own, the name would
+    // show the text view's toolbar, which uikit finds up the responder chain.
+    field.inputAccessoryView = UIView(frame: .zero)
     field.delegate = self
     addSubview(field)
   }
