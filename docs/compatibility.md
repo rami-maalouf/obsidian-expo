@@ -35,7 +35,7 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 
 ## Editing toolbar
 
-While the keyboard is up, a row of buttons sits on it, as in Obsidian's mobile toolbar ([T17](technology-decisions.md#t17-editing-toolbar)). The row scrolls sideways when it does not fit. Each edit is one undo step, and it is saved like typing.
+While the keyboard is up, a row of buttons sits on it, as in Obsidian's mobile toolbar ([T17](technology-decisions.md#t17-editing-toolbar)). The editing buttons scroll sideways when they do not fit; Hide Keyboard stays at the right end. Each edit is one undo step, and it is saved like typing.
 
 - **Undo** and **Redo** take back and redo edits. On iOS they dim when there is nothing to undo or redo.
 - **Outdent** and **Indent** move list items (`-`, `*`, `+`, `1.`, `1)`) left or right by four spaces, on the caret's line or every list line in the selection. Plain lines do not move. Lists indented with tabs do not outdent.

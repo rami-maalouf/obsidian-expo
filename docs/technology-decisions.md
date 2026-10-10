@@ -327,7 +327,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Decided:** October 10, 2026, at the user's request for a toolbar above the keyboard like Obsidian's, built on LapermEditor's commands on iOS and in the platform's own way on Android.
 
-**Choice:** a native toolbar on each platform, owned by the vault module's editor view. JavaScript takes no part, so no button press sends note text across the bridge (KTD3). The buttons, in order: Undo, Redo, Outdent, Indent, Task, Link, Tag, Bold, Italic, and Hide Keyboard. The row scrolls sideways when it is wider than the screen.
+**Choice:** a native toolbar on each platform, owned by the vault module's editor view. JavaScript takes no part, so no button press sends note text across the bridge (KTD3). The buttons, in order: Undo, Redo, Outdent, Indent, Task, Link, Tag, Bold, Italic, and Hide Keyboard. The editing buttons scroll sideways when they do not fit; Hide Keyboard stays at the right end, because an iPhone keyboard has no key to close it. The first emulator run (A1, run 38080397995) showed why: on a phone 411 dp wide, Hide Keyboard was past the edge of a row that scrolled as a whole.
 
 | Part | iOS | Android |
 | --- | --- | --- |

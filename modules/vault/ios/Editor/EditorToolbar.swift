@@ -45,33 +45,28 @@ final class EditorToolbarState: ObservableObject {
   @Published var canRedo = false
 }
 
-/// the row above the keyboard: one glass capsule of buttons that scrolls sideways when it is
-/// wider than the screen. it is the text view's `inputAccessoryView`, so UIKit keeps it on the
-/// keyboard, and laperm adds its height to the text's bottom inset.
+/// the row above the keyboard: one glass capsule of buttons. the editing buttons scroll sideways
+/// when they do not fit; hide keyboard stays at the right end, because an iphone keyboard has no
+/// key of its own to close it. the row is the text view's `inputAccessoryView`, so UIKit keeps it
+/// on the keyboard, and laperm adds its height to the text's bottom inset.
 struct EditorToolbarView: View {
   @ObservedObject var state: EditorToolbarState
   let perform: (EditorToolbarAction) -> Void
 
   var body: some View {
-    ScrollView(.horizontal, showsIndicators: false) {
-      HStack(spacing: 2) {
-        ForEach(EditorToolbarAction.allCases) { action in
-          Button {
-            perform(action)
-          } label: {
-            Image(systemName: action.symbol)
-              .font(.body.weight(.medium))
-              .frame(width: 44, height: 44)
-              .contentShape(.rect)
+    HStack(spacing: 0) {
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(spacing: 2) {
+          ForEach(EditorToolbarAction.allCases.filter { $0 != .hideKeyboard }) { action in
+            button(action)
           }
-          .buttonStyle(.plain)
-          .foregroundStyle(isEnabled(action) ? Color.primary : Color.secondary.opacity(0.5))
-          .disabled(!isEnabled(action))
-          .accessibilityLabel(action.label)
-          .accessibilityIdentifier("toolbar-\(action.rawValue)")
         }
+        .padding(.leading, 8)
       }
-      .padding(.horizontal, 8)
+      Divider()
+        .frame(height: 24)
+      button(.hideKeyboard)
+        .padding(.trailing, 4)
     }
     .frame(height: 48)
     .clipShape(.capsule)
@@ -79,6 +74,22 @@ struct EditorToolbarView: View {
     .padding(.horizontal, 8)
     .padding(.bottom, 6)
     .frame(maxWidth: .infinity)
+  }
+
+  private func button(_ action: EditorToolbarAction) -> some View {
+    Button {
+      perform(action)
+    } label: {
+      Image(systemName: action.symbol)
+        .font(.body.weight(.medium))
+        .frame(width: 44, height: 44)
+        .contentShape(.rect)
+    }
+    .buttonStyle(.plain)
+    .foregroundStyle(isEnabled(action) ? Color.primary : Color.secondary.opacity(0.5))
+    .disabled(!isEnabled(action))
+    .accessibilityLabel(action.label)
+    .accessibilityIdentifier("toolbar-\(action.rawValue)")
   }
 
   private func isEnabled(_ action: EditorToolbarAction) -> Bool {
