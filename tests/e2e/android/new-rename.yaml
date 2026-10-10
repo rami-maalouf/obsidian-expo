@@ -1,37 +1,39 @@
 # after relaunch-search.yaml, Welcome is open. "New note" in the bottom toolbar creates Untitled.md
-# beside it, at the top of the vault (the default new-note setting). text is typed, and a tap on
-# the title at once opens the rename dialog; the rename saves the text before the file moves.
+# beside it, at the top of the vault (the default new-note setting). the new note opens with its
+# name selected above the text; return moves the caret to the text. text is typed, then "Rename
+# note" selects the name again, and a new name is typed. return moves the caret to the text, the
+# name loses focus, and the note is renamed: the rename saves the text before the file moves, and
+# the editor follows the file, so text typed right after it reaches the renamed file.
 # scripts/ci/emulator-smoke.sh checks the renamed file on disk.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - tapOn: "New note"
 - extendedWaitUntil:
-    visible: "Untitled"
+    visible:
+      id: "note-title"
+      text: "Untitled"
     timeout: 15000
 - extendedWaitUntil:
     visible:
       id: "note-status:opened"
     timeout: 15000
-- tapOn:
-    point: "50%,50%"
+- takeScreenshot: ${OUT}/new-note
+- pressKey: Enter
 - inputText: "Written before the rename."
-- tapOn: "Untitled\\*?"
-- extendedWaitUntil:
-    visible: "Rename note"
-    timeout: 5000
-- takeScreenshot: ${OUT}/rename-dialog
-# the field starts with the whole name selected.
-- eraseText: 20
+- tapOn: "More"
+- tapOn: "Rename note"
+- takeScreenshot: ${OUT}/rename-title
+# "Rename note" selects the whole name, so the typed name replaces it.
 - inputText: "Renamed on Android"
-- tapOn: "Rename"
-- extendedWaitUntil:
-    visible: "Renamed on Android"
-    timeout: 15000
-- extendedWaitUntil:
-    notVisible: "Rename note"
-    timeout: 5000
+- pressKey: Enter
+- inputText: "Written after the rename. "
 - extendedWaitUntil:
     visible:
-      id: "note-status:opened"
+      id: "note-title"
+      text: "Renamed on Android"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "note-status:saved"
     timeout: 15000
 - takeScreenshot: ${OUT}/renamed

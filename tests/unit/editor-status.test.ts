@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { hasUnsavedEdits, statusNotice } from '@/features/editor/status';
+import { statusNotice } from '@/features/editor/status';
 import { recoveredNotePath } from '@/features/recovery/recovered-path';
 
 import type { EditorStatus } from '../../modules/vault/src/VaultEditorView';
@@ -20,30 +20,6 @@ const STATUSES: EditorStatus[] = [
   'checkpoint-failed',
   'unavailable',
 ];
-
-describe('hasUnsavedEdits', () => {
-  test('after edits, only a completed save clears the unsaved mark', () => {
-    // "opened" and "loading" come only from opening a note, and read-only notes take no edits.
-    const cleared = STATUSES.filter((status) => !hasUnsavedEdits(status, true));
-    expect(cleared).toEqual(['loading', 'opened', 'saved', 'read-only']);
-  });
-
-  test('typing sets the mark, and a failed save keeps it until a save completes', () => {
-    const sequence: EditorStatus[] = ['loading', 'opened', 'unsaved', 'saving', 'error', 'unavailable', 'saving', 'saved'];
-    const marks: boolean[] = [];
-    sequence.reduce((before, status) => {
-      const after = hasUnsavedEdits(status, before);
-      marks.push(after);
-      return after;
-    }, false);
-    expect(marks).toEqual([false, false, true, true, true, true, true, false]);
-  });
-
-  test('"unavailable" keeps the earlier answer', () => {
-    expect(hasUnsavedEdits('unavailable', false)).toBe(false);
-    expect(hasUnsavedEdits('unavailable', true)).toBe(true);
-  });
-});
 
 describe('statusNotice', () => {
   test('opening and saving show no notice', () => {

@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.view.inputmethod.InputMethodManager
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.activityresult.AppContextActivityResultLauncher
@@ -52,6 +54,7 @@ class VaultModule : Module() {
   /** vault calls run in order on their own thread, never on expo's shared module queue. */
   private val fileDispatcher = Executors.newSingleThreadExecutor { Thread(it, "vault.files") }.asCoroutineDispatcher()
   private val fileScope = CoroutineScope(fileDispatcher + SupervisorJob())
+  private val main = Handler(Looper.getMainLooper())
 
   /** the full vault scan has a thread of its own, so a large vault never delays today's note. */
   private val listingScope = CoroutineScope(
@@ -224,7 +227,7 @@ class VaultModule : Module() {
     }.runOnQueue(fileScope)
 
     View(VaultEditorView::class) {
-      Events("onStatus", "onLoad", "onOpenLink", "onScrolledChange", "onToolbarHiddenChange")
+      Events("onStatus", "onLoad", "onOpenLink", "onScrolledChange", "onToolbarHiddenChange", "onTitleSubmit")
 
       Prop("vaultId") { view: VaultEditorView, vaultId: String? ->
         view.vaultId = vaultId
@@ -255,15 +258,24 @@ class VaultModule : Module() {
         view.focusEditor()
       }.runOnQueue(Queues.MAIN)
 
+      AsyncFunction("focusTitle") { view: VaultEditorView ->
+        view.focusTitle()
+      }.runOnQueue(Queues.MAIN)
+
+      AsyncFunction("resetTitle") { view: VaultEditorView ->
+        view.resetTitle()
+      }.runOnQueue(Queues.MAIN)
+
       // saves the open note, waits for that save, then renames its file. nothing moves while
-      // edits are unsaved, so no later save of this document can target the old path.
+      // edits are unsaved, and edits typed meanwhile wait, so no save of this document can target
+      // the old path. the view then follows the file to its new path; the promise resolves after.
       AsyncFunction("rename") { view: VaultEditorView, newPath: String, promise: Promise ->
         val vaultId = view.vaultId
         val path = view.path
         if (vaultId == null || path == null) {
           promise.resolve(mapOf("kind" to "missing"))
         } else {
-          renameAfterSave(view.flushForRename(), vaultId, path, newPath, promise)
+          renameAfterSave(view, view.beginRename(), vaultId, path, newPath, promise)
         }
       }.runOnQueue(Queues.MAIN)
     }
@@ -385,6 +397,8 @@ class VaultModule : Module() {
     val focused = activity.currentFocus
     if (focused is VaultEditText) {
       focused.release()
+    } else if (focused is NoteTitleField) {
+      focused.release()
     } else {
       focused?.clearFocus()
     }
@@ -429,18 +443,31 @@ class VaultModule : Module() {
 
   // MARK: - renaming
 
-  /** on the file queue: waits for the document's save, then renames the file if it was saved. */
-  private fun renameAfterSave(document: DocumentSession?, vaultId: String, path: String, newPath: String, promise: Promise) {
+  /**
+   * on the file queue: waits for the document's save, then renames the file if it was saved. on
+   * the main thread, the view ends the rename before the promise resolves.
+   */
+  private fun renameAfterSave(view: VaultEditorView, document: DocumentSession?, vaultId: String, path: String, newPath: String, promise: Promise) {
     fileScope.launch {
       document?.waitUntilIdle()
       if (document != null && !isSettled(document.status)) {
-        promise.resolve(mapOf("kind" to "unsaved"))
+        main.post {
+          view.endRename(path, null)
+          promise.resolve(mapOf("kind" to "unsaved"))
+        }
         return@launch
       }
       try {
-        promise.resolve(encode(withFiles(vaultId) { it.move(path, newPath) }))
+        val moved = withFiles(vaultId) { it.move(path, newPath) }
+        main.post {
+          view.endRename(path, if (moved == MoveResult.Moved) newPath else null)
+          promise.resolve(encode(moved))
+        }
       } catch (error: Exception) {
-        promise.reject(VaultException("The note could not be renamed. (${error.message})"))
+        main.post {
+          view.endRename(path, null)
+          promise.reject(VaultException("The note could not be renamed. (${error.message})"))
+        }
       }
     }
   }
