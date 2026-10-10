@@ -172,6 +172,10 @@ Still open: a save or load notice below the bar, the status views and the recove
 
 On Android, the app bar has no shadow and takes the surface color while the note is scrolled ([T08](technology-decisions.md#t08-navigation-shell)). `tests/e2e/android/relaunch-search.yaml` now swipes the Welcome note and takes the `welcome-scrolled` screenshot. After the merge with main, `bun run check` (226 tests) and `bun run export` pass on L1. The `android` workflow (A1) compiled the Kotlin change and passed the emulator test for `f07f855` (runs 38067645809 and 38067642405). In the emulator screenshots, the app bar and the status bar area are white with no shadow line at the top of Welcome; after the swipe, they and the Compose button areas are about `#f7f7f7`, the light palette's surface color within JPEG error. Main's `welcome` screenshot (run 38065761175) has a shadow line under the bar. Dark appearance, the color change while scrolling back to the top, and a device have not been checked.
 
+## Editing toolbar (October 10, 2026)
+
+At the user's request, the editor has a toolbar above the keyboard ([T17](technology-decisions.md#t17-editing-toolbar)). Evidence is added here as each check runs.
+
 ## Preliminary search benchmark
 
 `bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.
