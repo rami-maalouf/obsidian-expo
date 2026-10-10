@@ -14,8 +14,8 @@ For cloud work, start with [agent instructions](AGENTS.md), [project context](do
 
 The [technology-options research](docs/technology-options-2026-10.md) and its version snapshot are included alongside the plan. The [transfer inventory](docs/PLANNING_TRANSFER.md) accounts for all material brought over from the planning project. Feature implementation targets iOS (iPhone/iPad) and, since October 9, 2026, Android; web starter checks do not expand that scope.
 
-- Expo `58.0.6` and Expo Router `58.0.16`
-- React `19.3.0` and React Native `0.88.0-rc.3`
+- Expo `58.0.7` and Expo Router `58.0.17`
+- React `19.3.0` and React Native `0.88.0-rc.4`
 - TypeScript with strict checking
 - Bun `1.3.14`, with dependency versions recorded in `bun.lock`
 - Node.js 24.3 or newer on the 24 LTS line, or Node.js 26
