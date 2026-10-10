@@ -1,5 +1,6 @@
 /**
- * web and android show only the app shell; vault access and the editor are native ios features.
+ * the web build shows only the app shell; vault access and the editor are native ios and
+ * android features.
  */
 import { useEffect } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -13,10 +14,10 @@ export function VaultGate() {
   return (
     <View style={styles.container}>
       <Text style={[styles.title, { color: SystemColors.label }]} accessibilityRole="header">
-        Open on iPhone or iPad
+        Open on iPhone, iPad, or Android
       </Text>
       <Text style={{ color: SystemColors.secondaryLabel }}>
-        Vault access and the editor use native iOS features. This build shows the app shell only.
+        Vault access and the editor use native iOS and Android features. This build shows the app shell only.
       </Text>
     </View>
   );

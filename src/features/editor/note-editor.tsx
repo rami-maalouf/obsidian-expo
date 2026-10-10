@@ -6,7 +6,7 @@
 import { type Ref, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Accent, SystemColors } from '@/constants/theme';
+import { Accent, useSystemColors } from '@/constants/theme';
 
 import {
   type EditorLoadEvent,
@@ -50,6 +50,7 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, 
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [unsaved, setUnsaved] = useState(false);
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
+  const colors = useSystemColors();
   const notice = statusNotice(status);
   useEffect(() => {
     onUnsavedChange?.(unsaved);
@@ -61,10 +62,10 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, 
     return null;
   }
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {notice && (
         <View style={styles.problemRow}>
-          <Text accessibilityLiveRegion="polite" style={[styles.notice, { color: SystemColors.warning }]}>
+          <Text accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.warning }]}>
             {notice.text}
           </Text>
           {notice.canRetry && (
@@ -75,7 +76,7 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, 
         </View>
       )}
       {load?.kind === 'unavailable' && (
-        <Text style={[styles.notice, styles.loadNotice, { color: SystemColors.warning }]}>
+        <Text style={[styles.notice, styles.loadNotice, { color: colors.warning }]}>
           This note cannot be opened right now ({load.reason}).
         </Text>
       )}
@@ -109,7 +110,6 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: SystemColors.background,
   },
   problemRow: {
     flexDirection: 'row',

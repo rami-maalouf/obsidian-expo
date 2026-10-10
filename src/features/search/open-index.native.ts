@@ -3,7 +3,7 @@ import { openDatabaseAsync } from 'expo-sqlite';
 import { VaultNative } from '../../../modules/vault/src';
 import type { SqlDatabase } from './sql';
 
-/** opens the vault's search index database in app caches (ios only). */
+/** opens the vault's search index database in app caches (ios and android). */
 export async function openIndexDatabase(vaultId: string): Promise<SqlDatabase | null> {
   if (!VaultNative) {
     return null;

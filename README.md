@@ -1,6 +1,6 @@
 # obsidian-expo
 
-An Expo SDK 58 app, in progress, for writing in an existing Markdown vault on iPhone and iPad. The iOS code opens a vault folder in place, shows unsaved drafts first, opens or creates today's daily note, edits Markdown source in a native text view with restrained styling and journaled, conditional saves, and searches the vault. The interface follows the phone's light or dark appearance and works like Obsidian's: the note sits between two side panels, files and bookmarks on the left and a calendar on the right, which slide over the note on a phone and can stay beside it on an iPad. Panel contents, toolbars, menus, search, and settings are native iOS views, with Liquid Glass panels on iOS 26. A Simulator test in CI covers today's note, typing, saving, and search; no feature is qualified on a device or with iCloud yet. [Validation](docs/validation.md) lists what is verified and how. Web and Android builds show only the app shell.
+An Expo SDK 58 app, in progress, for writing in an existing Markdown vault on iPhone, iPad, and Android. The iOS code opens a vault folder in place, shows unsaved drafts first, opens or creates today's daily note, edits Markdown source in a native text view with restrained styling and journaled, conditional saves, and searches the vault. The interface follows the phone's light or dark appearance and works like Obsidian's: the note sits between two side panels, files and bookmarks on the left and a calendar on the right, which slide over the note on a phone and can stay beside it on an iPad. Panel contents, toolbars, menus, search, and settings are native iOS views, with Liquid Glass panels on iOS 26. The Android app shares the JavaScript and has a Kotlin version of the native vault module: the vault is a folder picked with Android's folder picker, and the editor shows Markdown source with light styling. Its screens are React Native views in Obsidian's light and dark colors; [compatibility](docs/compatibility.md#android) lists how it differs. A Simulator test covers today's note, typing, saving, and search on iOS, and an emulator test in CI covers the same flow on Android, starting from the system folder picker. No feature is qualified on a device or with iCloud yet. [Validation](docs/validation.md) lists what is verified and how. The web build shows only the app shell.
 
 ## Specification and implementation plan
 
@@ -12,7 +12,7 @@ For cloud work, start with [agent instructions](AGENTS.md), [project context](do
 
 ## Toolchain
 
-The [technology-options research](docs/technology-options-2026-10.md) and its version snapshot are included alongside the plan. The [transfer inventory](docs/PLANNING_TRANSFER.md) accounts for all material brought over from the planning project. Feature implementation targets iOS (iPhone/iPad) only for now; Android and web starter checks do not expand that scope.
+The [technology-options research](docs/technology-options-2026-10.md) and its version snapshot are included alongside the plan. The [transfer inventory](docs/PLANNING_TRANSFER.md) accounts for all material brought over from the planning project. Feature implementation targets iOS (iPhone/iPad) and, since October 9, 2026, Android; web starter checks do not expand that scope.
 
 - Expo `58.0.6` and Expo Router `58.0.16`
 - React `19.3.0` and React Native `0.88.0-rc.3`
@@ -40,6 +40,8 @@ Build and open Android with an Android SDK and emulator installed:
 ```sh
 bun run android
 ```
+
+On first launch, choose the vault folder in the system folder picker; it starts in the shared Documents folder.
 
 After the first native build, `bun start` starts Metro for the installed development app. Rebuild after changing native dependencies or native app configuration. This project uses a development build; the initial SDK 58 Expo Go simulator attempt failed to load `ExpoAsset`.
 
@@ -80,6 +82,29 @@ To send JavaScript and asset changes to the preview build without a new build, r
 
 `app.config.ts` applies the variants on top of `app.json`; without `APP_VARIANT`, the config describes the release app, as in CI. `bun run icons` regenerates every icon from `scripts/generate-icons.ts`. [Technology decisions](docs/technology-decisions.md) (T14 and T15) records these choices.
 
+## Run on Android
+
+The same EAS profiles build Android APKs, which install from a link without Google Play:
+
+```sh
+bun run build:dev:android
+bun run build:preview:android
+```
+
+The development and preview builds have their own application IDs (`com.ramimaalouf.obsidianexpo.dev` and `.preview`), so both can be installed beside each other. Enable installing from unknown sources for the browser that opens the link. `bun run update:preview` sends JavaScript updates to preview builds of both platforms that have the same runtime fingerprint.
+
+Without an Expo account, run the [android workflow](.github/workflows/android.yml) from the Actions tab, or push a tag that starts with `android-v`. After the emulator test passes, it publishes the tested Release APK as a GitHub prerelease, which downloads without a GitHub sign-in. The APK has native code for phones (arm64-v8a) and emulators (x86_64). It is signed with the generated project's debug key, so it installs from the file but not through Google Play.
+
+### Try a copy of your vault on an emulator
+
+Start an Android emulator, install the app with `bun run android`, and copy a vault folder to the emulator's Documents folder:
+
+```sh
+scripts/emulator-vault.sh push "<vault folder>" [name]
+```
+
+The script only reads the vault folder; it never writes to it, moves it, or deletes from it. It refuses to replace an earlier copy on the emulator, refuses a folder with iCloud files that are not downloaded, and checks the copy byte for byte. In the app, choose "Choose Folder", then Documents and the copy's name. Afterwards, `scripts/emulator-vault.sh check <name>` lists the files the app added, changed, or removed in the copy, by path only. Its working files are in the ignored `.fixtures/emulator/` folder; keep a real vault's notes out of the repository.
+
 ## Checks
 
 ```sh
@@ -107,7 +132,15 @@ On a Mac with Xcode, run the vault core's Swift tests without a Simulator:
 swift test --package-path modules/vault
 ```
 
-The [ios workflow](.github/workflows/ios.yml) runs these tests on GitHub's macOS runners. The app itself needs Xcode 27, which those runners do not offer, so build the Release app for the Simulator and run the smoke test on a Mac with Xcode 27 and CocoaPods:
+The [ios workflow](.github/workflows/ios.yml) runs these tests on GitHub's macOS runners.
+
+The Android vault core is plain Kotlin, so its tests run on any computer with Java 17 or newer, without the Android SDK:
+
+```sh
+modules/vault/android/core-tests/gradlew -p modules/vault/android/core-tests test
+```
+
+The [android workflow](.github/workflows/android.yml) runs these tests, builds the Release app for arm64-v8a and x86_64, and runs `scripts/ci/emulator-smoke.sh` on an Android 15 emulator. The script copies `tests/fixtures/vault-basic` to the emulator's Documents folder, and the Maestro flows in `tests/e2e/android` pick it with the system folder picker, accept the settings that first setup found, write in today's note, relaunch, and search. The script checks today's note on disk and that every other fixture file is byte-identical. The app itself needs Xcode 27, which those runners do not offer, so build the Release app for the Simulator and run the smoke test on a Mac with Xcode 27 and CocoaPods:
 
 ```sh
 bun install --frozen-lockfile
@@ -159,8 +192,8 @@ The default run (seed 1, generator version 1) writes 10,000 UTF-8 notes of 2-8 K
 - `src/components/`: shared UI components
 - `src/hooks/`: theme hooks
 - `src/constants/theme.ts`: colors, spacing, and typography
-- `modules/vault/`: local Expo module. `ios/Core/` is Foundation-only file and document logic, built by `Package.swift` for `swift test`; `ios/Editor/` is the native editor view; `src/` is the typed JavaScript API
-- `assets/`: app icons and images. `assets/icons/` holds the Icon Composer bundles for iOS; `scripts/generate-icons.ts` writes them and the PNG icons
+- `modules/vault/`: local Expo module. `ios/Core/` is Foundation-only file and document logic, built by `Package.swift` for `swift test`; `ios/Editor/` is the native editor view; `android/` is the Kotlin module, with plain Kotlin logic in `android/src/main/java/expo/modules/vault/core/` that `android/core-tests` builds for `gradle test`; `src/` is the typed JavaScript API shared by both
+- `assets/`: app icons and images. `assets/icons/` holds the Icon Composer bundles for iOS; `scripts/generate-icons.ts` writes them and the PNG icons. `assets/icons/android/` holds the Android app bar icons, which `scripts/generate-android-icons.ts` (`bun run icons:android`) draws from the Material Symbols font
 - `scripts/`: fixture generation, manifests, icon generation, and the search benchmark
 - `tests/`: `bun test` suites and fixtures
 

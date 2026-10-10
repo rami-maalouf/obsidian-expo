@@ -1,4 +1,4 @@
-/** the recovery list is native ios ui; other platforms show the app shell only. */
+/** the recovery list has ios and android versions; the web shell shows nothing. */
 import type { NativeDraft } from '../../../modules/vault/src';
 
 export type RecoveryListProps = {

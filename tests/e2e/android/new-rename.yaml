@@ -1,0 +1,38 @@
+# after relaunch-search.yaml, Welcome is open. "New note" creates Untitled.md beside it, at the
+# top of the vault (the default new-note setting). text is typed, and a tap on the title at once
+# opens the rename dialog; the rename saves the text before the file moves.
+# scripts/ci/emulator-smoke.sh checks the renamed file on disk.
+appId: com.ramimaalouf.obsidianexpo
+---
+- tapOn: "More"
+- tapOn: "New note"
+- extendedWaitUntil:
+    visible: "Untitled"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 15000
+- tapOn:
+    point: "50%,50%"
+- inputText: "Written before the rename."
+- tapOn: "Untitled\\*?"
+- extendedWaitUntil:
+    visible: "Rename note"
+    timeout: 5000
+- takeScreenshot: ${OUT}/rename-dialog
+# the field starts with the whole name selected.
+- eraseText: 20
+- inputText: "Renamed on Android"
+- tapOn: "Rename"
+- extendedWaitUntil:
+    visible: "Renamed on Android"
+    timeout: 15000
+- extendedWaitUntil:
+    notVisible: "Rename note"
+    timeout: 5000
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 15000
+- takeScreenshot: ${OUT}/renamed

@@ -47,7 +47,7 @@ export type NativeDraft = {
   bom?: boolean;
 };
 
-/** commands from the ipad menu bar; names match `VaultMenu.Command` in ios/MainMenu.swift. */
+/** commands from the ipad menu bar; names match `VaultMenu.Command` in ios/MainMenu.swift. android sends none. */
 export type MenuCommand =
   | 'new-note'
   | 'today'
@@ -58,7 +58,7 @@ export type MenuCommand =
   | 'toggle-calendar'
   | 'settings';
 
-/** the native vault module. it exists only in ios builds; web and expo go return null. */
+/** the native vault module. it exists in ios and android builds; web and expo go return null. */
 export type VaultNativeModule = {
   addListener(eventName: 'onMenuCommand', listener: (event: { command: MenuCommand }) => void): { remove(): void };
   readonly coreVersion: string;

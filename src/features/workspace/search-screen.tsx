@@ -1,4 +1,4 @@
-/** the search screen is native ios ui; other platforms show the app shell only. */
+/** the search screen has ios and android versions; the web shell shows nothing. */
 export function SearchScreen() {
   return null;
 }

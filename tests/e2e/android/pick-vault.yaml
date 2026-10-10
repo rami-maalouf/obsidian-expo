@@ -1,0 +1,45 @@
+# a fresh install: the vault is picked with the system folder picker (storage access framework),
+# first setup starts from the daily-note settings found in the vault's file names, and today's
+# note is created from the vault's template. scripts/ci/emulator-smoke.sh copied the fixture
+# vault to Documents/vault and checks the note's bytes afterwards.
+appId: com.ramimaalouf.obsidianexpo
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Choose Folder"
+    timeout: 60000
+- takeScreenshot: ${OUT}/choose-vault
+- tapOn: "Choose Folder"
+# the picker starts in Documents.
+- extendedWaitUntil:
+    visible: "vault"
+    timeout: 20000
+- tapOn: "vault"
+- extendedWaitUntil:
+    visible: "(?i)use this folder"
+    timeout: 10000
+- takeScreenshot: ${OUT}/picker
+- tapOn: "(?i)use this folder"
+- tapOn: "(?i)allow"
+# first setup: the daily-note folder, file name format, and template come from the vault's file
+# names; the new-note settings below keep their defaults.
+- extendedWaitUntil:
+    visible: "Set Up Notes"
+    timeout: 30000
+- takeScreenshot: ${OUT}/first-setup
+- scrollUntilVisible:
+    element: "Daily/${TODAY}.md"
+    direction: DOWN
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Use These Settings"
+    direction: DOWN
+- takeScreenshot: ${OUT}/first-setup-preview
+- tapOn: "Use These Settings"
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 30000
+- assertVisible: "${TODAY}"
+- takeScreenshot: ${OUT}/today
