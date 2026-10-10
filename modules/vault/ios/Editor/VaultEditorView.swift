@@ -23,6 +23,10 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
 
   private let textView = MarkdownTextView(theme: VaultEditorView.theme(for: nil))
   private let title = NoteTitleView()
+  /// blurs the text under the status bar (the time and battery) only, and fades out at its
+  /// bottom edge. the toolbar's glass buttons sit on the sharp text below it.
+  private let statusBarBlur = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+  private let statusBarFade = FadeView()
   private var document: DocumentSession?
   private var openedTarget: String?
   private var newline = "\n"
@@ -62,10 +66,11 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     // pair completion would add characters the user did not type, such as a closing backtick.
     textView.editingOptions.completesPairs = false
     textView.keyboardDismissMode = .interactive
-    // the note scrolls under the see-through navigation bar; the soft edge blurs the text under
-    // the bar and fades out below it. react-native-screens applies its `scrollEdgeEffects`
-    // option before the editor mounts, so the style is set here.
-    textView.topEdgeEffect.style = .soft
+    // the note scrolls under the see-through navigation bar. the bar has no title, so the text
+    // stays sharp under its buttons, and only the status bar has a blur (statusBarBlur), at the
+    // user's request. react-native-screens applies its `scrollEdgeEffects` option before the
+    // editor mounts, so the effect is turned off here.
+    textView.topEdgeEffect.isHidden = true
     // smart punctuation would rewrite markdown source such as quotes, dashes, and spacing.
     textView.smartQuotesType = .no
     textView.smartDashesType = .no
@@ -87,6 +92,9 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     textView.headerHeight = title.height(for: 0)
     textView.headerView = title
     addSubview(textView)
+    statusBarBlur.isUserInteractionEnabled = false
+    statusBarBlur.mask = statusBarFade
+    addSubview(statusBarBlur)
     completion.onSelect = { [weak self] index in
       self?.acceptCompletion(at: index)
     }
@@ -181,9 +189,25 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
   public override func layoutSubviews() {
     super.layoutSubviews()
     textView.frame = bounds
+    // the status bar's part of this view: none when a notice moves the view below the bar, or
+    // when the status bar is hidden, as on an iphone in landscape.
+    let statusBar = max(0, (window?.safeAreaInsets.top ?? 0) - convert(CGPoint.zero, to: nil).y)
+    statusBarBlur.isHidden = statusBar == 0
+    statusBarBlur.frame = CGRect(x: 0, y: 0, width: bounds.width, height: statusBar)
+    statusBarFade.frame = statusBarBlur.bounds
     if !completion.isHidden {
       positionCompletion()
     }
+  }
+
+  public override func safeAreaInsetsDidChange() {
+    super.safeAreaInsetsDidChange()
+    setNeedsLayout()
+  }
+
+  public override func didMoveToWindow() {
+    super.didMoveToWindow()
+    setNeedsLayout()
   }
 
   // MARK: - opening
@@ -805,5 +829,22 @@ final class BackgroundTask: @unchecked Sendable {
         UIApplication.shared.endBackgroundTask(current)
       }
     }
+  }
+}
+
+/// an opaque top that fades to clear at the bottom, as the status bar blur's mask.
+private final class FadeView: UIView {
+  override class var layerClass: AnyClass { CAGradientLayer.self }
+
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    let gradient = layer as? CAGradientLayer
+    gradient?.colors = [UIColor.black.cgColor, UIColor.black.cgColor, UIColor.clear.cgColor]
+    gradient?.locations = [0, 0.6, 1]
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) is not supported")
   }
 }
