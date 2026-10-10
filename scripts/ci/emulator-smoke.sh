@@ -7,10 +7,10 @@
 #    folder, where a user's vault would be.
 # 2. runs the maestro flows in tests/e2e/android: the system folder picker grants the vault
 #    (storage access framework), first setup finds the daily-note settings, today's note is
-#    created from the fixture template, text is typed and saved, and a relaunch reopens today
-#    and searches the vault.
-# 3. checks today's note on disk, that every other fixture file is byte-identical, and that the
-#    app wrote nothing into the vault but today's note.
+#    created from the fixture template, text is typed and saved, a relaunch reopens today and
+#    searches the vault, and a new note is written in and renamed from its title.
+# 3. checks today's note and the renamed note on disk, that every other fixture file is
+#    byte-identical, and that the app wrote nothing else into the vault.
 set -euo pipefail
 
 apk=$1
@@ -44,6 +44,7 @@ adb shell ls -a "$vault"
 # the emulator's own clock and time zone decide which note is today's.
 today=$(adb shell date +%Y-%m-%d | tr -d '\r')
 note="$vault/Daily/$today.md"
+renamed="$vault/Renamed on Android.md"
 echo "today on the emulator: $today"
 
 diagnose() {
@@ -69,19 +70,24 @@ run_flow() {
   fi
 }
 
-# waits up to 20 seconds for a fixed string in today's note.
-wait_for_note() {
+# waits up to 20 seconds for a fixed string in a file on the emulator.
+wait_for_text() {
   for _ in $(seq 1 20); do
-    adb shell cat "$note" 2> /dev/null | grep -qF -- "$1" && return 0
+    adb shell cat "'$1'" 2> /dev/null | grep -qF -- "$2" && return 0
     sleep 1
   done
-  echo "today's note does not contain: $1"
-  adb shell cat "$note" || true
+  echo "$1 does not contain: $2"
+  adb shell cat "'$1'" || true
   return 1
 }
 
+wait_for_note() {
+  wait_for_text "$note" "$1"
+}
+
+# every fixture file but the two notes the flows write.
 fixture_hashes() {
-  (cd "$1" && find . -type f ! -path "./Daily/$today.md" -exec sha256sum {} + | sort -k2)
+  (cd "$1" && find . -type f ! -path "./Daily/$today.md" ! -path "./Renamed on Android.md" -exec sha256sum {} + | sort -k2)
 }
 
 check_fixture() {
@@ -116,8 +122,14 @@ check_fixture typing
 
 run_flow tests/e2e/android/relaunch-search.yaml
 check_fixture relaunch
+
+run_flow tests/e2e/android/new-rename.yaml
+# the text typed just before the rename was saved into the file that was renamed.
+wait_for_text "$renamed" "Written before the rename."
+adb shell test ! -e "'$vault/Untitled.md'"
+check_fixture rename
 echo "--- Daily/$today.md after the flows"
 adb shell cat "$note"
-# the copy helper reports today's note as the only change.
+# the copy helper reports today's note and the renamed note as the only changes.
 scripts/emulator-vault.sh check vault | tee "$out/changes.txt"
-printf 'changes in Documents/vault since push (+ added, ~ changed, - removed):\n+ Daily/%s.md\n' "$today" | cmp - "$out/changes.txt"
+printf 'changes in Documents/vault since push (+ added, ~ changed, - removed):\n+ Daily/%s.md\n+ Renamed on Android.md\n' "$today" | cmp - "$out/changes.txt"

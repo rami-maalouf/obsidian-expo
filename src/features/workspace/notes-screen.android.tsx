@@ -1,21 +1,24 @@
 /**
  * the note between the two side panels on android: drafts to recover before today, then the
  * open note (flow f2). the note title is the app bar title; it ends with "*" while edits wait
- * for a save. the app bar's left side opens the files panel and today's note; the right side
+ * for a save, and a tap on it renames the note in a dialog, as does "Rename note" in the
+ * overflow menu. the app bar's left side opens the files panel and today's note; the right side
  * has the overflow menu (bookmark, search, and the rest) and the calendar panel (t08). icons are
  * material symbols drawn by scripts/generate-android-icons.ts.
  */
 import { Stack, useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useState } from 'react';
-import { Alert, View } from 'react-native';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAndroidColors } from '@/constants/theme';
+import { Accent, useAndroidColors } from '@/constants/theme';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
-import { NoteEditor, noteTitle } from '@/features/editor/note-editor';
+import { NoteEditor, type NoteEditorHandle, noteTitle } from '@/features/editor/note-editor';
 import { UNSAVED_MARK } from '@/features/editor/status';
+import { editableName, renamedPath, renameProblem } from '@/features/explorer/rename';
 import { RecoveryList } from '@/features/recovery/recovery-list';
 
+import { Button } from './android-ui';
 import { Busy, Notice } from './status-views';
 import { useWorkspace } from './workspace';
 
@@ -28,6 +31,7 @@ const icons = {
   bookmarkRemove: require('../../../assets/icons/android/bookmark_remove.xml'),
   search: require('../../../assets/icons/android/search.xml'),
   newNote: require('../../../assets/icons/android/edit_square.xml'),
+  rename: require('../../../assets/icons/android/drive_file_rename_outline.xml'),
   settings: require('../../../assets/icons/android/settings.xml'),
   vault: require('../../../assets/icons/android/folder_open.xml'),
 };
@@ -47,6 +51,33 @@ export function NotesScreen() {
   }, [shownWithoutEditor, showFirstScreen]);
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
+  const editor = useRef<NoteEditorHandle>(null);
+  // the note the rename dialog is open for, or null.
+  const [renaming, setRenaming] = useState<string | null>(null);
+
+  const rename = () => {
+    if (path && editing) setRenaming(path);
+  };
+  /** renames the note from the dialog; returns what went wrong, or null when the dialog can close. */
+  const applyRename = async (from: string, typed: string): Promise<string | null> => {
+    const next = renamedPath(from, typed);
+    if (!next.ok) return next.error;
+    if (next.value === null) return null;
+    const to = next.value;
+    let problem: string | null;
+    try {
+      const outcome = editor.current ? await editor.current.rename(to) : null;
+      problem = renameProblem(outcome, to);
+    } catch (error) {
+      problem = error instanceof Error ? error.message : String(error);
+    }
+    if (problem) return problem;
+    // android lists notes without a file identity that a bookmark could follow, so the app moves
+    // the bookmark of the note it renamed itself.
+    if (bookmarks.list?.items.some((item) => item.path === from)) bookmarks.move(from, to);
+    workspace.noteRenamed(to);
+    return null;
+  };
 
   let title = 'Today';
   let content: ReactNode;
@@ -75,6 +106,7 @@ export function NotesScreen() {
     content = (
       <NoteEditor
         key={path}
+        ref={editor}
         vaultId={workspace.vault.id}
         path={path}
         onSaved={workspace.onSaved}
@@ -92,7 +124,7 @@ export function NotesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title }} />
+      <Stack.Screen options={{ title, headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined }} />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button icon={icons.files} accessibilityLabel="Files" onPress={() => workspace.setFilesOpen(!workspace.filesOpen)} />
         <Stack.Toolbar.Button icon={icons.today} accessibilityLabel="Open today's note" onPress={workspace.openToday} />
@@ -104,6 +136,9 @@ export function NotesScreen() {
             hidden={!editing}
             onPress={() => path && (marked ? bookmarks.remove(path) : bookmarks.add(path))}>
             {marked ? 'Remove bookmark' : 'Bookmark this note'}
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction icon={icons.rename} hidden={!editing} onPress={rename}>
+            Rename note
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction icon={icons.search} onPress={() => router.push('/search')}>
             Search
@@ -124,7 +159,93 @@ export function NotesScreen() {
       </Stack.Toolbar>
       {/* the note ends above the system's navigation bar; the editor keeps the keyboard clear itself. */}
       <View style={{ flex: 1, paddingBottom: insets.bottom, backgroundColor: palette.background }}>{content}</View>
+      {renaming ? <RenameDialog key={renaming} from={renaming} onRename={applyRename} onClose={() => setRenaming(null)} /> : null}
     </>
+  );
+}
+
+/**
+ * the note's name as the app bar title, in the style of the system title. a tap opens the rename
+ * dialog; the width leaves room for the app bar's buttons on both sides.
+ */
+function RenameTitle({ title, onPress }: { title: string; onPress: () => void }) {
+  const palette = useAndroidColors();
+  const { width } = useWindowDimensions();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityHint="Renames the note"
+      hitSlop={8}
+      onPress={onPress}
+      android_ripple={{ color: palette.accentSoft }}
+      style={[styles.titleButton, { maxWidth: Math.max(120, width - 232) }]}>
+      <Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+}
+
+/**
+ * the rename dialog: the name without ".md", in the note's folder. a problem shows under the
+ * field and keeps the dialog open, so the name can be corrected.
+ */
+function RenameDialog({
+  from,
+  onRename,
+  onClose,
+}: {
+  from: string;
+  onRename: (from: string, typed: string) => Promise<string | null>;
+  onClose: () => void;
+}) {
+  const palette = useAndroidColors();
+  const [typed, setTyped] = useState(() => editableName(from));
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    const result = await onRename(from, typed);
+    setBusy(false);
+    if (result) setProblem(result);
+    else onClose();
+  };
+  return (
+    <Modal transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior="padding" style={styles.scrim}>
+        <View accessibilityViewIsModal style={[styles.dialog, { backgroundColor: palette.surface }]}>
+          <Text accessibilityRole="header" style={[styles.dialogTitle, { color: palette.text }]}>
+            Rename note
+          </Text>
+          <TextInput
+            value={typed}
+            onChangeText={(text) => {
+              setTyped(text);
+              setProblem(null);
+            }}
+            autoFocus
+            selectTextOnFocus
+            autoCorrect={false}
+            returnKeyType="done"
+            onSubmitEditing={submit}
+            accessibilityLabel="Note name"
+            selectionColor={Accent}
+            style={[styles.dialogInput, { color: palette.text, borderColor: problem ? palette.danger : Accent }]}
+          />
+          {problem ? (
+            <Text accessibilityLiveRegion="polite" style={[styles.dialogProblem, { color: palette.danger }]}>
+              {problem}
+            </Text>
+          ) : null}
+          <View style={styles.dialogActions}>
+            <Button label="Cancel" onPress={onClose} />
+            <Button label="Rename" onPress={submit} style={busy && styles.busy} />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 }
 
@@ -164,3 +285,47 @@ function TodayProblem({ outcome, onRetry }: { outcome: DailyNoteOutcome; onRetry
       return <Busy label="Opening the note" />;
   }
 }
+
+const styles = StyleSheet.create({
+  titleButton: {
+    borderRadius: 8,
+    paddingVertical: 4,
+  },
+  // the app bar title: 20 sp, medium.
+  title: {
+    fontSize: 20,
+    fontWeight: '500',
+  },
+  scrim: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+  },
+  dialog: {
+    borderRadius: 28,
+    padding: 24,
+    gap: 16,
+  },
+  dialogTitle: {
+    fontSize: 24,
+  },
+  dialogInput: {
+    minHeight: 52,
+    borderRadius: 4,
+    borderWidth: 2,
+    paddingHorizontal: 14,
+    fontSize: 16,
+  },
+  dialogProblem: {
+    fontSize: 13,
+  },
+  dialogActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  busy: {
+    opacity: 0.4,
+  },
+});

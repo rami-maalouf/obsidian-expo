@@ -21,6 +21,7 @@ export const ICONS: Record<string, string> = {
   bookmark_add: 'bookmark_add',
   bookmark_remove: 'bookmark_remove',
   calendar_month: 'calendar_month',
+  drive_file_rename_outline: 'drive_file_rename_outline',
   edit_square: 'edit_square',
   folder_open: 'folder_open',
   left_panel_open: 'left_panel_open',
