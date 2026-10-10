@@ -53,6 +53,10 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
   /** a tap on a wikilink to another note: `target` as written, and `path` when a note matches. */
   private val onOpenLink by EventDispatcher()
 
+  /** the text left its top or returned to it; the app bar takes a surface color while scrolled. */
+  private val onScrolledChange by EventDispatcher()
+  private var scrolled = false
+
   var vaultId: String? = null
   var path: String? = null
 
@@ -169,7 +173,13 @@ class VaultEditorView(context: Context, appContext: AppContext) : ExpoView(conte
       setOnFocusChangeListener { _, focused -> if (!focused) hideCompletion() }
     }
     scroll.addView(editText, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
-    scroll.setOnScrollChangeListener { _, _, _, _, _ -> if (completion.visibility == View.VISIBLE) positionCompletion() }
+    scroll.setOnScrollChangeListener { _, _, scrollY, _, _ ->
+      if (completion.visibility == View.VISIBLE) positionCompletion()
+      if ((scrollY > 0) != scrolled) {
+        scrolled = scrollY > 0
+        onScrolledChange(mapOf("scrolled" to scrolled))
+      }
+    }
 
     completion.onSelect = { index -> acceptCompletion(index) }
     container.addView(completion, FrameLayout.LayoutParams(dp(CompletionPanel.WIDTH_DP).toInt(), FrameLayout.LayoutParams.WRAP_CONTENT))

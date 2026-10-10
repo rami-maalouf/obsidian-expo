@@ -168,7 +168,9 @@ Evidence in an EAS sandbox (image `macos-tahoe-26.6-xcode-27.0`, macOS 26.6.2, X
 - Scrolled, in light and dark appearance, the text under the bar is blurred and fades out below the bar, and the title stays readable.
 - Before the native change, `lldb` showed that the text view kept `UIScrollEdgeEffectStyle.automaticStyle`, because React Native Screens' `scrollEdgeEffects` option was applied before the editor mounted. With the automatic style, the text under the custom rename title stayed sharp, and the native title had a hard edge with a line. After the change, `lldb` showed `softStyle`.
 
-Still open: a save or load notice below the bar, the status views and the recovery form below the bar, the bar beside a pinned panel on iPad, and a physical device.
+Still open: a save or load notice below the bar, the status views and the recovery form below the bar, the bar beside a pinned panel on iPad, and a physical device. These Simulator results come from the branch before main's note history was merged in.
+
+On Android, the app bar has no shadow and takes the surface color while the note is scrolled ([T08](technology-decisions.md#t08-navigation-shell)). `tests/e2e/android/relaunch-search.yaml` now swipes the Welcome note and takes the `welcome-scrolled` screenshot. After the merge with main, `bun run check` (226 tests) and `bun run export` pass on L1. The Kotlin editor change is compiled and run only by the `android` workflow (A1).
 
 ## Preliminary search benchmark
 
