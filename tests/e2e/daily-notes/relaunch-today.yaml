@@ -1,5 +1,6 @@
-# relaunches the app and checks that it opens today's note again (u7). the smoke script passes
-# TODAY and checks that the note's bytes did not change during this flow.
+# relaunches the app and checks that it opens today's note again (u7): the earlier flows leave it as
+# the last open note. the smoke script passes TODAY and checks that the note's bytes did not change
+# during this flow.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp

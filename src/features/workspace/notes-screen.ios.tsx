@@ -203,6 +203,7 @@ function RenameTitle({ title, buttons, onPress }: { title: string; buttons: numb
   const reserved = TOOLBAR_MARGINS + buttons * TOOLBAR_BUTTON_WIDTH;
   return (
     <Pressable
+      testID="note-title"
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint="Renames the note"
