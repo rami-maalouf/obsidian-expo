@@ -187,6 +187,10 @@ Evidence on A1, run 38075565551 (`de7f351`): the Kotlin core tests pass, the Rel
 
 Still open: the iOS change has not been compiled or run. `swift test` compiles only the vault core, so `VaultEditorView.swift` and `notes-screen.ios.tsx` need an EAS or Xcode build and a Simulator check: the two Liquid Glass groups, the slide away and back while scrolling, the bounce at the end, the first line and the last line with the toolbar shown and hidden, and the `history.yaml` and `today-write.yaml` flows (`hideKeyboard` before Search). An EAS Simulator session could not start from L1: the network policy denies `api.expo.dev`, and no `EXPO_TOKEN` is set. On Android, dark appearance, a tablet, and a device have not been checked.
 
+## Editing toolbar (October 10, 2026)
+
+At the user's request, the editor has a toolbar above the keyboard ([T17](technology-decisions.md#t17-editing-toolbar)). Evidence is added here as each check runs.
+
 ## Preliminary search benchmark
 
 `bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.

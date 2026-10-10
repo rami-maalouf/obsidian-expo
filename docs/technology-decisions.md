@@ -323,6 +323,51 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 - The documents that the folder picker serves report no creation time and no stable identity across a rename, so "Created time" sorting keeps name order and bookmarks do not follow notes that another app renamed.
 - There are no hardware-keyboard shortcuts for app commands (the iPadOS menu bar has no Android counterpart yet).
 
+## T17. Editing toolbar
+
+**Decided:** October 10, 2026, at the user's request for a toolbar above the keyboard like Obsidian's, built on LapermEditor's commands on iOS and in the platform's own way on Android.
+
+**Choice:** a native toolbar on each platform, owned by the vault module's editor view. JavaScript takes no part, so no button press sends note text across the bridge (KTD3). The buttons, in order: Undo, Redo, Outdent, Indent, Task, Link, Tag, Bold, Italic, and Hide Keyboard. The row scrolls sideways when it is wider than the screen.
+
+| Part | iOS | Android |
+| --- | --- | --- |
+| Placement | The text view's `inputAccessoryView`. UIKit attaches it to the keyboard, and Laperm adds its height to the text's bottom inset. | A row at the bottom of the editor that sits on the keyboard, placed with the window insets that the editor already reads (`WindowInsetsCompat.Type.ime()`). It shows while the text has focus. |
+| View | A SwiftUI row in a `UIHostingController` sized by its content, as in Laperm's own `keyboardAccessory`; SF Symbols in glass capsules | A `HorizontalScrollView` of `ImageButton`s; Material Symbols vector drawables written by `scripts/generate-android-icons.ts` |
+| Undo, Redo | The text view's `undoManager`. The buttons dim when there is nothing to undo or redo. | The `EditText`'s own undo (`android.R.id.undo` and `android.R.id.redo`, API 23). Android has no public "can undo" query, so the buttons stay enabled. |
+| Indent, Outdent, Bold, Italic | Laperm: `EditingAssistant.indent` and `outdent`, and `MarkdownTextView.toggleEmphasis`, each applied as one undo step | `EditorCommands.kt` in the Kotlin core |
+| Task, Link, Tag | `EditorCommands.swift` in the Swift core | `EditorCommands.kt` in the Kotlin core |
+
+**Command rules:**
+
+- **Indent and Outdent** change list lines only (`-`, `*`, `+`, `1.`, `1)`), in the selection or on the caret's line. Indent adds four spaces. Outdent removes up to four leading spaces. A plain line does not change.
+- **Task** works on each line in the selection or the caret's line: a plain line becomes `- [ ] line`, a list item gets `[ ] ` after its marker, `[ ]` becomes `[x]`, and `[x]` or `[X]` becomes `[ ]`. An empty line becomes `- [ ] `. Blank lines in a selection of several lines do not change.
+- **Link** inserts `[[]]` with the caret between the brackets, so the link suggestions open. A selection on one line becomes `[[selection]]`, with the caret before `]]`.
+- **Tag** inserts `#` at the caret or before the selection, with a space before it when the character before is not a space, a tab, or a line break.
+- **Bold and Italic** add or remove `**` and `*` around the selection, or around the word at the caret. With no word, they insert an empty pair with the caret between, and a second press removes it. Underscore markers are removed too. Nothing happens in a code span, across a blank line, or when the selection holds markers of separate spans.
+
+**Shared cases:** `modules/vault/spec/editor-commands.txt` lists each command's text and selection before and after. The Swift and Kotlin core tests both read it. The Indent, Outdent, Bold, and Italic cases describe Laperm's behavior at the pinned commit, taken from its own tests, and run only in the Kotlin tests: Laperm is not part of the Swift core package, because it needs Xcode 27. The Kotlin code is written from these cases, not translated from Laperm's source, which has no license file yet (T05).
+
+**Alternatives:**
+
+| Option | Why not chosen |
+| --- | --- |
+| CodeMirror 6 in an Expo DOM component, one editor for both platforms | It has undo, redo, and indent commands (`@codemirror/commands@6.11.1`), but it brings back the web runtime and the asynchronous bridge between the text and its drafts that T05 and T16 rejected. Live preview would have to be built again. |
+| `@expensify/react-native-live-markdown`, Enriched Markdown | One editor for both platforms, but without hidden markers, or with Markdown rewritten (T05) |
+| `react-native-keyboard-controller@1.22.4` `KeyboardStickyView` (the version SDK 58 lists) | One toolbar in TypeScript. UIKit would not attach it to the keyboard, and Laperm's inset counts only an `inputAccessoryView`, so the bar would cover the last lines. Its `KeyboardToolbar` is a form bar with Previous, Next, and Done. |
+| `UITextInputAssistantItem` (the shortcuts bar) | iPad only; iPhone ignores its items ([Apple](https://developer.apple.com/documentation/uikit/uitextinputassistantitem)) |
+| SwiftUI `.toolbar(placement: .keyboard)` | It does not attach to a UIKit text view, as Laperm's own notes say |
+| An undo history of the app's own on Android | Not needed while the `EditText`'s undo passes the emulator test |
+
+**Validation:** recorded in [validation](validation.md#editing-toolbar-october-10-2026).
+
+**Limits:**
+
+- The iOS toolbar compiles only with Xcode 27, on a Mac or in an EAS build; no CI job builds it.
+- On an iPad, UIKit also shows its shortcuts bar, which has its own Undo and Redo; the two rows have not been seen together.
+- Lists indented with tabs do not outdent, because Laperm removes spaces only. Android follows the same rule, so the two platforms agree.
+- The buttons are fixed; there is no setting to choose them yet. Tag does not suggest existing tags.
+- VoiceOver, TalkBack, hardware keyboards, and Dynamic Type sizes have not been checked with the toolbar.
+
 ## Pending decisions
 
 These need macOS with Xcode, the iOS Simulator, Android devices, or physical devices. They are not decided.
@@ -334,3 +379,4 @@ These need macOS with Xcode, the iOS Simulator, Android devices, or physical dev
 | T06, T07 device qualification | U4, U5 | Indexing, memory, and query latency on a device; scrolling and accessibility checks; FlashList comparison for the explorer |
 | T08, T09 device qualification | U5, U7 | Side panels on iPhone and iPad, multitasking widths, keyboard focus, VoiceOver, and the iPadOS menu bar and shortcuts |
 | T16 device qualification | U2-U8 | Android phones and tablets: input methods, TalkBack, folder providers other than local storage, long notes, and performance |
+| T17 device qualification | U3 | The iOS toolbar on an iPhone and an iPad (with and without a hardware keyboard), VoiceOver and TalkBack, and Dynamic Type |
