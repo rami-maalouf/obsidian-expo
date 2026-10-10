@@ -108,8 +108,10 @@ wait_for_note() {
   return 1
 }
 
+# the note that tests/e2e/editor/new-rename.yaml creates and renames.
+renamed="Renamed in the simulator.md"
 fixture_hashes() {
-  (cd "$1" && find . -type f ! -path "./Daily/$today.md" -exec shasum -a 256 {} + | sort -k2)
+  (cd "$1" && find . -type f ! -path "./Daily/$today.md" ! -name "$renamed" -exec shasum -a 256 {} + | sort -k2)
 }
 fixture_hashes tests/fixtures/vault-basic > "$out/before.txt"
 fixture_hashes "$data/Documents/vault" > "$out/after-launch.txt"
@@ -195,6 +197,16 @@ if [ "$#" -gt 0 ]; then
   if [[ " $* " == *" @unlock-daily "* ]]; then
     # the journaled draft was saved from the recovery list.
     wait_for_note 'Kept as a draft.'
+  fi
+  if [[ " $* " == *"/new-rename.yaml "* ]]; then
+    # the text typed before the rename was saved before the file moved, and the editor followed
+    # the file, so the text typed right after the rename reached it too. no "Untitled" is left.
+    file=$(find "$data/Documents/vault" -name "$renamed" | head -1)
+    echo "--- $file"
+    cat "$file"
+    grep -qF 'Written before the rename.' "$file"
+    grep -qF 'Written after the rename.' "$file"
+    [ -z "$(find "$data/Documents/vault" -name 'Untitled*.md')" ]
   fi
   echo "--- editor log"
   xcrun simctl spawn "$udid" log show --last 15m --style compact \
