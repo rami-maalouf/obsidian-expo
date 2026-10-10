@@ -1,0 +1,40 @@
+# runs last, because it leaves the renamed note open for the next launch. after
+# relaunch-today.yaml, today's note is open, and "New note" creates Untitled.md beside it (the
+# default new-note setting). the new note opens with its name selected above the text; return moves the
+# caret to the text. text is typed, then "Rename note" selects the name again, and a new name is
+# typed. return moves the caret to the text, the name's editing ends, and the note is renamed: the
+# rename saves the text before the file moves, and the editor follows the file, so text typed
+# right after it reaches the renamed file. scripts/ci/simulator-smoke.sh checks the file on disk.
+appId: com.ramimaalouf.obsidianexpo
+---
+- tapOn: "More"
+- tapOn: "New note"
+- extendedWaitUntil:
+    visible:
+      id: "note-title"
+      text: "Untitled"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 15000
+- takeScreenshot: ${OUT}/new-note
+- pressKey: Enter
+- inputText: "Written before the rename."
+- tapOn: "More"
+- tapOn: "Rename note"
+- takeScreenshot: ${OUT}/rename-title
+# "Rename note" selects the whole name, so the typed name replaces it.
+- inputText: "Renamed in the simulator"
+- pressKey: Enter
+- inputText: "Written after the rename. "
+- extendedWaitUntil:
+    visible:
+      id: "note-title"
+      text: "Renamed in the simulator"
+    timeout: 15000
+- extendedWaitUntil:
+    visible:
+      id: "note-status:saved"
+    timeout: 15000
+- takeScreenshot: ${OUT}/renamed

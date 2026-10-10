@@ -153,13 +153,13 @@ app=$(ls -d build/Build/Products/Release-iphonesimulator/*.app | head -1)
 scripts/ci/simulator-smoke.sh "iPhone" "$app" smoke/iphone \
   tests/e2e/editor/today-write.yaml tests/e2e/navigation/history.yaml tests/e2e/editor/background.yaml @external-edit \
   tests/e2e/editor/foreground.yaml @lock-daily tests/e2e/recovery/unsaved-draft.yaml @unlock-daily \
-  tests/e2e/recovery/open-draft.yaml tests/e2e/daily-notes/relaunch-today.yaml
+  tests/e2e/recovery/open-draft.yaml tests/e2e/daily-notes/relaunch-today.yaml tests/e2e/editor/new-rename.yaml
 scripts/ci/simulator-smoke.sh "iPad Pro 13" "$app" smoke/ipad \
   tests/e2e/editor/today-write.yaml tests/e2e/navigation/history.yaml tests/e2e/navigation/ipad-layout.yaml \
-  tests/e2e/daily-notes/relaunch-today.yaml
+  tests/e2e/daily-notes/relaunch-today.yaml tests/e2e/editor/new-rename.yaml
 ```
 
-The smoke test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes.
+The smoke test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes. After `new-rename.yaml`, it checks that the renamed note holds the text typed before and right after the rename.
 
 A preliminary search benchmark over the generated 10,000-note vault runs on any machine with Bun; it does not qualify device performance:
 
