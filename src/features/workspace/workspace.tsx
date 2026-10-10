@@ -1,8 +1,8 @@
 /**
  * the open vault's state, shared by the sidebar, the editor, and the calendar (t11). it keeps
- * the launch order of flow f2: restore vault access → resolve unsaved drafts → open today → write.
- * the vault scan and the search index wait until the first screen is shown, so they do not
- * compete with opening today's note.
+ * the launch order of flow f2: restore vault access → resolve unsaved drafts → reopen the last
+ * note, or open today → write. the vault scan and the search index wait until the first screen
+ * is shown, so they do not compete with opening the first note.
  */
 import { router } from 'expo-router';
 import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
@@ -14,6 +14,16 @@ import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 import { createUntitledNote, linkedNotePath } from '@/features/explorer/new-note';
 import { editableName } from '@/features/explorer/rename';
 import { useNoteList } from '@/features/explorer/use-note-list';
+import { stepTarget } from '@/features/navigation/history';
+import {
+  canReopen,
+  launchCandidate,
+  type LaunchCheck,
+  type LaunchSettings,
+  launchTarget,
+  type LaunchTarget,
+} from '@/features/navigation/launch';
+import { useNavigationHistory } from '@/features/navigation/use-navigation-history';
 import { newNoteContent, newNoteFolder, type NewNoteSettings } from '@/features/new-notes/settings';
 import { useDrafts } from '@/features/recovery/use-drafts';
 import { useSearchIndex } from '@/features/search/use-search-index';
@@ -40,12 +50,20 @@ type WorkspaceProps = {
   vault: VaultInfo;
   settings: DailyNoteSettings;
   newNoteSettings: NewNoteSettings;
+  launchSettings: LaunchSettings;
   saveSettings: (settings: NoteSettings) => Promise<void>;
   chooseVault: () => void;
   children: ReactNode;
 };
 
-function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, chooseVault }: Omit<WorkspaceProps, 'children'>) {
+function useWorkspaceState({
+  vault,
+  settings,
+  newNoteSettings,
+  launchSettings,
+  saveSettings,
+  chooseVault,
+}: Omit<WorkspaceProps, 'children'>) {
   const drafts = useDrafts(vault.id);
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<CivilDate | null>(null);
@@ -72,10 +90,36 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   const search = useSearchIndex(vault.id, notes.listing);
   const bookmarks = useBookmarks(vault.id, notes.listing?.notes ?? null);
   const knownPaths = useMemo(() => (notes.listing ? new Set(notes.listing.notes.map((note) => note.path)) : null), [notes.listing]);
+  const navigation = useNavigationHistory(vault.id, notes.listing?.notes ?? null);
   const pending = drafts.drafts;
   const needsRecovery = pending !== null && pending.length > 0 && selected === null && !continued;
-  const today = useTodayNote(vault.id, pending !== null && !needsRecovery, settings);
-  const path = selected ?? (today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null);
+
+  // the first note is chosen once, with the settings at launch: a later change of the setting
+  // never replaces the note on screen. the last note's file is checked while unsaved drafts are
+  // still being read. "continue to today" from the recovery list opens today's note.
+  const [launchSettingsAtStart] = useState(launchSettings);
+  const [launchCheck, setLaunchCheck] = useState<LaunchCheck | null>(null);
+  const [launchToday, setLaunchToday] = useState(false);
+  const storedHistory = navigation.stored;
+  const candidate = storedHistory ? launchCandidate(storedHistory, launchSettingsAtStart) : null;
+  useEffect(() => {
+    const native = VaultNative;
+    if (!candidate || !native) return;
+    let cancelled = false;
+    native.fileState(vault.id, candidate).then(
+      (state) => !cancelled && setLaunchCheck({ path: candidate, reopen: canReopen(state) }),
+      () => !cancelled && setLaunchCheck({ path: candidate, reopen: false }),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate, vault.id]);
+  const launch: LaunchTarget = launchToday ? { kind: 'today' } : launchTarget(launchSettingsAtStart, storedHistory, launchCheck);
+  const deciding = launch.kind === 'deciding';
+
+  const today = useTodayNote(vault.id, pending !== null && !needsRecovery && launch.kind === 'today', settings);
+  const todayPath = today.state.phase === 'done' && today.state.outcome.kind === 'open' ? today.state.outcome.path : null;
+  const path = selected ?? (launch.kind === 'note' ? launch.path : todayPath);
   const todayCreated = today.state.phase === 'done' && today.state.outcome.kind === 'open' && today.state.outcome.created;
   const searchIndex = search.phase === 'ready' ? search.index : null;
   const refreshNotes = notes.refresh;
@@ -87,6 +131,15 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   useEffect(() => {
     if (todayCreated) refreshNotes();
   }, [todayCreated, refreshNotes]);
+
+  // the note on screen is always the history's current note: a newly shown note is recorded,
+  // while back, forward, and rename move the history first, so recording them changes nothing.
+  const shown = path && pending !== null && !needsRecovery && !dayProblem ? path : null;
+  const historyLoaded = navigation.history !== null;
+  const recordNote = navigation.record;
+  useEffect(() => {
+    if (shown && historyLoaded) recordNote(shown);
+  }, [shown, historyLoaded, recordNote]);
 
   const open = useCallback(
     (next: string) => {
@@ -119,6 +172,28 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
   );
 
   const openToday = useCallback(() => selectDay(civilToday), [civilToday, selectDay]);
+
+  /**
+   * shows the previous (-1) or next (1) note in the history, skipping notes that the listing no
+   * longer has. it works only while a note is on screen, so it never skips unsaved-edit recovery.
+   */
+  const stepHistory = navigation.step;
+  const go = useCallback(
+    (direction: -1 | 1) => {
+      if (!shown) return;
+      const target = stepHistory(direction, knownPaths);
+      if (!target) return;
+      // like opening a note, this wins over a daily-note request that is still running (r15).
+      dailyNotes.navigateAway();
+      setSelected(target);
+      setDayProblem(null);
+    },
+    [knownPaths, shown, stepHistory],
+  );
+  const goBack = useCallback(() => go(-1), [go]);
+  const goForward = useCallback(() => go(1), [go]);
+  const canGoBack = shown !== null && navigation.history !== null && stepTarget(navigation.history, -1, knownPaths) !== null;
+  const canGoForward = shown !== null && navigation.history !== null && stepTarget(navigation.history, 1, knownPaths) !== null;
 
   /**
    * creates "Untitled.md" (or the next free number) where the new-note settings say, from their
@@ -174,16 +249,19 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
 
   /**
    * shows the open note at its new path after its file was renamed. the new listing removes the
-   * old path from search and moves its bookmark, which follows the file's identity.
+   * old path from search and moves its bookmark, which follows the file's identity. the history
+   * renames the note at once, so back and forward reach it at its new path.
    */
+  const renameInHistory = navigation.rename;
   const noteRenamed = useCallback(
     (to: string) => {
       dailyNotes.navigateAway();
+      if (path) renameInHistory(path, to);
       setSelected(to);
       setDayProblem(null);
       refreshNotes();
     },
-    [refreshNotes],
+    [path, refreshNotes, renameInHistory],
   );
 
   // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
@@ -195,6 +273,12 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
           break;
         case 'today':
           openToday();
+          break;
+        case 'back':
+          goBack();
+          break;
+        case 'forward':
+          goForward();
           break;
         case 'search':
           router.push('/search');
@@ -211,12 +295,14 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
       }
     });
     return () => subscription?.remove();
-  }, [createNote, openToday]);
+  }, [createNote, goBack, goForward, openToday]);
 
   return {
     vault,
     settings,
     newNoteSettings,
+    launchSettings,
+    launching: deciding,
     createNote,
     openLink,
     noteRenamed,
@@ -242,9 +328,16 @@ function useWorkspaceState({ vault, settings, newNoteSettings, saveSettings, cho
     open,
     selectDay,
     openToday,
+    goBack,
+    goForward,
+    canGoBack,
+    canGoForward,
     showFirstScreen,
     retryDay: () => (dayProblem ? selectDay(dayProblem.date) : today.retry()),
-    continueToToday: () => setContinued(true),
+    continueToToday: () => {
+      setContinued(true);
+      setLaunchToday(true);
+    },
     onSaved: (saved: string) => {
       if (searchIndex) searchIndex.refresh(saved).catch(() => undefined);
     },

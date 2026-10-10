@@ -137,7 +137,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **App configuration:** `ios.supportsTablet` is `true` and `orientation` is `default` in `app.json`. Without `supportsTablet`, an iPad runs the app in iPhone compatibility mode. All four orientations are needed for rotation (R17) and for iPad multitasking. The ios workflow's Simulator job checked both settings after `expo prebuild` until it was removed on October 9, 2026; no CI job checks them now.
 
-**Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Today's Note (⌘T) and Search Notes (⇧⌘F). The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
+**Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Back (⌘[), Forward (⌘]), Today's Note (⌘T), and Search Notes (⇧⌘F). Back and Forward were added on October 10, 2026, with the note history. The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
 
 **Limits:** closing the keyboard when a panel opens has not run on a Simulator or a device. VoiceOver order with open panels, keyboard focus, Stage Manager window sizes, and the menu bar and its shortcuts have not been checked on a device; the Simulator tests do not open the menu bar.
 

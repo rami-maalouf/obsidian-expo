@@ -6,7 +6,7 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 
 - The app opens a vault folder in place through the iOS folder picker and keeps access with a security-scoped bookmark. Notes are never copied into an app database.
 - Only `.md` files are listed and opened. Hidden files and folders, including `.obsidian` and `.trash`, are never listed, read, or written. Symlinks are skipped, and no read or write may resolve outside the vault folder.
-- App data stays outside the vault: the vault list, daily-note and new-note settings, bookmarks, unsaved drafts, and the search index (in app caches).
+- App data stays outside the vault: the vault list, daily-note, new-note, and launch settings, bookmarks, the note history, unsaved drafts, and the search index (in app caches).
 - Obsidian's own settings in `.obsidian` are not imported. The daily-note folder, file name format, and template are set in the app's settings. First setup suggests them from file names (see [daily notes and templates](#daily-notes-and-templates)), and the preview shows the result before it is saved.
 
 ## New notes and renaming
@@ -14,6 +14,14 @@ This page states what obsidian-expo does with an existing Obsidian vault. It des
 - New Note creates "Untitled.md", or "Untitled 1.md" and so on when that name is taken, and never replaces a file. Where it goes is a per-vault setting, as in Obsidian: the open note's folder (the default), the top of the vault, or a chosen folder. Setup and the Note Settings sheet show the choice with folder suggestions.
 - A new-note template is optional; without one the note is empty. It uses the same template subset as daily notes, with `tp.file.title` as the new name (for example `Untitled`) and `tp.date.now()` as the creation time. The template is read and checked before anything is created; a template that cannot be read or has unsupported syntax creates nothing and says why. A preview in the settings shows the result.
 - A tap on the open note's title, or Rename note in the More menu, opens a native prompt with the name without `.md`. The note stays in its folder; a name with "/" is refused, and so are the names the daily-note settings refuse (hidden names and characters such as `:` or `?`). Pending edits are saved first, and the file is renamed only when nothing is left to save. The rename never replaces another file. A change of case alone (`plan` to `Plan`) is allowed. Bookmarks follow the renamed file. Links to the old name are not updated.
+
+## Note history and launch
+
+- The app records each note shown in a vault, in order: from the files panel, search, a bookmark, a link, the calendar, Today, New Note, or the launch. Showing the note that is already on screen adds nothing. Each vault keeps its newest 100 notes.
+- On iOS, Back and Forward in the toolbar, and Back (⌘[) and Forward (⌘]) in the iPad menu bar, move through these notes, as in a browser or Obsidian. On Android, see [Android](#android). Opening a note after going back removes the notes ahead. Notes that the vault listing no longer has are skipped. On an iPhone, Forward shows only when there is a note ahead, so the title keeps its room.
+- A rename in the app changes the note's path everywhere in the history. A note moved outside the app is followed by its file identity, as bookmarks are; without exactly one match it stays in the history and back and forward skip it.
+- On launch, unsaved edits to recover come first. Then the app reopens the note that was open last. The "On launch" option in Note Settings can open today's note instead. If the last note is gone, or its state cannot be checked, today's note opens; a note in iCloud that is not downloaded opens as it does from the files panel. "Continue to Today" in the recovery list opens today's note.
+- The history is stored by the app per vault. Obsidian's workspace file (`.obsidian/workspace.json`) is not read or written. The stored form can hold several tabs for later work; the app shows one.
 
 ## Text and saving
 
@@ -82,7 +90,8 @@ The Android app uses the same JavaScript as the iOS app, so daily notes, templat
 - The keyboard's composing text (the word that the keyboard is still changing) is saved as it is shown, because Android keyboards compose most words.
 - The file system does not report creation times through the folder picker's documents, so "Created time" sorting keeps notes in name order. Document identities are paths, so a bookmark does not follow a note that another app renamed; it shows as missing with Locate and Remove.
 - There is no menu bar; the app bar and the side panels offer the same actions.
+- Android's back gesture or button first closes a side panel that covers the note, then goes back through the [note history](#note-history-and-launch). With no note to go back to, Android handles it as before. Forward is in the overflow menu while there is a note ahead, as in Chrome. The "On launch" choice is in Note settings.
 
 ## Not yet supported
 
-The first release edits Markdown source with light styling and no Live Preview. These are deferred: rendered Markdown, embeds, and images; styling for emphasis, tables, and HTML; graph view; backlinks and link updates on rename; tags and Dataview queries (their source text is kept); community plugins; Templater JavaScript beyond the date definitions above; syncing bookmarks with Obsidian; importing `.obsidian` settings; a custom sync service (iCloud Drive provides syncing on iOS); and Mac and web apps.
+The first release edits Markdown source with light styling and no Live Preview. These are deferred: rendered Markdown, embeds, and images; styling for emphasis, tables, and HTML; graph view; backlinks and link updates on rename; tags and Dataview queries (their source text is kept); several open tabs; community plugins; Templater JavaScript beyond the date definitions above; syncing bookmarks with Obsidian; importing `.obsidian` settings; a custom sync service (iCloud Drive provides syncing on iOS); and Mac and web apps.

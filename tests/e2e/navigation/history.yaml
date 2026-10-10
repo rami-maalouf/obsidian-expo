@@ -1,0 +1,60 @@
+# opens another note from search, relaunches, and checks that the app reopens that note (r11 as
+# amended october 10, 2026). back and forward then move between it and today's note. the flow ends
+# on today's note, so the flows after it open today's note again.
+appId: com.ramimaalouf.obsidianexpo
+---
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 30000
+- assertVisible:
+    id: "note-title"
+    text: "${TODAY}"
+- tapOn: "More"
+- tapOn: "Search"
+- tapOn:
+    text: "Search notes"
+    optional: true
+- inputText: "callout"
+- extendedWaitUntil:
+    visible: "Welcome"
+    timeout: 20000
+- tapOn: "Welcome"
+- extendedWaitUntil:
+    visible:
+      id: "note-title"
+      text: "Welcome"
+    timeout: 15000
+- stopApp
+- launchApp:
+    clearState: false
+- extendedWaitUntil:
+    visible:
+      id: "note-status:opened"
+    timeout: 30000
+- assertVisible:
+    id: "note-title"
+    text: "Welcome"
+- takeScreenshot: ${OUT}/history-relaunch
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible:
+      id: "note-title"
+      text: "${TODAY}"
+    timeout: 15000
+- takeScreenshot: ${OUT}/history-back
+- tapOn: "Forward"
+- extendedWaitUntil:
+    visible:
+      id: "note-title"
+      text: "Welcome"
+    timeout: 15000
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible:
+      id: "note-title"
+      text: "${TODAY}"
+    timeout: 15000

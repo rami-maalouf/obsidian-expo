@@ -13,7 +13,7 @@ export function SettingsScreen() {
       <Stack.Screen options={{ title: 'Note settings' }} />
       <NoteSettingsForm
         vaultId={workspace.vault.id}
-        initial={{ daily: workspace.settings, newNote: workspace.newNoteSettings }}
+        initial={{ daily: workspace.settings, newNote: workspace.newNoteSettings, launch: workspace.launchSettings }}
         notes={workspace.notes.listing?.notes ?? null}
         firstSetup={false}
         onSave={async (settings) => {
