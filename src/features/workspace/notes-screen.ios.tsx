@@ -1,9 +1,11 @@
 /**
- * the note between the two side panels: drafts to recover before today, then the open note
- * (flow f2). the note title is the native navigation title; it ends with "*" while edits wait
- * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens the files panel and today's note; the right group
- * opens the native "more" menu with bookmark, search, and the rest, then the calendar panel at
- * the trailing edge (t08). the navigation bar is see-through: the note scrolls under it, and
+ * the note between the two side panels: drafts to recover first, then the open note (flow f2):
+ * at launch, the note that was open last, or today's note. the note title is the native navigation title; it ends with "*" while edits wait
+ * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens
+ * the files panel, goes back and forward through the opened notes, and opens today's note; the
+ * right group opens the native "more" menu with bookmark, search, and the rest, then the calendar
+ * panel at the trailing edge (t08). on a phone, forward appears only when there is a note ahead,
+ * so the title keeps its room. the navigation bar is see-through: the note scrolls under it, and
  * liquid glass's soft scroll edge effect fades the text out below the bar.
  */
 import { Stack, useRouter } from 'expo-router';
@@ -36,6 +38,7 @@ export function NotesScreen() {
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
   const editor = useRef<NoteEditorHandle>(null);
   const headerHeight = useHeaderHeight();
+  const showForward = workspace.wide || workspace.canGoForward;
 
   /** the native rename prompt: the name without ".md", in the note's folder. */
   const rename = () => {
@@ -112,6 +115,8 @@ export function NotesScreen() {
         headerInset={headerHeight}
       />
     );
+  } else if (workspace.launching) {
+    content = <Busy label="Opening the last note" />;
   } else if (today.state.phase !== 'done') {
     content = <Busy label="Opening today's note" />;
   } else {
@@ -123,7 +128,7 @@ export function NotesScreen() {
       <Stack.Screen
         options={{
           title,
-          headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined,
+          headerTitle: editing ? () => <RenameTitle title={title} buttons={showForward ? 6 : 5} onPress={rename} /> : undefined,
           // the native text view and the swiftui status views inset themselves below the bar.
           // the editor sets its own soft scroll edge effect (VaultEditorView.swift).
           headerTransparent: true,
@@ -135,6 +140,21 @@ export function NotesScreen() {
           accessibilityLabel="Files"
           selected={workspace.wide && workspace.filesOpen}
           onPress={() => workspace.setFilesOpen(!workspace.filesOpen)}
+        />
+        <Stack.Toolbar.Button
+          icon="chevron.backward"
+          accessibilityLabel="Back"
+          accessibilityHint="Opens the previous note"
+          disabled={!workspace.canGoBack}
+          onPress={workspace.goBack}
+        />
+        <Stack.Toolbar.Button
+          icon="chevron.forward"
+          accessibilityLabel="Forward"
+          accessibilityHint="Opens the next note"
+          hidden={!showForward}
+          disabled={!workspace.canGoForward}
+          onPress={workspace.goForward}
         />
         {/* today's day number on a calendar page, like the calendar app's icon. */}
         <Stack.Toolbar.Button icon={todayIcon(workspace.civilToday.day)} accessibilityLabel="Open today's note" onPress={workspace.openToday} />
@@ -177,20 +197,26 @@ export function NotesScreen() {
   );
 }
 
+/** the width the title leaves for each toolbar button, and for the bar's margins. */
+const TOOLBAR_BUTTON_WIDTH = 44;
+const TOOLBAR_MARGINS = 64;
+
 /**
  * the note's name as the navigation title, styled like the system title. a tap opens the rename
- * prompt; the width leaves room for the toolbar buttons on both sides.
+ * prompt; the width leaves room for the `buttons` toolbar buttons on both sides.
  */
-function RenameTitle({ title, onPress }: { title: string; onPress: () => void }) {
+function RenameTitle({ title, buttons, onPress }: { title: string; buttons: number; onPress: () => void }) {
   const { width } = useWindowDimensions();
+  const reserved = TOOLBAR_MARGINS + buttons * TOOLBAR_BUTTON_WIDTH;
   return (
     <Pressable
+      testID="note-title"
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint="Renames the note"
       hitSlop={8}
       onPress={onPress}
-      style={({ pressed }) => [{ maxWidth: Math.max(120, width - 240) }, pressed && styles.pressed]}>
+      style={({ pressed }) => [{ maxWidth: Math.max(120, width - reserved) }, pressed && styles.pressed]}>
       <Text numberOfLines={1} style={[styles.title, { color: SystemColors.label }]}>
         {title}
       </Text>

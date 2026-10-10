@@ -10,6 +10,7 @@ import { Drawer } from 'react-native-drawer-layout';
 
 import { CalendarInspector } from '@/features/calendar/calendar-inspector';
 import { detectDailyNotes, detectedSettings } from '@/features/daily-notes/detect';
+import type { LaunchSettings } from '@/features/navigation/launch';
 import type { NewNoteSettings } from '@/features/new-notes/settings';
 import { NativeSidebar } from '@/features/explorer/native-sidebar';
 import { useNoteList } from '@/features/explorer/use-note-list';
@@ -69,13 +70,14 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
     return <Busy label="Loading settings" />;
   }
   if (settings.state.phase === 'unset') {
-    return <FirstSetup vaultId={vault.id} newNote={settings.state.newNote} onSave={settings.save} />;
+    return <FirstSetup vaultId={vault.id} newNote={settings.state.newNote} launch={settings.state.launch} onSave={settings.save} />;
   }
   return (
     <WorkspaceProvider
       vault={vault}
       settings={settings.state.settings.daily}
       newNoteSettings={settings.state.settings.newNote}
+      launchSettings={settings.state.settings.launch}
       saveSettings={settings.save}
       chooseVault={chooseVault}>
       <WorkspacePanels />
@@ -91,15 +93,20 @@ function VaultSettingsGate({ vault, chooseVault }: { vault: VaultInfo; chooseVau
 function FirstSetup({
   vaultId,
   newNote,
+  launch,
   onSave,
 }: {
   vaultId: string;
   newNote: NewNoteSettings;
+  launch: LaunchSettings;
   onSave: (settings: NoteSettings) => void;
 }) {
   const { listing, error } = useNoteList(vaultId);
   const notes = listing?.notes ?? null;
-  const initial = useMemo(() => ({ daily: detectedSettings(detectDailyNotes(notes ?? [])), newNote }), [newNote, notes]);
+  const initial = useMemo(
+    () => ({ daily: detectedSettings(detectDailyNotes(notes ?? [])), newNote, launch }),
+    [launch, newNote, notes],
+  );
   if (!listing && !error) {
     return <Busy label="Looking for your daily notes" />;
   }

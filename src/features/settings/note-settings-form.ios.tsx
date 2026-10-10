@@ -1,7 +1,7 @@
 /**
  * note settings with previews before they take effect (r5, r12, flow f1), as a native form: where
- * daily notes live and which template fills them, then where new notes go and which template
- * fills those. the previews read the templates but never write to the vault. with a vault
+ * daily notes live and which template fills them, which note a launch opens, then where new notes
+ * go and which template fills those. the previews read the templates but never write to the vault. with a vault
  * listing, the form shows where the daily notes and template seem to be, and every path field
  * suggests the vault's folders or files while it has focus, like the [[ link popup.
  */
@@ -49,6 +49,7 @@ import {
   previewDailyNote,
   validateDailyNoteSettings,
 } from '@/features/daily-notes/settings';
+import { isLaunchNote, LAUNCH_NOTES } from '@/features/navigation/launch';
 import { NEW_NOTE_LOCATIONS, newNoteContent, newNoteWhere, validateNewNoteSettings } from '@/features/new-notes/settings';
 import { captureClock } from '@/features/templates/civil-time';
 
@@ -145,6 +146,7 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
   const dailyFolder = usePathField(initial.daily.folder);
   const dailyTemplate = usePathField(initial.daily.templatePath ?? '');
   const [filenameFormat, setFilenameFormat] = useState<string>(initial.daily.filenameFormat);
+  const [launchNote, setLaunchNote] = useState<string>(initial.launch.open);
   const [location, setLocation] = useState<string>(initial.newNote.location);
   const newFolder = usePathField(initial.newNote.folder);
   const newTemplate = usePathField(initial.newNote.templatePath ?? '');
@@ -278,6 +280,16 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
         )}
       </Section>
 
+      <Section title="On launch" footer={<Text>{"Unsaved edits are always shown first. A note that is gone opens today's note."}</Text>}>
+        <Picker label="Open" selection={launchNote} onSelectionChange={(value: string) => setLaunchNote(value)} modifiers={[pickerStyle('menu')]}>
+          {LAUNCH_NOTES.map((option) => (
+            <Text key={option.value} modifiers={[tag(option.value)]}>
+              {option.label}
+            </Text>
+          ))}
+        </Picker>
+      </Section>
+
       <Section
         title="New notes"
         footer={<Text>{newErrors.folder ?? newErrors.location ?? 'Where New Note puts a note. Tap a note\'s title to rename it.'}</Text>}>
@@ -317,7 +329,12 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
       <Section>
         <Button
           label={firstSetup ? 'Use These Settings' : 'Save'}
-          onPress={() => canSave && daily.ok && newNote.ok && onSave({ daily: daily.value, newNote: newNote.value })}
+          onPress={() =>
+            canSave &&
+            daily.ok &&
+            newNote.ok &&
+            onSave({ daily: daily.value, newNote: newNote.value, launch: { open: isLaunchNote(launchNote) ? launchNote : initial.launch.open } })
+          }
           modifiers={[buttonStyle('borderedProminent'), disabled(!canSave)]}
         />
         {onCancel ? <Button label="Cancel" onPress={onCancel} /> : null}

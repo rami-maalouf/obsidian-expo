@@ -10,6 +10,8 @@ enum VaultMenu {
   enum Command: String {
     case newNote = "new-note"
     case today
+    case back
+    case forward
     case search
     case toggleFiles = "toggle-files"
     case toggleCalendar = "toggle-calendar"
@@ -39,6 +41,8 @@ enum VaultMenu {
       builder.insertChild(panels, atStartOfMenu: .view)
 
       let go = UIMenu(title: "Go", identifier: UIMenu.Identifier("com.ramimaalouf.obsidianexpo.go"), children: [
+        UIKeyCommand(title: "Back", action: #selector(UIApplication.vaultBack(_:)), input: "[", modifierFlags: .command),
+        UIKeyCommand(title: "Forward", action: #selector(UIApplication.vaultForward(_:)), input: "]", modifierFlags: .command),
         UIKeyCommand(title: "Today's Note", action: #selector(UIApplication.vaultToday(_:)), input: "t", modifierFlags: .command),
         UIKeyCommand(title: "Search Notes", action: #selector(UIApplication.vaultSearch(_:)), input: "f", modifierFlags: [.command, .shift]),
       ])
@@ -55,5 +59,7 @@ extension UIApplication {
   @objc func vaultToggleFiles(_ sender: Any?) { VaultMenu.post(.toggleFiles) }
   @objc func vaultToggleCalendar(_ sender: Any?) { VaultMenu.post(.toggleCalendar) }
   @objc func vaultToday(_ sender: Any?) { VaultMenu.post(.today) }
+  @objc func vaultBack(_ sender: Any?) { VaultMenu.post(.back) }
+  @objc func vaultForward(_ sender: Any?) { VaultMenu.post(.forward) }
   @objc func vaultSearch(_ sender: Any?) { VaultMenu.post(.search) }
 }

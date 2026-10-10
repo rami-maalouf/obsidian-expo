@@ -1,7 +1,7 @@
 /**
  * note settings with previews before they take effect (r5, r12, flow f1), on android: where daily
- * notes live and which template fills them, then where new notes go and which template fills
- * those. the previews read the templates but never write to the vault. with a vault listing, the
+ * notes live and which template fills them, which note a launch opens, then where new notes go
+ * and which template fills those. the previews read the templates but never write to the vault. with a vault listing, the
  * form shows where the daily notes and template seem to be, and every path field suggests the
  * vault's folders or files while it has focus.
  */
@@ -17,6 +17,7 @@ import {
   previewDailyNote,
   validateDailyNoteSettings,
 } from '@/features/daily-notes/settings';
+import { LAUNCH_NOTES, type LaunchNote } from '@/features/navigation/launch';
 import { NEW_NOTE_LOCATIONS, newNoteContent, newNoteWhere, validateNewNoteSettings } from '@/features/new-notes/settings';
 import { captureClock } from '@/features/templates/civil-time';
 import { Button, Row, SectionTitle } from '@/features/workspace/android-ui';
@@ -90,6 +91,7 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
   const [dailyFolder, setDailyFolder] = useState(initial.daily.folder);
   const [filenameFormat, setFilenameFormat] = useState<string>(initial.daily.filenameFormat);
   const [dailyTemplate, setDailyTemplate] = useState(initial.daily.templatePath ?? '');
+  const [launchNote, setLaunchNote] = useState<LaunchNote>(initial.launch.open);
   const [location, setLocation] = useState<string>(initial.newNote.location);
   const [newFolder, setNewFolder] = useState(initial.newNote.folder);
   const [newTemplate, setNewTemplate] = useState(initial.newNote.templatePath ?? '');
@@ -229,6 +231,25 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
           )}
         </View>
 
+        <SectionTitle>On launch</SectionTitle>
+        <View accessibilityRole="radiogroup">
+          {LAUNCH_NOTES.map((option) => {
+            const selected = launchNote === option.value;
+            return (
+              <Row
+                key={option.value}
+                icon={selected ? 'radio_button_checked' : 'radio_button_unchecked'}
+                iconColor={selected ? Accent : undefined}
+                title={option.label}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                onPress={() => setLaunchNote(option.value)}
+              />
+            );
+          })}
+        </View>
+        <Text style={footer}>{"Unsaved edits are always shown first. A note that is gone opens today's note."}</Text>
+
         <SectionTitle>New notes</SectionTitle>
         <View accessibilityRole="radiogroup">
           {NEW_NOTE_LOCATIONS.map((option) => {
@@ -281,7 +302,7 @@ export function NoteSettingsForm({ vaultId, initial, notes, firstSetup, onSave, 
             kind="filled"
             label={firstSetup ? 'Use These Settings' : 'Save'}
             onPress={() => {
-              if (canSave && daily.ok && newNote.ok) onSave({ daily: daily.value, newNote: newNote.value });
+              if (canSave && daily.ok && newNote.ok) onSave({ daily: daily.value, newNote: newNote.value, launch: { open: launchNote } });
             }}
             style={!canSave && styles.disabled}
           />

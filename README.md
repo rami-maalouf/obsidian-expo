@@ -14,8 +14,8 @@ For cloud work, start with [agent instructions](AGENTS.md), [project context](do
 
 The [technology-options research](docs/technology-options-2026-10.md) and its version snapshot are included alongside the plan. The [transfer inventory](docs/PLANNING_TRANSFER.md) accounts for all material brought over from the planning project. Feature implementation targets iOS (iPhone/iPad) and, since October 9, 2026, Android; web starter checks do not expand that scope.
 
-- Expo `58.0.6` and Expo Router `58.0.16`
-- React `19.3.0` and React Native `0.88.0-rc.3`
+- Expo `58.0.7` and Expo Router `58.0.17`
+- React `19.3.0` and React Native `0.88.0-rc.4`
 - TypeScript with strict checking
 - Bun `1.3.14`, with dependency versions recorded in `bun.lock`
 - Node.js 24.3 or newer on the 24 LTS line, or Node.js 26
@@ -151,11 +151,12 @@ xcodebuild -workspace "$workspace" -scheme "$(basename "$workspace" .xcworkspace
   -derivedDataPath build CODE_SIGNING_ALLOWED=NO -quiet build
 app=$(ls -d build/Build/Products/Release-iphonesimulator/*.app | head -1)
 scripts/ci/simulator-smoke.sh "iPhone" "$app" smoke/iphone \
-  tests/e2e/editor/today-write.yaml tests/e2e/editor/background.yaml @external-edit \
+  tests/e2e/editor/today-write.yaml tests/e2e/navigation/history.yaml tests/e2e/editor/background.yaml @external-edit \
   tests/e2e/editor/foreground.yaml @lock-daily tests/e2e/recovery/unsaved-draft.yaml @unlock-daily \
   tests/e2e/recovery/open-draft.yaml tests/e2e/daily-notes/relaunch-today.yaml
 scripts/ci/simulator-smoke.sh "iPad Pro 13" "$app" smoke/ipad \
-  tests/e2e/editor/today-write.yaml tests/e2e/navigation/ipad-layout.yaml tests/e2e/daily-notes/relaunch-today.yaml
+  tests/e2e/editor/today-write.yaml tests/e2e/navigation/history.yaml tests/e2e/navigation/ipad-layout.yaml \
+  tests/e2e/daily-notes/relaunch-today.yaml
 ```
 
 The smoke test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes.
