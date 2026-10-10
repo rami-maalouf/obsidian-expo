@@ -170,7 +170,7 @@ Evidence in an EAS sandbox (image `macos-tahoe-26.6-xcode-27.0`, macOS 26.6.2, X
 
 Still open: a save or load notice below the bar, the status views and the recovery form below the bar, the bar beside a pinned panel on iPad, and a physical device. These Simulator results come from the branch before main's note history was merged in.
 
-On Android, the app bar has no shadow and takes the surface color while the note is scrolled ([T08](technology-decisions.md#t08-navigation-shell)). `tests/e2e/android/relaunch-search.yaml` now swipes the Welcome note and takes the `welcome-scrolled` screenshot. After the merge with main, `bun run check` (226 tests) and `bun run export` pass on L1. The Kotlin editor change is compiled and run only by the `android` workflow (A1).
+On Android, the app bar has no shadow and takes the surface color while the note is scrolled ([T08](technology-decisions.md#t08-navigation-shell)). `tests/e2e/android/relaunch-search.yaml` now swipes the Welcome note and takes the `welcome-scrolled` screenshot. After the merge with main, `bun run check` (226 tests) and `bun run export` pass on L1. The `android` workflow (A1) compiled the Kotlin change and passed the emulator test for `f07f855` (runs 38067645809 and 38067642405). In the emulator screenshots, the app bar and the status bar area are white with no shadow line at the top of Welcome; after the swipe, they and the Compose button areas are about `#f7f7f7`, the light palette's surface color within JPEG error. Main's `welcome` screenshot (run 38065761175) has a shadow line under the bar. Dark appearance, the color change while scrolling back to the top, and a device have not been checked.
 
 ## Preliminary search benchmark
 
