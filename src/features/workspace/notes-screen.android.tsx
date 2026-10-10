@@ -1,14 +1,27 @@
 /**
- * the note between the two side panels on android: drafts to recover before today, then the
- * open note (flow f2). the note title is the app bar title; it ends with "*" while edits wait
+ * the note between the two side panels on android: drafts to recover first, then the open note
+ * (flow f2): at launch, the note that was open last, or today's note. the note title is the app bar title; it ends with "*" while edits wait
  * for a save, and a tap on it renames the note in a dialog, as does "Rename note" in the
  * overflow menu. the app bar's left side opens the files panel and today's note; the right side
- * has the overflow menu (bookmark, search, and the rest) and the calendar panel (t08). icons are
- * material symbols drawn by scripts/generate-android-icons.ts.
+ * has the overflow menu (forward, bookmark, search, and the rest) and the calendar panel (t08).
+ * android's back gesture goes back through the opened notes, and forward is in the overflow menu
+ * while there is a note ahead, as in chrome. icons are material symbols drawn by
+ * scripts/generate-android-icons.ts.
  */
-import { Stack, useRouter } from 'expo-router';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Modal, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Alert,
+  BackHandler,
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Accent, useAndroidColors } from '@/constants/theme';
@@ -23,6 +36,7 @@ import { Busy, Notice } from './status-views';
 import { useWorkspace } from './workspace';
 
 const icons = {
+  forward: require('../../../assets/icons/android/arrow_forward.xml'),
   files: require('../../../assets/icons/android/left_panel_open.xml'),
   today: require('../../../assets/icons/android/today.xml'),
   more: require('../../../assets/icons/android/more_vert.xml'),
@@ -54,6 +68,29 @@ export function NotesScreen() {
   const editor = useRef<NoteEditorHandle>(null);
   // the note the rename dialog is open for, or null.
   const [renaming, setRenaming] = useState<string | null>(null);
+
+  // the back gesture first closes a panel that covers the note, then goes back through the opened
+  // notes; with nothing to go back to, android handles it as before. it applies only while this
+  // screen is on top, so search and settings close as usual, and the rename dialog handles its own.
+  const { wide, filesOpen, calendarOpen, setFilesOpen, setCalendarOpen, canGoBack, goBack } = workspace;
+  useFocusEffect(
+    useCallback(() => {
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (!wide && filesOpen) {
+          setFilesOpen(false);
+          return true;
+        }
+        if (!wide && calendarOpen) {
+          setCalendarOpen(false);
+          return true;
+        }
+        if (!canGoBack) return false;
+        goBack();
+        return true;
+      });
+      return () => subscription.remove();
+    }, [wide, filesOpen, calendarOpen, setFilesOpen, setCalendarOpen, canGoBack, goBack]),
+  );
 
   const rename = () => {
     if (path && editing) setRenaming(path);
@@ -116,6 +153,8 @@ export function NotesScreen() {
         onUnsavedChange={setUnsaved}
       />
     );
+  } else if (workspace.launching) {
+    content = <Busy label="Opening the last note" />;
   } else if (today.state.phase !== 'done') {
     content = <Busy label="Opening today's note" />;
   } else {
@@ -131,6 +170,9 @@ export function NotesScreen() {
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu icon={icons.more} accessibilityLabel="More">
+          <Stack.Toolbar.MenuAction icon={icons.forward} hidden={!workspace.canGoForward} onPress={workspace.goForward}>
+            Forward
+          </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction
             icon={marked ? icons.bookmarkRemove : icons.bookmarkAdd}
             hidden={!editing}
