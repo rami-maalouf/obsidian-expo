@@ -6,7 +6,8 @@
  * has the overflow menu (forward, bookmark, search, and the rest) and the calendar panel (t08).
  * android's back gesture goes back through the opened notes, and forward is in the overflow menu
  * while there is a note ahead, as in chrome. icons are material symbols drawn by
- * scripts/generate-android-icons.ts.
+ * scripts/generate-android-icons.ts. the app bar has no shadow and takes the surface color while
+ * the note is scrolled from its top, as material 3's top app bar does.
  */
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
@@ -66,6 +67,9 @@ export function NotesScreen() {
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
   const editor = useRef<NoteEditorHandle>(null);
+  // the open note's text is scrolled from its top; the editor reports it.
+  const [scrolled, setScrolled] = useState(false);
+  const lifted = editing && scrolled;
   // the note the rename dialog is open for, or null.
   const [renaming, setRenaming] = useState<string | null>(null);
 
@@ -151,6 +155,7 @@ export function NotesScreen() {
         onRecoveryNeeded={workspace.onRecoveryNeeded}
         onOpenLink={workspace.openLink}
         onUnsavedChange={setUnsaved}
+        onScrolledChange={setScrolled}
       />
     );
   } else if (workspace.launching) {
@@ -163,7 +168,14 @@ export function NotesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title, headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined,
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: lifted ? palette.surface : palette.background },
+        }}
+      />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button icon={icons.files} accessibilityLabel="Files" onPress={() => workspace.setFilesOpen(!workspace.filesOpen)} />
         <Stack.Toolbar.Button icon={icons.today} accessibilityLabel="Open today's note" onPress={workspace.openToday} />

@@ -5,9 +5,11 @@
  * the files panel, goes back and forward through the opened notes, and opens today's note; the
  * right group opens the native "more" menu with bookmark, search, and the rest, then the calendar
  * panel at the trailing edge (t08). on a phone, forward appears only when there is a note ahead,
- * so the title keeps its room.
+ * so the title keeps its room. the navigation bar is see-through: the note scrolls under it, and
+ * liquid glass's soft scroll edge effect fades the text out below the bar.
  */
 import { Stack, useRouter } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
@@ -35,6 +37,7 @@ export function NotesScreen() {
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
   const editor = useRef<NoteEditorHandle>(null);
+  const headerHeight = useHeaderHeight();
   const showForward = workspace.wide || workspace.canGoForward;
 
   /** the native rename prompt: the name without ".md", in the note's folder. */
@@ -109,6 +112,7 @@ export function NotesScreen() {
         onRecoveryNeeded={workspace.onRecoveryNeeded}
         onOpenLink={workspace.openLink}
         onUnsavedChange={setUnsaved}
+        headerInset={headerHeight}
       />
     );
   } else if (workspace.launching) {
@@ -125,6 +129,9 @@ export function NotesScreen() {
         options={{
           title,
           headerTitle: editing ? () => <RenameTitle title={title} buttons={showForward ? 6 : 5} onPress={rename} /> : undefined,
+          // the native text view and the swiftui status views inset themselves below the bar.
+          // the editor sets its own soft scroll edge effect (VaultEditorView.swift).
+          headerTransparent: true,
         }}
       />
       <Stack.Toolbar placement="left">

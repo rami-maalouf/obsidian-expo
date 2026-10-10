@@ -50,6 +50,10 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     // pair completion would add characters the user did not type, such as a closing backtick.
     textView.editingOptions.completesPairs = false
     textView.keyboardDismissMode = .interactive
+    // the note scrolls under the see-through navigation bar; the soft edge blurs the text under
+    // the bar and fades out below it. react-native-screens applies its `scrollEdgeEffects`
+    // option before the editor mounts, so the style is set here.
+    textView.topEdgeEffect.style = .soft
     // smart punctuation would rewrite markdown source such as quotes, dashes, and spacing.
     textView.smartQuotesType = .no
     textView.smartDashesType = .no

@@ -30,6 +30,13 @@ type NoteEditorProps = {
   onOpenLink?: (target: string, path: string | null) => void;
   /** called when edits start or stop waiting for a save, for the unsaved mark in the title. */
   onUnsavedChange?: (unsaved: boolean) => void;
+  /** called when the text leaves its top or returns to it, for the app bar's color. android only. */
+  onScrolledChange?: (scrolled: boolean) => void;
+  /**
+   * the height of a see-through navigation bar over the editor. the text scrolls under the bar
+   * and insets itself; a notice above the text starts below the bar.
+   */
+  headerInset?: number;
   ref?: Ref<NoteEditorHandle>;
 };
 
@@ -44,25 +51,43 @@ export function noteTitle(path: string) {
 }
 
 /** the note title is the navigation title; the editor reports its save state to it. */
-export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, onOpenLink, onUnsavedChange, ref }: NoteEditorProps) {
+export function NoteEditor({
+  vaultId,
+  path,
+  onRecoveryNeeded,
+  onSaved,
+  onShown,
+  onOpenLink,
+  onUnsavedChange,
+  onScrolledChange,
+  headerInset = 0,
+  ref,
+}: NoteEditorProps) {
   const editor = useRef<VaultEditorHandle>(null);
   useImperativeHandle(ref, () => ({ rename: async (newPath) => (editor.current ? editor.current.rename(newPath) : null) }), []);
   const [status, setStatus] = useState<EditorStatusEvent>({ status: 'loading' });
   const [unsaved, setUnsaved] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [load, setLoad] = useState<EditorLoadEvent | null>(null);
   const colors = useSystemColors();
   const notice = statusNotice(status);
+  const topInset = notice || load?.kind === 'unavailable' ? headerInset : 0;
   useEffect(() => {
     onUnsavedChange?.(unsaved);
     // a closed editor leaves no mark on the title of the next note.
     return () => onUnsavedChange?.(false);
   }, [onUnsavedChange, unsaved]);
+  useEffect(() => {
+    onScrolledChange?.(scrolled);
+    // the next note opens at its top.
+    return () => onScrolledChange?.(false);
+  }, [onScrolledChange, scrolled]);
 
   if (!VaultEditorView) {
     return null;
   }
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
       {notice && (
         <View style={styles.problemRow}>
           <Text accessibilityLiveRegion="polite" style={[styles.notice, { color: colors.warning }]}>
@@ -102,6 +127,7 @@ export function NoteEditor({ vaultId, path, onRecoveryNeeded, onSaved, onShown, 
           }
         }}
         onOpenLink={(event) => onOpenLink?.(event.nativeEvent.target, event.nativeEvent.path ?? null)}
+        onScrolledChange={(event) => setScrolled(event.nativeEvent.scrolled)}
       />
     </View>
   );

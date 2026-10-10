@@ -1,5 +1,5 @@
 # a relaunch restores the vault from its kept folder permission and opens today's note again,
-# then search finds a note by its content and opens it.
+# then search finds a note by its content and opens it, and the note scrolls under the app bar.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -25,3 +25,9 @@ appId: com.ramimaalouf.obsidianexpo
     timeout: 15000
 - assertVisible: "Welcome"
 - takeScreenshot: ${OUT}/welcome
+# the app bar takes the surface color while the note is scrolled from its top.
+- swipe:
+    start: 50%, 75%
+    end: 50%, 35%
+- assertVisible: "Welcome"
+- takeScreenshot: ${OUT}/welcome-scrolled

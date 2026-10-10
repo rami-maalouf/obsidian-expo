@@ -224,7 +224,7 @@ class VaultModule : Module() {
     }.runOnQueue(fileScope)
 
     View(VaultEditorView::class) {
-      Events("onStatus", "onLoad", "onOpenLink")
+      Events("onStatus", "onLoad", "onOpenLink", "onScrolledChange")
 
       Prop("vaultId") { view: VaultEditorView, vaultId: String? ->
         view.vaultId = vaultId

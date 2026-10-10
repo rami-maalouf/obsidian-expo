@@ -29,6 +29,9 @@ export type EditorLoadEvent =
 /** a tap on a wikilink to another note: the target as written, and the matching note's path. */
 export type EditorOpenLinkEvent = { target: string; path?: string };
 
+/** the text left its top (`scrolled`) or returned to it. android only. */
+export type EditorScrolledEvent = { scrolled: boolean };
+
 export type NativeRenameResult =
   | { kind: 'moved' }
   /** another file already has the new path; nothing moved. */
@@ -53,6 +56,7 @@ export type VaultEditorViewProps = ViewProps & {
   onStatus?: (event: NativeSyntheticEvent<EditorStatusEvent>) => void;
   onLoad?: (event: NativeSyntheticEvent<EditorLoadEvent>) => void;
   onOpenLink?: (event: NativeSyntheticEvent<EditorOpenLinkEvent>) => void;
+  onScrolledChange?: (event: NativeSyntheticEvent<EditorScrolledEvent>) => void;
   ref?: Ref<VaultEditorHandle>;
 };
 
