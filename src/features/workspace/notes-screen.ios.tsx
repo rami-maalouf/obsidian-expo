@@ -125,8 +125,8 @@ export function NotesScreen() {
           title,
           headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined,
           // the native text view and the swiftui status views inset themselves below the bar.
+          // the editor sets its own soft scroll edge effect (VaultEditorView.swift).
           headerTransparent: true,
-          scrollEdgeEffects: { top: 'soft' },
         }}
       />
       <Stack.Toolbar placement="left">

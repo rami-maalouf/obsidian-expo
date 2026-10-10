@@ -148,9 +148,17 @@ Evidence on L1: `bun run check` (199 tests) and `bun run export` pass. `swift te
 
 ## See-through navigation bar (October 10, 2026)
 
-On iOS, the note screen's navigation bar is see-through, with a soft Liquid Glass scroll edge effect over the note ([T08](technology-decisions.md#t08-navigation-shell)). The change is in JavaScript only: the screen options and the editor's notice padding.
+On iOS, the note screen's navigation bar is see-through, with a soft Liquid Glass scroll edge effect over the note ([T08](technology-decisions.md#t08-navigation-shell)). The screen sets `headerTransparent`, the editor pads a notice by the header height, and `VaultEditorView` sets its text view's top scroll edge effect to the soft style.
 
-Evidence on L1: `bun run check` (202 tests) and `bun run export` pass. `bunx expo install --check` could not reach the Expo API through the L1 network policy (HTTP 403); no dependency changed. No native code changed. Nothing here has run in the Simulator or on a device, so these are open: the soft edge effect over the editor's text view, the first line's position below the bar when a note opens, a save or load notice below the bar, the status views and the recovery form below the bar, and the bar beside a pinned panel on iPad.
+Evidence on L1: `bun run check` (202 tests) and `bun run export` pass. `bunx expo install --check` could not reach the Expo API through the L1 network policy (HTTP 403); no dependency changed.
+
+Evidence in an EAS sandbox (image `macos-tahoe-26.6-xcode-27.0`, macOS 26.6.2, Xcode 27.0 27A266a, iOS 27.0 Simulator runtime 24A434, iPhone 18 Pro): the README's Release build for the Simulator compiled, and the app ran with `-VaultTestFolder vault` on a copy of `tests/fixtures/vault-basic` with a long sample note as today's note. A Maestro swipe scrolled the note, and `simctl` screenshots showed the following:
+
+- At the top of the note, the first line starts below the bar.
+- Scrolled, in light and dark appearance, the text under the bar is blurred and fades out below the bar, and the title stays readable.
+- Before the native change, `lldb` showed that the text view kept `UIScrollEdgeEffectStyle.automaticStyle`, because React Native Screens' `scrollEdgeEffects` option was applied before the editor mounted. With the automatic style, the text under the custom rename title stayed sharp, and the native title had a hard edge with a line. After the change, `lldb` showed `softStyle`.
+
+Still open: a save or load notice below the bar, the status views and the recovery form below the bar, the bar beside a pinned panel on iPad, and a physical device.
 
 ## Preliminary search benchmark
 
