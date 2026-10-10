@@ -115,7 +115,7 @@ public final class VaultEditorView: ExpoView, UITextViewDelegate {
     })
     // undo and redo dim when there is nothing to undo or redo. typing closes undo groups; the
     // keyboard's own undo (shake, three fingers, or a hardware keyboard) posts these too.
-    for name in [UndoManager.didUndoChangeNotification, UndoManager.didRedoChangeNotification, UndoManager.didCloseUndoGroupNotification] {
+    for name in [Notification.Name.NSUndoManagerDidUndoChange, .NSUndoManagerDidRedoChange, .NSUndoManagerDidCloseUndoGroup] {
       observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
         MainActor.assumeIsolated { self?.refreshUndoState() }
       })
