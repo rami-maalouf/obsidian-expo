@@ -1,4 +1,4 @@
-# types into today's note, waits for the save, checks the name above the text, then types a
+# checks the name above today's note, types into the note, waits for the save, then types a
 # heading. styling adds spans and never changes characters, so the script finds the
 # lines on disk exactly as typed.
 appId: com.ramimaalouf.obsidianexpo
@@ -7,6 +7,10 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:opened"
     timeout: 30000
+# the name is at the top of the note, which opens at its top.
+- assertVisible:
+    id: "note-title"
+    text: "${TODAY}"
 # a note opens without the keyboard; a tap below the short note puts the caret at its end.
 - tapOn:
     point: "50%,85%"
@@ -15,9 +19,6 @@ appId: com.ramimaalouf.obsidianexpo
     visible:
       id: "note-status:saved"
     timeout: 15000
-- assertVisible:
-    id: "note-title"
-    text: "${TODAY}"
 - takeScreenshot: ${OUT}/after-typing
 - pressKey: Enter
 - inputText: "## Styled heading"
