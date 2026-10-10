@@ -172,6 +172,21 @@ Still open: a save or load notice below the bar, the status views and the recove
 
 On Android, the app bar has no shadow and takes the surface color while the note is scrolled ([T08](technology-decisions.md#t08-navigation-shell)). `tests/e2e/android/relaunch-search.yaml` now swipes the Welcome note and takes the `welcome-scrolled` screenshot. After the merge with main, `bun run check` (226 tests) and `bun run export` pass on L1. The `android` workflow (A1) compiled the Kotlin change and passed the emulator test for `f07f855` (runs 38067645809 and 38067642405). In the emulator screenshots, the app bar and the status bar area are white with no shadow line at the top of Welcome; after the swipe, they and the Compose button areas are about `#f7f7f7`, the light palette's surface color within JPEG error. Main's `welcome` screenshot (run 38065761175) has a shadow line under the bar. Dark appearance, the color change while scrolling back to the top, and a device have not been checked.
 
+## Bottom toolbar (October 10, 2026)
+
+At the user's request, Back and Forward moved from the navigation bar to a bottom toolbar, with Search and New Note, which also left the More menu ([T08](technology-decisions.md#t08-navigation-shell), [compatibility](compatibility.md#note-history-and-launch)). Like Safari's and Obsidian's bars, the toolbar slides away while the user scrolls toward the end of the note and comes back when they scroll back or reach the top. On iOS, `VaultEditorView.swift` hides the navigation controller's toolbar itself; on Android, `VaultEditorView.kt` sends `onToolbarHiddenChange` and the screen moves Expo Router's Compose floating toolbar. `scripts/generate-android-icons.ts` adds `arrow_back`.
+
+Evidence on L1: `bun run check` (226 tests) and `bun run export` pass. `bunx expo install --check` could not reach the Expo API through the L1 network policy (HTTP 403); no dependency changed.
+
+Evidence on A1, run 38075565551 (`de7f351`): the Kotlin core tests pass, the Release app compiled with the Kotlin editor change, and the four emulator flows passed. `relaunch-search.yaml` opened search from the bottom toolbar. After a swipe that scrolled Welcome, "New note" was not visible; after a shorter swipe back, which left the note below its top, it was visible again. `new-rename.yaml` created the note from the bottom toolbar. `today-write.yaml` now taps at 70% of the screen height, above the toolbar. The emulator screenshots show the following:
+
+- A floating toolbar above the system's navigation bar, with Back and Forward on its left and Search and New note on its right.
+- Back and Forward dimmed when there is no note in their direction, and Back in the accent color after Welcome was opened from search.
+- No toolbar on the screen while Welcome is scrolled, and the toolbar again after the swipe back.
+- The keyboard over the toolbar while text is typed.
+
+Still open: the iOS change has not been compiled or run. `swift test` compiles only the vault core, so `VaultEditorView.swift` and `notes-screen.ios.tsx` need an EAS or Xcode build and a Simulator check: the two Liquid Glass groups, the slide away and back while scrolling, the bounce at the end, the first line and the last line with the toolbar shown and hidden, and the `history.yaml` and `today-write.yaml` flows (`hideKeyboard` before Search). An EAS Simulator session could not start from L1: the network policy denies `api.expo.dev`, and no `EXPO_TOKEN` is set. On Android, dark appearance, a tablet, and a device have not been checked.
+
 ## Preliminary search benchmark
 
 `bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.
