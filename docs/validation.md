@@ -146,6 +146,12 @@ The open note's title opens a native rename prompt, and New Note uses per-vault 
 
 Evidence on L1: `bun run check` (199 tests) and `bun run export` pass. `swift test` compiles only the vault core; the module's `rename` view function, the editor's `flushForRename`, and the menu bar label are compiled by EAS preview build `201c184a-94eb-4651-a544-d90deda2f796` (`219e72a`, E1), which finished with no error. Its fingerprint runtime changed to `76f0180`, so earlier preview builds cannot receive this code as an update. Its build log has not been reviewed for warnings. Nothing here has run in the Simulator or on a device, so these are open: the custom title in the iOS 26 navigation bar with the toolbar, the `Alert.prompt` rename flow, a rename while edits are being saved, the location menu and the new-note sections of the form, and New Note from the toolbar, the files panel, and the menu bar.
 
+## See-through navigation bar (October 10, 2026)
+
+On iOS, the note screen's navigation bar is see-through, with a soft Liquid Glass scroll edge effect over the note ([T08](technology-decisions.md#t08-navigation-shell)). The change is in JavaScript only: the screen options and the editor's notice padding.
+
+Evidence on L1: `bun run check` (202 tests) and `bun run export` pass. `bunx expo install --check` could not reach the Expo API through the L1 network policy (HTTP 403); no dependency changed. No native code changed. Nothing here has run in the Simulator or on a device, so these are open: the soft edge effect over the editor's text view, the first line's position below the bar when a note opens, a save or load notice below the bar, the status views and the recovery form below the bar, and the bar beside a pinned panel on iPad.
+
 ## Preliminary search benchmark
 
 `bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.

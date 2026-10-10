@@ -3,9 +3,11 @@
  * (flow f2). the note title is the native navigation title; it ends with "*" while edits wait
  * for a save, and a tap on it renames the note in a native prompt. the toolbar's left group opens the files panel and today's note; the right group
  * opens the native "more" menu with bookmark, search, and the rest, then the calendar panel at
- * the trailing edge (t08).
+ * the trailing edge (t08). the navigation bar is see-through: the note scrolls under it, and
+ * liquid glass's soft scroll edge effect fades the text out below the bar.
  */
 import { Stack, useRouter } from 'expo-router';
+import { useHeaderHeight } from 'expo-router/react-navigation';
 import { type ComponentProps, type ReactNode, useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, useWindowDimensions } from 'react-native';
 
@@ -33,6 +35,7 @@ export function NotesScreen() {
   const marked = path ? (bookmarks.list?.items.some((item) => item.path === path) ?? false) : false;
   const editing = Boolean(path) && pending !== null && !needsRecovery && !dayProblem;
   const editor = useRef<NoteEditorHandle>(null);
+  const headerHeight = useHeaderHeight();
 
   /** the native rename prompt: the name without ".md", in the note's folder. */
   const rename = () => {
@@ -106,6 +109,7 @@ export function NotesScreen() {
         onRecoveryNeeded={workspace.onRecoveryNeeded}
         onOpenLink={workspace.openLink}
         onUnsavedChange={setUnsaved}
+        headerInset={headerHeight}
       />
     );
   } else if (today.state.phase !== 'done') {
@@ -116,7 +120,15 @@ export function NotesScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title, headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerTitle: editing ? () => <RenameTitle title={title} onPress={rename} /> : undefined,
+          // the native text view and the swiftui status views inset themselves below the bar.
+          headerTransparent: true,
+          scrollEdgeEffects: { top: 'soft' },
+        }}
+      />
       <Stack.Toolbar placement="left">
         <Stack.Toolbar.Button
           icon="sidebar.left"
