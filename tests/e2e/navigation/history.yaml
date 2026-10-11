@@ -1,6 +1,7 @@
 # opens another note from search, relaunches, and checks that the app reopens that note (r11 as
-# amended october 10, 2026). back and forward then move between it and today's note. the flow ends
-# on today's note, so the flows after it open today's note again.
+# amended october 10, 2026). the bottom toolbar slides away while the note scrolls toward its end
+# and comes back when it scrolls back. back and forward in that toolbar then move between the note
+# and today's note. the flow ends on today's note, so the flows after it open today's note again.
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -13,7 +14,6 @@ appId: com.ramimaalouf.obsidianexpo
 - assertVisible:
     id: "note-title"
     text: "${TODAY}"
-- tapOn: "More"
 - tapOn: "Search"
 - tapOn:
     text: "Search notes"
@@ -39,6 +39,21 @@ appId: com.ramimaalouf.obsidianexpo
     id: "note-title"
     text: "Welcome"
 - takeScreenshot: ${OUT}/history-relaunch
+- swipe:
+    start: 50%, 70%
+    end: 50%, 30%
+- extendedWaitUntil:
+    notVisible: "New note"
+    timeout: 5000
+- takeScreenshot: ${OUT}/toolbar-hidden
+# a shorter scroll back, which leaves the note below its top, brings the toolbar back.
+- swipe:
+    start: 50%, 40%
+    end: 50%, 55%
+- extendedWaitUntil:
+    visible: "New note"
+    timeout: 5000
+- takeScreenshot: ${OUT}/toolbar-shown
 - tapOn: "Back"
 - extendedWaitUntil:
     visible:

@@ -1,0 +1,112 @@
+# shared cases for the editing toolbar's commands (docs/technology-decisions.md, t17). the
+# swift core tests (ios/Tests/EditorCommandsTests.swift) and the kotlin core tests
+# (android/core-tests/.../EditorCommandsTest.kt) both read this file.
+#
+# each case is one line: the command, the text before, and the text after, separated by spaces.
+# the texts are in double quotes, with \n for a line feed, \r for a carriage return, \t for a
+# tab, \" for a quote, and \\ for a backslash. ‸ is the caret, and « and » mark a selection. an
+# after text of - means the command changes nothing. empty lines and lines that start with #
+# are skipped.
+#
+# indent, outdent, bold, and italic come from laperm on ios. their cases describe laperm's
+# behavior at the pinned commit (from its own tests) and run only in the kotlin tests. task,
+# link, and tag run in both.
+
+# indent and outdent: list lines only, four spaces.
+indent   "- it‸em"                       "    - it‸em"
+indent   "1. fi‸rst"                     "    1. fi‸rst"
+indent   "2) se‸cond"                    "    2) se‸cond"
+indent   "- [ ] t‸ask"                   "    - [ ] t‸ask"
+indent   "«- a\n- b»"                    "    «- a\n    - b»"
+indent   "«- a\nplain\n- b»"             "    «- a\nplain\n    - b»"
+indent   "- a\r\n- b‸"                   "- a\r\n    - b‸"
+indent   "pl‸ain"                        -
+indent   "-no space‸"                    -
+indent   "‸"                             -
+outdent  "    - it‸em"                   "- it‸em"
+outdent  "  - ‸a"                        "- ‸a"
+outdent  "- ‸a"                          -
+outdent  "«    - a»"                     "«- a»"
+outdent  " «   - a\n    »- b\ntail"      "«- a\n»- b\ntail"
+outdent  "        - de‸ep"               "    - de‸ep"
+# a tab is not removed, and indent adds spaces before it (laperm's rule).
+outdent  "\t- it‸em"                     -
+indent   "\t- it‸em"                     "    \t- it‸em"
+
+# bold and italic: a selection, or the word at the caret.
+bold     "«hello» world"                 "**«hello»** world"
+italic   "hello «world»"                 "hello *«world»*"
+bold     "«**hello**» world"             "«hello» world"
+bold     "say **«hello»** world"         "say «hello» world"
+bold     "__«hello»__"                   "«hello»"
+italic   "_«hello»_"                     "«hello»"
+italic   "**«hello»**"                   "***«hello»***"
+bold     "***«hello»***"                 "*«hello»*"
+italic   "***«hello»***"                 "**«hello»**"
+bold     "«hello »world"                 "**«hello»** world"
+bold     "«hello big» world"             "**«hello big»** world"
+bold     "a«  »b"                        "a**‸**  b"
+bold     "he‸llo world"                  "**he‸llo** world"
+bold     "hello‸"                        "**hello‸**"
+bold     "‸hello"                        "**‸hello**"
+bold     "hello‸ world"                  "**hello‸** world"
+bold     "**he‸llo**"                    "he‸llo"
+italic   "**he‸llo**"                    "***he‸llo***"
+bold     "a ‸ b"                         "a **‸** b"
+italic   "‸"                             "*‸*"
+bold     "a **‸** b"                     "a ‸ b"
+italic   "*‸*"                           "‸"
+bold     "«**one** and **two**»"         -
+italic   "«*a* and *b*»"                 -
+bold     "«hello *world*»"               "**«hello *world*»**"
+bold     "`**«x»**`"                     -
+bold     "`code` w‸ord"                  "`code` **w‸ord**"
+bold     "«a\n\nb»"                      -
+bold     "«a\nb»"                        "**«a\nb»**"
+italic   "foo_«bar»_baz"                 "foo_*«bar»*_baz"
+bold     "foo_b‸ar_baz"                  "**foo_b‸ar_baz**"
+italic   "a _«bar»_ b"                   "a «bar» b"
+bold     "日本‸語"                        "**日本‸語**"
+
+# task: a plain line becomes a task, a list item gets a box, and a box is checked or cleared.
+task     "bu‸y milk"                     "- [ ] bu‸y milk"
+task     "‸"                             "- [ ] ‸"
+task     "  ‸"                           "  - [ ] ‸"
+task     "- bu‸y"                        "- [ ] bu‸y"
+task     "- ‸"                           "- [ ] ‸"
+task     "* bu‸y"                        "* [ ] bu‸y"
+task     "1. fi‸rst"                     "1. [ ] fi‸rst"
+task     "- [ ] bu‸y"                    "- [x] bu‸y"
+task     "- [x] bu‸y"                    "- [ ] bu‸y"
+task     "- [X] bu‸y"                    "- [ ] bu‸y"
+task     "- [ ]‸"                        "- [x]‸"
+task     "‸- [ ] a"                      "‸- [x] a"
+task     "  in‸dented"                   "  - [ ] in‸dented"
+task     "\t- ta‸b"                      "\t- [ ] ta‸b"
+task     "> qu‸ote"                      "> - [ ] qu‸ote"
+task     "> - [ ] qu‸ote"                "> - [x] qu‸ote"
+task     "-no‸space"                     "- [ ] -no‸space"
+task     "- [y] o‸dd"                    "- [ ] [y] o‸dd"
+task     "«a\n\nb»"                      "- [ ] «a\n\n- [ ] b»"
+task     "«- [ ] a\n- [x] b»"            "«- [x] a\n- [ ] b»"
+task     "«a\n»b"                        "- [ ] «a\n»b"
+task     "a\r\nb‸"                       "a\r\n- [ ] b‸"
+task     "one\ntw‸o\nthree"              "one\n- [ ] tw‸o\nthree"
+
+# link: empty brackets for the suggestions, or the selection as the target.
+link     "see ‸"                         "see [[‸]]"
+link     "‸"                             "[[‸]]"
+link     "see «Plan»"                    "see [[Plan‸]]"
+link     "see «Plan »now"                "see [[Plan‸]] now"
+link     "see «  »now"                   "see [[‸]]  now"
+link     "«a\nb»"                        -
+link     "«[[a]]»"                       -
+
+# tag: # at the caret or before the selection, after a space when one is needed.
+tag      "‸"                             "#‸"
+tag      "word‸"                         "word #‸"
+tag      "word ‸"                        "word #‸"
+tag      "a\n‸"                          "a\n#‸"
+tag      "\t‸"                           "\t#‸"
+tag      "see «idea»"                    "see #«idea»"
+tag      "see«idea»"                     "see #«idea»"

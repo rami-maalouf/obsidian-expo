@@ -7,8 +7,9 @@
 #    folder, where a user's vault would be.
 # 2. runs the maestro flows in tests/e2e/android: the system folder picker grants the vault
 #    (storage access framework), first setup finds the daily-note settings, today's note is
-#    created from the fixture template, text is typed and saved, a relaunch reopens today and
-#    searches the vault, and a new note is written in and renamed from its title.
+#    created from the fixture template, text is typed and saved, the editing toolbar indents,
+#    makes a task, bolds, and undoes, a relaunch reopens today and searches the vault, and a new
+#    note is written in and renamed from the name above its text.
 # 3. checks today's note and the renamed note on disk, that every other fixture file is
 #    byte-identical, and that the app wrote nothing else into the vault.
 set -euo pipefail
@@ -85,6 +86,17 @@ wait_for_note() {
   wait_for_text "$note" "$1"
 }
 
+# waits up to 20 seconds for a whole line in today's note.
+wait_for_line() {
+  for _ in $(seq 1 20); do
+    adb shell cat "'$note'" 2> /dev/null | tr -d '\r' | grep -qxF -- "$1" && return 0
+    sleep 1
+  done
+  echo "$note has no line: $1"
+  adb shell cat "'$note'" || true
+  return 1
+}
+
 # every fixture file but the two notes the flows write.
 fixture_hashes() {
   (cd "$1" && find . -type f ! -path "./Daily/$today.md" ! -path "./Renamed on Android.md" -exec sha256sum {} + | sort -k2)
@@ -118,14 +130,19 @@ check_fixture launch
 run_flow tests/e2e/android/today-write.yaml
 wait_for_note "Typed on the emulator."
 wait_for_note "## Styled heading"
+wait_for_line "    - [ ] Toolbar **item**"
+run_flow tests/e2e/android/toolbar-undo.yaml
+wait_for_line "    - [ ] Toolbar item"
 check_fixture typing
 
 run_flow tests/e2e/android/relaunch-search.yaml
 check_fixture relaunch
 
 run_flow tests/e2e/android/new-rename.yaml
-# the text typed just before the rename was saved into the file that was renamed.
+# the text typed just before the rename was saved into the file that was renamed, and the editor
+# followed the file, so the text typed right after the rename was saved there too.
 wait_for_text "$renamed" "Written before the rename."
+wait_for_text "$renamed" "Written after the rename."
 adb shell test ! -e "'$vault/Untitled.md'"
 check_fixture rename
 echo "--- Daily/$today.md after the flows"

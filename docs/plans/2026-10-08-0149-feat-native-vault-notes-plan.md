@@ -52,7 +52,7 @@ The user wants Obsidian's core writing and retrieval experience with a responsiv
 - R2. Read and edit UTF-8 Markdown without altering untouched content, frontmatter, wikilinks, embeds, or unsupported syntax; unsupported encodings remain readable where possible but cannot be overwritten through a lossy conversion.
 - R3. Preserve edits through navigation, backgrounding, save errors, and process restart after a durable draft checkpoint; never silently overwrite a conflicting external revision.
 - R4. Treat cloud placeholders and uncertain availability as existing or unknown files, never as permission to create replacements.
-- R5. Offer native text selection, composition, undo/redo, dictation, hardware-keyboard input, and simple note creation with a user-chosen title and folder.
+- R5. Offer native text selection, composition, undo/redo, dictation, hardware-keyboard input, and simple note creation with a user-chosen title and folder (amended October 10, 2026, at the user's request: an editing toolbar above the keyboard, like Obsidian's, with undo, redo, list indentation, tasks, links, tags, bold, and italic; see T17).
 
 #### Finding and navigating
 
@@ -261,7 +261,7 @@ The repository contains the verified SDK 58 starter. Reuse its app configuration
 - Goal: Type, navigate, and recover without fighting the editor or losing acknowledged saves.
 - Requirements: R2-R5, R17. Dependency: U2. Decisions: KTD3.
 - Files: `modules/vault/ios/Editor/`, `src/features/editor/`, `src/features/recovery/`, `tests/e2e/editor/`, `modules/vault/ios/Tests/EditorTests.swift`.
-- Approach: Validate T05 candidates against source fidelity, native input, long-note behavior, and the selected SDK; record the editor choice. Connect revisioned editing to the journal/save lifecycle. Add clear Saving, Saved locally, and Unsaved states, simple note creation, and explicit recovery actions. Introduce basic source styling only after selection/composition/undo work reliably.
+- Approach: Validate T05 candidates against source fidelity, native input, long-note behavior, and the selected SDK; record the editor choice. Connect revisioned editing to the journal/save lifecycle. Add clear Saving, Saved locally, and Unsaved states, simple note creation, and explicit recovery actions. (Amended October 9 and 10, 2026, at the user's request: routine save states have no text, and only a save that goes wrong shows a line above the note; the unsaved mark after the title was removed when the note's name moved above its text, where editing it renames the note.) Introduce basic source styling only after selection/composition/undo work reliably.
 - Test scenarios: Unicode/IME, dictation, undo/redo, hardware keyboard, large paste, background/termination after checkpoints, conflicting recovery, and read-only unsupported encodings. Round-trip a synthetic daily-note fixture, preserving its frontmatter and plugin syntax.
 - Verification: Simulator end-to-end writing and recovery checks; native input checks on hardware where simulator input differs. Round-trip fixtures remain unchanged except intended edits.
 

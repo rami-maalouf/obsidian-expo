@@ -1,6 +1,5 @@
 # runs after the smoke script made the daily folder read-only (`@lock-daily`), so the save
-# fails. the edits must stay in the journal, the editor must say so, and the note title must keep
-# its unsaved mark (r3, r4).
+# fails. the edits must stay in the journal, and the editor must say so (r3, r4).
 appId: com.ramimaalouf.obsidianexpo
 ---
 - stopApp
@@ -17,6 +16,7 @@ appId: com.ramimaalouf.obsidianexpo
 - extendedWaitUntil:
     visible: "Not saved yet. Your edits are kept as a draft."
     timeout: 15000
-- assertVisible: "${TODAY}\\*"
+- assertVisible:
+    id: "note-status:error"
 - takeScreenshot: ${OUT}/save-failed
 - stopApp

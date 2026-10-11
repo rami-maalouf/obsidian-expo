@@ -5,11 +5,12 @@
  * is shown, so they do not compete with opening the first note.
  */
 import { router } from 'expo-router';
-import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, type ReactNode, use, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, useWindowDimensions } from 'react-native';
 
 import { useBookmarks } from '@/features/bookmarks/use-bookmarks';
 import type { DailyNoteOutcome } from '@/features/daily-notes/resolver';
+import { type EditorSlot, nextEditorSlot } from '@/features/editor/editor-slot';
 import type { DailyNoteSettings } from '@/features/daily-notes/settings';
 import { createUntitledNote, linkedNotePath } from '@/features/explorer/new-note';
 import { editableName } from '@/features/explorer/rename';
@@ -124,6 +125,23 @@ function useWorkspaceState({
   const searchIndex = search.phase === 'ready' ? search.index : null;
   const refreshNotes = notes.refresh;
 
+  // a rename keeps the editor, which follows the file; any other note gets a new editor.
+  const [renamedTo, setRenamedTo] = useState<string | null>(null);
+  const [editorSlot, setEditorSlot] = useState<EditorSlot>({ path, key: 0 });
+  const nextSlot = nextEditorSlot(editorSlot, path, renamedTo);
+  if (nextSlot !== editorSlot) {
+    setEditorSlot(nextSlot);
+    setRenamedTo(null);
+  }
+  // the note on screen when a rename ends; the user may have opened another note meanwhile.
+  const pathNow = useRef(path);
+  useEffect(() => {
+    pathNow.current = path;
+  }, [path]);
+  // a new note opens with its name selected above the text, ready to be typed over.
+  const [newNote, setNewNote] = useState<string | null>(null);
+  const newNoteShown = useCallback(() => setNewNote(null), []);
+
   // an opened note is searchable right away, even if discovery ran before it was created.
   useEffect(() => {
     if (path && searchIndex) searchIndex.refresh(path).catch(() => undefined);
@@ -220,6 +238,7 @@ function useWorkspaceState({
     });
     if (!created) return 'The note could not be created.';
     refreshNotes();
+    setNewNote(created);
     open(created);
     return null;
   }, [newNoteSettings, open, path, refreshNotes, vault.id]);
@@ -248,20 +267,23 @@ function useWorkspaceState({
   );
 
   /**
-   * shows the open note at its new path after its file was renamed. the new listing removes the
-   * old path from search and moves its bookmark, which follows the file's identity. the history
-   * renames the note at once, so back and forward reach it at its new path.
+   * records that the editor renamed the note at `from` to `to`. the history renames the note at
+   * once, so back and forward reach it at its new path, and the new listing removes the old path
+   * from search and moves its bookmark, which follows the file's identity. the note stays on
+   * screen at its new path in the same editor, unless another note was opened meanwhile.
    */
   const renameInHistory = navigation.rename;
   const noteRenamed = useCallback(
-    (to: string) => {
+    (from: string, to: string) => {
+      renameInHistory(from, to);
+      refreshNotes();
+      if (pathNow.current !== from) return;
       dailyNotes.navigateAway();
-      if (path) renameInHistory(path, to);
+      setRenamedTo(to);
       setSelected(to);
       setDayProblem(null);
-      refreshNotes();
     },
-    [path, refreshNotes, renameInHistory],
+    [refreshNotes, renameInHistory],
   );
 
   // the ipad menu bar runs the same actions as the toolbar (ios/MainMenu.swift).
@@ -316,6 +338,9 @@ function useWorkspaceState({
     today,
     civilToday,
     path,
+    editorKey: nextSlot.key,
+    newNote,
+    newNoteShown,
     selectedDay,
     dayProblem,
     needsRecovery,
