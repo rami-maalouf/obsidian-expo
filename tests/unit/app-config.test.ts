@@ -31,11 +31,11 @@ const devClientScheme = (config: ReturnType<typeof configFor>) =>
 describe('app variants', () => {
   test('without APP_VARIANT the config is the release app from app.json', () => {
     const config = configFor(undefined);
-    expect(config.name).toBe(base.name);
+    expect(config.name).toBe('Sapphire');
     expect(config.scheme).toBe(base.scheme);
     expect(config.ios?.bundleIdentifier).toBe(base.ios.bundleIdentifier);
-    expect(config.ios?.icon).toBe('./assets/icons/app.icon');
-    expect(config.icon).toBe('./assets/images/icon.png');
+    expect(config.ios?.icon).toBe('./assets/brand/sapphire.png');
+    expect(config.icon).toBe('./assets/brand/sapphire.png');
     expect(devClientScheme(config)).toEqual({ addGeneratedScheme: true });
   });
 
@@ -54,7 +54,7 @@ describe('app variants', () => {
     const config = configFor('preview');
     expect(config.name).toBe(`${base.name} Preview`);
     expect(config.ios?.bundleIdentifier).toBe(`${base.ios.bundleIdentifier}.preview`);
-    expect(config.ios?.icon).toBe('./assets/icons/app.icon');
+    expect(config.ios?.icon).toBe('./assets/brand/sapphire.png');
     expect(devClientScheme(config)).toEqual({ addGeneratedScheme: false });
   });
 

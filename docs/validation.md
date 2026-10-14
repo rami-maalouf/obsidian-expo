@@ -221,3 +221,10 @@ Not run: the iOS Maestro flows, dark appearance, an iPad, VoiceOver itself, and 
 ## Preliminary search benchmark
 
 `bun scripts/benchmark-search.ts` on L1 (linux x64, Bun 1.3.14, SQLite 3.53.0), October 8, 2026: 10,000 generated notes, 44,317,263 bytes. Discovery 81 ms; full content indexing 1,810 ms; 100 queries, p50 10.86 ms and p95 34.9 ms for the search function alone. This excludes rendering, debounce, and the native bridge, and it is not a device measurement; it does not qualify the "warm indexed search p95 ≤ 100 ms" target.
+# Sapphire branding and TestFlight preparation (October 14, 2026)
+
+The user selected the original turquoise hexagonal Sapphire Prism concept and the display name Sapphire. The store listing name is Sapphire: Markdown Editor, since Apple rejected the standalone name as already used. The approved original is committed at `assets/brand/sapphire-original.png`; `assets/brand/sapphire.png` is its 1024 px resize, with no alpha channel. The app configuration uses it for the release and preview icons, splash screen, Android adaptive foreground, and favicon. The development app retains its separate amber icon. Bundle identifiers, URL schemes, and the EAS project remain unchanged. Submission targets the existing App Store Connect record `6820671858`.
+
+On macOS with Bun 1.3.14, frozen installation, reference validation, TypeScript, ESLint, all 229 tests, and production JavaScript exports for iOS, Android, and web passed. Expo's online dependency check recommends newer SDK 58 patch versions; the installed SDK's offline compatibility check passes, and the repository's pinned dependencies were retained. Expo prebuild generated the Sapphire display name and an opaque 1024 px iOS app icon. These checks do not establish native runtime behavior, physical-device performance, iCloud safety, or external TestFlight availability.
+
+Production build `653ec675-4131-46df-9a8f-365cad1f9b6b` was requested as version 1.0.0 (4) from the branding changes in this working tree over `ac84d8a`. Build completion, archive inspection, upload processing, and the Public Beta group's availability must be verified separately.
