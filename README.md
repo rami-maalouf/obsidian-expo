@@ -161,11 +161,13 @@ scripts/ci/simulator-smoke.sh "iPad Pro 13" "$app" smoke/ipad \
 
 The smoke test copies `tests/fixtures/vault-basic` into the app's Documents folder, launches the app with a Simulator-only `-VaultTestFolder vault` argument, and checks that today's note was created from the built-in template, that every other fixture file is byte-identical, and that the search index found the notes. After `new-rename.yaml`, it checks that the renamed note holds the text typed before and right after the rename.
 
-A preliminary search benchmark over the generated 10,000-note vault runs on any machine with Bun; it does not qualify device performance:
+A repeatable host benchmark over a generated 10,000-note vault measures search, incremental indexing, and explorer sorting. It does not qualify device performance:
 
 ```sh
-bun scripts/benchmark-search.ts
+bun run benchmark:host --output .fixtures/benchmarks/baseline.json
 ```
+
+See [performance benchmarks](docs/performance-benchmarks.md) for stress runs, before/after comparisons, raw samples, and the separate physical-device qualification protocol.
 
 ## Test fixtures
 
