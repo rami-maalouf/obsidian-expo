@@ -14,13 +14,13 @@ For cloud work, start with [agent instructions](AGENTS.md), [project context](do
 
 The [technology-options research](docs/technology-options-2026-10.md) and its version snapshot are included alongside the plan. The [transfer inventory](docs/PLANNING_TRANSFER.md) accounts for all material brought over from the planning project. Feature implementation targets iOS (iPhone/iPad) and, since October 9, 2026, Android; web starter checks do not expand that scope.
 
-- Expo `58.0.7` and Expo Router `58.0.17`
-- React `19.3.0` and React Native `0.88.0-rc.4`
+- Expo `58.0.21` and Expo Router `58.0.28`
+- React `19.3.0` and React Native `0.88.1`
 - TypeScript with strict checking
-- Bun `1.3.14`, with dependency versions recorded in `bun.lock`
+- Bun `1.4.4`, with dependency versions recorded in `bun.lock`
 - Node.js 24.3 or newer on the 24 LTS line, or Node.js 26
 
-SDK 58 is in beta as of October 8, 2026. See the [release notes](https://expo.dev/changelog/sdk-58-beta) and [SDK 58 documentation](https://docs.expo.dev/versions/v58.0.0/).
+SDK 58 is stable. See the [release notes](https://expo.dev/changelog/sdk-58) and [SDK 58 documentation](https://docs.expo.dev/versions/v58.0.0/).
 
 ## Run locally
 

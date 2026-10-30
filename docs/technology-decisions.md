@@ -16,7 +16,11 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. The v
 
 **Validation:** Release Simulator builds of the full app on M1. On iPhone and iPad Simulators, the JavaScript app called the native vault module (open a vault, list, read, and create notes, read and write app data), mounted the native editor view, received its status events, and ran SQLite FTS5 through `expo-sqlite`; see [validation](validation.md). The Live Markdown Worklets constraint does not apply, because T05 uses a native `UITextView`.
 
-**Limits:** React Native is a release candidate in this SDK, so the group must be rechecked when SDK 58 is final. Device builds are not made (no signing in CI).
+**October 30 update:** use the stable SDK 58 compatibility set: `expo@58.0.21`, `react-native@0.88.1`, `expo-router@58.0.28`, and `@expo/ui@58.0.25`. `bunx expo install --check` selects the remaining native package versions. The existing Router accessibility patch remains necessary in 58.0.28 and is regenerated for that version. Register the config plugins requested by the upgraded packages: font, image, sqlite, status bar, and web browser.
+
+**Tooling:** Bun and its types are 1.4.4, including CI. Drawer layout is 4.2.12. Keep React/React DOM 19.3.0, Worklets 0.13.0, and TypeScript 6.0.3 because those are the versions supported by the SDK's compatibility check. ESLint 10.14.0 was tested and fails while loading Expo's React lint rules (`contextOrFilename.getFilename is not a function`); retain the latest compatible ESLint 9.39.5. Do not bypass compatibility checks to install incompatible latest tags.
+
+**Limits:** device builds are not made in CI (no signing). Native and physical-device validation remain distinct from JavaScript checks.
 
 ## T02. Host tools, Swift, and TypeScript
 
@@ -26,7 +30,7 @@ The cloud workers that implement this plan run Linux and cannot run Xcode. The v
 
 | Tool | Version | Where |
 | --- | --- | --- |
-| Bun | 1.3.14 (`packageManager` in `package.json`) | L1 and both workflows |
+| Bun | 1.4.4 (`packageManager` in `package.json`) | local tooling and both workflows |
 | Node | 24 (`actions/setup-node`) | CI; L1 has 22.22.0 |
 | TypeScript | 6.0.3 (`~6.0.3`) | Type check of the app, tests, and scripts |
 | Xcode and Swift | Xcode 26.6 (17F113), Swift 6.3.3; iOS 26.4 Simulator runtime | M1, the newest stable Xcode on the runner |
@@ -141,7 +145,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Menu bar:** on iPadOS 26, `UIMainMenuSystem` adds the app's commands to the system menu bar (`modules/vault/ios/MainMenu.swift`): New Note (⌘N) and Note Settings (⌘,) in File, Files (⌃⌘S) and Calendar (⌥⌘I) in View, and a Go menu with Back (⌘[), Forward (⌘]), Today's Note (⌘T), and Search Notes (⇧⌘F). Back and Forward were added on October 10, 2026, with the note history. The commands are implemented on `UIApplication`, which is always in the responder chain, and reach JavaScript as module events that run the same actions as the toolbar.
 
-**Expo Router patch:** `patches/expo-router@58.0.17.patch`, applied by Bun's `patchedDependencies` at install, fixes the iOS bottom toolbar's accessibility. In `expo-router@58.0.17`, the native `RouterToolbarItem` view stored the `accessibilityLabel` and `accessibilityHint` props on itself, but the `UIBarButtonItem` reads `routerAccessibilityLabel` and `routerAccessibilityHint`, which nothing set. VoiceOver therefore read each button by its SF Symbol's name, for example "compose" for New note. The patch sets those two properties. The navigation bar's buttons kept their labels (Files, More, Calendar) before and after the patch. 58.0.17 is the newest SDK 58 release, and Expo's main branch had the same code on October 10, 2026. Alternatives: a text `label` on each button, which would also change what the toolbar shows; or no labels until an upstream fix. Remove the patch when an Expo Router release sets the item's properties. Validation: in the iPhone 18 Pro Simulator (M2 in [validation](validation.md#environments)), the accessibility tree named the buttons Back, Forward, Search, and New note.
+**Expo Router patch:** `patches/expo-router@58.0.28.patch`, applied by Bun's `patchedDependencies` at install, fixes the iOS bottom toolbar's accessibility. In `expo-router@58.0.17`, the native `RouterToolbarItem` view stored the `accessibilityLabel` and `accessibilityHint` props on itself, but the `UIBarButtonItem` reads `routerAccessibilityLabel` and `routerAccessibilityHint`, which nothing set. VoiceOver therefore read each button by its SF Symbol's name, for example "compose" for New note. The patch sets those two properties. The navigation bar's buttons kept their labels (Files, More, Calendar) before and after the patch. 58.0.17 is the newest SDK 58 release, and Expo's main branch had the same code on October 10, 2026. Alternatives: a text `label` on each button, which would also change what the toolbar shows; or no labels until an upstream fix. Remove the patch when an Expo Router release sets the item's properties. Validation: in the iPhone 18 Pro Simulator (M2 in [validation](validation.md#environments)), the accessibility tree named the buttons Back, Forward, Search, and New note.
 
 **Limits:** closing the keyboard when a panel opens has not run on a Simulator or a device. The see-through navigation bar has been seen only in the iOS 27.0 Simulator on an iPhone; it has not been seen on an iPad or a device. While the keyboard is up it covers the bottom toolbar, so Back, Forward, Search, and New Note need the keyboard closed first, as in Safari. VoiceOver order with open panels, keyboard focus, Stage Manager window sizes, and the menu bar and its shortcuts have not been checked on a device; the Simulator tests do not open the menu bar.
 
@@ -169,7 +173,7 @@ Runtime evidence: on iPhone and iPad Simulators, JavaScript called the module's 
 
 **Choice:** Bun's built-in test runner (`bun test`), with `@types/bun@1.3.14` as a development dependency. `bun run test` is the common entry point, and `bun run check` runs it.
 
-**Version:** Bun 1.3.14, the version pinned by `packageManager` in `package.json` and used by CI. `@types/bun` is pinned to the same version so the declared APIs match the runtime.
+**Version:** Bun 1.4.4, pinned by `packageManager` and CI. `@types/bun` uses the same version so declared APIs match the runtime.
 
 **Alternatives:** the Expo Jest setup (`jest-expo`, Jest, React Native Testing Library). It remains the planned choice for component and Router tests when those tests exist. It is not needed for pure logic, and adding it now would add a transform and mock layer with no tests to use it.
 
