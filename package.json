@@ -48,6 +48,8 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
     "test": "bun test",
+    "benchmark:host": "bun scripts/benchmark-search.ts",
+    "benchmark:stress": "bun scripts/benchmark-search.ts --stress",
     "check:references": "bun scripts/check-references.mjs",
     "check": "bun run check:references && bun run typecheck && bun run lint && bun run test",
     "export": "expo export --platform all",
