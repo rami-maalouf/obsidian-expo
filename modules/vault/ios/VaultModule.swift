@@ -62,6 +62,7 @@ public class VaultModule: Module {
     AsyncFunction("listVaults") { () -> [[String: Any]] in
       // the app's javascript is running: its first call is for the vault list.
       LaunchTiming.mark("javascript asked for the vaults")
+      try self.registerExploreFixture()
       return try self.runtime.registry.records().map { ["id": $0.id, "name": $0.name] }
     }.runOnQueue(VaultModule.fileQueue)
 
@@ -343,6 +344,30 @@ public class VaultModule: Module {
       throw VaultException("The draft journal could not be created.")
     }
     return journal
+  }
+
+  private func registerExploreFixture() throws {
+    #if targetEnvironment(simulator)
+      let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+      guard let folder = try ExploreFixture.prepare(in: documents,
+        appIdentifier: Bundle.main.bundleIdentifier, isSimulator: true, welcome: {
+          guard let bundleURL = Bundle.main.url(forResource: "VaultExploreFixtures", withExtension: "bundle"),
+            let bundle = Bundle(url: bundleURL),
+            let note = bundle.url(forResource: "Welcome", withExtension: "txt") else {
+            throw VaultException("The Explore build is missing its synthetic fixture resource.")
+          }
+          return try Data(contentsOf: note)
+        }) else { return }
+      let record = try runtime.registry.add(url: folder)
+      let dailyKey = "vault:\(record.id):daily-notes"
+      if try runtime.appData.read(dailyKey) == nil {
+        try runtime.appData.write(dailyKey, #"{"folder":"Daily","filenameFormat":"YYYY-MM-DD","templatePath":""}"#)
+      }
+      let historyKey = "vault:\(record.id):navigation"
+      if try runtime.appData.read(historyKey) == nil {
+        try runtime.appData.write(historyKey, #"{"version":1,"tabs":[{"entries":[{"path":"Welcome.md"}],"index":0}],"active":0}"#)
+      }
+    #endif
   }
 
   // MARK: - picker
