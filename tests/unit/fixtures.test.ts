@@ -9,6 +9,11 @@ const read = (path: string) => readFileSync(join(VAULT, path));
 const utf8 = new TextDecoder('utf-8', { fatal: true });
 
 describe('vault-basic fixture', () => {
+  test('the ios explore resource matches the public fixture', () => {
+    const resource = join(import.meta.dir, '../../modules/vault/ios/Resources/Welcome.txt');
+    expect(readFileSync(resource)).toEqual(read('Welcome.md'));
+  });
+
   test('bytes match the committed manifest', () => {
     const recorded = JSON.parse(readFileSync(manifestPathFor(VAULT), 'utf8')) as VaultManifest;
     const actual = buildManifest(VAULT);

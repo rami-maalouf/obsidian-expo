@@ -8,6 +8,8 @@ The [combined specification and plan](docs/plans/2026-10-08-0149-feat-native-vau
 
 [Technology decisions](docs/technology-decisions.md) records library choices made so far, and [validation](docs/validation.md) records evidence and open gaps for each implementation unit.
 
+[Expo Explore](docs/expo-explore.md) configures isolated simulator captures and visual before/after reports for the note, search, and settings screens.
+
 For cloud work, start with [agent instructions](AGENTS.md), [project context](docs/PROJECT_CONTEXT.md), and the [cloud development guide](docs/CLOUD_DEVELOPMENT.md). They include the user request summary, Compound Engineering plan provenance, setup commands, reference inventory, and platform limits. No local folder or previous conversation is required.
 
 ## Toolchain

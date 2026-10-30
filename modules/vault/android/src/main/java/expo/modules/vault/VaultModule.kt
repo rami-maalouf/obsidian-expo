@@ -21,6 +21,7 @@ import expo.modules.vault.core.DraftRecord
 import expo.modules.vault.core.DocumentSession
 import expo.modules.vault.core.DocumentStatus
 import expo.modules.vault.core.DocumentTree
+import expo.modules.vault.core.ExploreFixture
 import expo.modules.vault.core.FileDocumentTree
 import expo.modules.vault.core.FileRevision
 import expo.modules.vault.core.FileState
@@ -113,6 +114,7 @@ class VaultModule : Module() {
     AsyncFunction("listVaults") {
       ready()
       registerTestFolder()
+      registerExploreFixture()
       VaultRuntime.registry.records().map { mapOf("id" to it.id, "name" to it.name) }
     }.runOnQueue(fileScope)
 
@@ -407,6 +409,23 @@ class VaultModule : Module() {
   }
 
   // MARK: - emulator test folder
+
+  private fun registerExploreFixture() {
+    if (!isEmulator() || context.packageName != "com.ramimaalouf.obsidianexpo.explore") return
+    val base = context.getExternalFilesDir(null) ?: throw VaultException("The fixture storage is unavailable.")
+    val folder = ExploreFixture.prepare(base, context.packageName, true) {
+      context.assets.open("Welcome.md").use { it.readBytes() }
+    } ?: return
+    val record = VaultRuntime.registry.add(Uri.fromFile(folder).toString(), folder.name)
+    val dailyKey = "vault:${record.id}:daily-notes"
+    if (VaultRuntime.appData.read(dailyKey) == null) {
+      VaultRuntime.appData.write(dailyKey, """{"folder":"Daily","filenameFormat":"YYYY-MM-DD","templatePath":""}""")
+    }
+    val historyKey = "vault:${record.id}:navigation"
+    if (VaultRuntime.appData.read(historyKey) == null) {
+      VaultRuntime.appData.write(historyKey, """{"version":1,"tabs":[{"entries":[{"path":"Welcome.md"}],"index":0}],"active":0}""")
+    }
+  }
 
   /**
    * emulator-only test hook, like the ios simulator's `-VaultTestFolder vault`: a launch extra

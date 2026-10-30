@@ -1,0 +1,34 @@
+mode: deterministic
+app:
+  name: Sapphire Explore
+  platform: ios
+  bundleId: com.ramimaalouf.obsidianexpo.explore
+  easProfile: explore
+  scheme: obsidianexpo-explore
+navigation:
+  provider: expo-router
+device:
+  name: iPhone 17
+platforms:
+  ios: {}
+  android:
+    device: pixel_7
+    bundleId: com.ramimaalouf.obsidianexpo.explore
+    easProfile: explore
+exploration:
+  scope: changes
+capture:
+  maxMinutes: 30
+  maxActions: 500
+  appearance: auto
+  launch: screenshot
+  reset: root-link
+  unattributed: publish
+setup:
+  - action: open
+    url: obsidianexpo-explore:///
+    ready:
+      identifier: note-status:opened
+report:
+  preview:
+    hosting: eas

@@ -67,12 +67,22 @@ describe('app variants', () => {
     }
   });
 
+  test('the explore build has isolated storage and never downloads preview or production updates', () => {
+    const config = configFor('explore', { eas: { projectId: '00000000-0000-4000-8000-000000000000' } });
+    expect(config.name).toBe(`${base.name} Explore`);
+    expect(config.scheme).toBe(`${base.scheme}-explore`);
+    expect(config.ios?.bundleIdentifier).toBe(`${base.ios.bundleIdentifier}.explore`);
+    expect(config.android?.package).toBe(`${base.android.package}.explore`);
+    expect(config.updates?.enabled).toBe(false);
+    expect(devClientScheme(config)).toEqual({ addGeneratedScheme: false });
+  });
+
   test('an unknown variant fails instead of building the release app by mistake', () => {
     expect(() => configFor('staging')).toThrow('unknown APP_VARIANT "staging"');
   });
 
   test('every icon path in every variant exists', () => {
-    for (const variant of ['development', 'preview', 'production']) {
+    for (const variant of ['development', 'preview', 'production', 'explore']) {
       const config = configFor(variant);
       for (const path of [config.icon, config.ios?.icon]) {
         expect(typeof path === 'string' && existsSync(join(root, path))).toBe(true);

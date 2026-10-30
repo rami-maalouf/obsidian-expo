@@ -5,11 +5,11 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  *
  * eas.json sets APP_VARIANT for the development and preview build profiles; without it, the
  * config describes the release app. each variant has its own name, bundle identifier, and URL
- * scheme, so all three can be installed on one iPhone side by side. the development variant
+ * scheme, so the builds can be installed side by side. the development variant
  * also has its own icon. `app.json` stays the static base, so `eas init` can still write the
  * project ID there.
  */
-type Variant = 'development' | 'preview' | 'production';
+type Variant = 'development' | 'preview' | 'production' | 'explore';
 
 const VARIANTS: Record<Variant, { label?: string; suffix: string; icon?: string; iosIcon?: string }> = {
   development: {
@@ -19,6 +19,7 @@ const VARIANTS: Record<Variant, { label?: string; suffix: string; icon?: string;
     iosIcon: './assets/icons/app-dev.icon',
   },
   preview: { label: 'Preview', suffix: 'preview' },
+  explore: { label: 'Explore', suffix: 'explore' },
   production: { suffix: '' },
 };
 
@@ -27,7 +28,7 @@ function appVariant(): Variant {
   if (value in VARIANTS) {
     return value as Variant;
   }
-  throw new Error(`unknown APP_VARIANT "${value}"; use development, preview, or production`);
+  throw new Error(`unknown APP_VARIANT "${value}"; use development, preview, production, or explore`);
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => {
@@ -52,12 +53,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       icon: variant.iosIcon ?? ios.icon,
     },
     android: { ...android, package: withSuffix(android.package, '.') },
-    updates: typeof projectId === 'string' ? { ...config.updates, url: `https://u.expo.dev/${projectId}` } : config.updates,
+    updates: variant === VARIANTS.explore
+      ? { ...config.updates, enabled: false }
+      : typeof projectId === 'string' ? { ...config.updates, url: `https://u.expo.dev/${projectId}` } : config.updates,
     plugins: [
       ...(config.plugins ?? []),
-      // the preview app does not register the dev client's scheme, so QR codes from
+      // the preview and explore apps do not register the dev client's scheme, so QR codes from
       // `expo start` open the development build rather than the preview app.
-      ['expo-dev-client', { addGeneratedScheme: variant !== VARIANTS.preview }],
+      ['expo-dev-client', { addGeneratedScheme: variant !== VARIANTS.preview && variant !== VARIANTS.explore }],
     ],
   };
 };
