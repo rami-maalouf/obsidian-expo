@@ -230,3 +230,11 @@ On macOS with Bun 1.3.14, frozen installation, reference validation, TypeScript,
 Production build `653ec675-4131-46df-9a8f-365cad1f9b6b` completed as version 1.0.0 (4), built with Xcode 27.0 from the branding changes in this working tree over `ac84d8a` (committed afterward as `528e94e`). The signed archive confirms display name Sapphire, bundle identifier `com.ramimaalouf.obsidianexpo`, build 4, and the iPhoneOS platform. Its packaged icon was decoded and visually checked against the approved hexagon. App Store Connect saved the name Sapphire: Markdown Editor and updated beta and listing descriptions.
 
 Submission `676d2238-dbfd-4126-97d4-5365cf771222` finished. Apple reports build 4 as `VALID`, `IN_BETA_TESTING` internally, and `BETA_APPROVED` externally. The build was assigned to the existing Public Beta group and submitted for beta review with automatic tester notification enabled; the group's build list confirms Approved. The public invitation at https://testflight.apple.com/join/2MvTg1jW displays Sapphire: Markdown Editor and offers View in TestFlight. Installation on a physical device was not exercised during this branding task. The existing minimum OS remains iOS/iPadOS 27.0. No public App Store release was submitted.
+
+## SDK 58 compatibility update: October 30, 2026
+
+The current package group uses Expo 58.0.21, React Native 0.88.1, Router 58.0.28, and Bun 1.4.4. Both GitHub workflows and the shared EAS build profile now pin Bun 1.4.4; earlier environment rows above describe the versions used for their dated observations. The accessibility patch is now `patches/expo-router@58.0.28.patch`; the upstream bug remains, and Bun regenerated the same change for the new package.
+
+Frozen installation, the complete check suite (229 tests, types, lint, and references), online Expo compatibility, all 20 Expo Doctor checks, and iOS/Android/web exports passed. A Release iOS Simulator build compiled with Xcode 27 and launched on iOS 27 with only the public fixture vault. The rendered note and toolbar were inspected. No physical-device, iCloud, Android native, or EAS cloud build result is claimed for this update.
+
+Native dependency and config-plugin changes alter the fingerprint runtime. Rebuild and install each affected variant before sending it updates from this dependency set. Existing binaries remain on their previous runtime.
