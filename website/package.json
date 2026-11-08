@@ -9,5 +9,8 @@
   "dependencies": {
     "@notionhq/client": "^5.6.0",
     "three": "0.187.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6"
   }
 }
