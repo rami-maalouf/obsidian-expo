@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Sapphire: simple &amp; performant md editor</title>
+    <meta name="description" content="Sapphire is a simple and performant Markdown editor for your existing vault. Open it in place, write today's note, and search thousands of files. Private beta on iPhone, Android waitlist open." />
+    <meta name="theme-color" content="#040506" />
+    <meta name="color-scheme" content="dark" />
+    <link rel="canonical" href="https://sapphire.orbitlabs.studio/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://sapphire.orbitlabs.studio/" />
+    <meta property="og:title" content="Sapphire: simple &amp; performant md editor" />
+    <meta property="og:description" content="A simple and performant Markdown editor for the vault you already have. Private beta on iPhone." />
+    <meta property="og:image" content="https://sapphire.orbitlabs.studio/share.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="icon" type="image/png" href="./img/icon-64.png" />
+    <link rel="apple-touch-icon" href="./img/icon-180.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <div class="bar-inner">
+        <a class="brand" href="#top" aria-label="Sapphire, top of the page">
+          <img src="./img/mark.png" alt="" width="26" height="26" />
+          <span>Sapphire</span>
+        </a>
+        <nav aria-label="Sections">
+          <a href="#why">Why</a>
+          <a href="https://github.com/rami-maalouf/obsidian-expo">GitHub</a>
+        </nav>
+        <button type="button" class="button primary small" data-waitlist-open data-platform="iOS">Join the beta</button>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="stage" aria-hidden="true">
+          <canvas id="gem"></canvas>
+        </div>
+
+        <div class="hero-copy" data-hero-copy>
+          <p class="badge reveal" style="--d: 0"><span class="badge-dot"></span>Private beta on iPhone</p>
+          <h1 id="hero-title" class="reveal" style="--d: 1">Simple &amp; performant<br />md editor.</h1>
+          <p class="lead reveal" style="--d: 2">
+            Works like Obsidian, on the vault you already have. Daily notes, templates,
+            <span class="nowrap">[[wikilinks]]</span>, bookmarks, and fast search.
+          </p>
+          <div class="actions reveal" style="--d: 3">
+            <button type="button" class="button primary" data-waitlist-open data-platform="iOS">
+              <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.6c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.77-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.88 1.15 9.13.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.77.74 2.98.72 1.24-.02 2.02-1.12 2.77-2.23.88-1.28 1.24-2.52 1.26-2.59-.03-.01-2.4-.92-2.42-3.64ZM14.1 5.86c.63-.77 1.06-1.83.94-2.89-.91.04-2.02.61-2.67 1.37-.58.67-1.1 1.76-.96 2.8 1.02.08 2.06-.52 2.69-1.28Z" /></svg>
+              Join the iOS beta
+            </button>
+            <button type="button" class="button dark" data-waitlist-open data-platform="Android">
+              <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.6 9.48 19.44 6.3a.38.38 0 0 0-.66-.38l-1.87 3.23A11.4 11.4 0 0 0 12 8.1c-1.77 0-3.43.37-4.91 1.05L5.22 5.92a.38.38 0 0 0-.66.38L6.4 9.48C3.3 11.18 1.2 14.32 1 18h22c-.2-3.68-2.3-6.82-5.4-8.52ZM7 15.25a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Zm10 0a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5Z" /></svg>
+              Android waitlist
+            </button>
+          </div>
+        </div>
+
+        <div class="stone-slot" data-stone-slot aria-hidden="true">
+          <img class="stone-still" src="./img/stone.png" alt="" width="640" height="640" />
+        </div>
+
+      </section>
+
+      <section class="statement" aria-label="Why Sapphire exists">
+        <p class="lit" data-lit>Open the app. Land on today. Write.</p>
+      </section>
+
+      <section id="why" class="why" aria-labelledby="why-title">
+        <h2 id="why-title" class="observe">Feels like Obsidian.</h2>
+        <div class="cards">
+          <article class="card observe" style="--d: 1">
+            <div class="card-art" aria-hidden="true">
+              <div class="week">
+                <span>M</span><span>T</span><span>W</span><span class="on">T</span><span>F</span><span>S</span><span>S</span>
+              </div>
+            </div>
+            <h3>Daily notes</h3>
+            <p>Opens today, from your template.</p>
+          </article>
+          <article class="card observe" style="--d: 2">
+            <div class="card-art" aria-hidden="true">
+              <div class="links">
+                <span class="links-typed">[[Proj</span>
+                <span class="links-hit"><b>Proj</b>ects/Sapphire</span>
+                <span class="links-hit dim"><b>Proj</b>ect ideas</span>
+              </div>
+            </div>
+            <h3>Wikilinks</h3>
+            <p>Type [[ to link any note.</p>
+          </article>
+          <article class="card observe" style="--d: 3">
+            <div class="card-art" aria-hidden="true">
+              <div class="search">
+                <span class="search-field"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" /><path d="m10.5 10.5 3 3" /></svg>standup</span>
+                <span class="search-hit"><b>standup</b> notes, week 44</span>
+                <span class="search-hit dim">moved the <b>standup</b> to 10</span>
+              </div>
+            </div>
+            <h3>Search</h3>
+            <p>Thousands of notes, on your device.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="close" aria-labelledby="close-title">
+        <img class="close-stone observe" src="./img/stone.png" alt="" width="320" height="320" />
+        <h2 id="close-title" class="observe" style="--d: 1">Write where the notes live.</h2>
+        <div class="actions observe" style="--d: 3">
+          <button type="button" class="button primary" data-waitlist-open data-platform="iOS">Join the iOS beta</button>
+          <button type="button" class="button dark" data-waitlist-open data-platform="Android">Android waitlist</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>© 2026 Sapphire · Rami Maalouf</span>
+      <nav aria-label="More">
+        <a href="/privacy">Privacy</a>
+        <a href="/support">Support</a>
+        <a href="https://github.com/rami-maalouf/obsidian-expo">GitHub</a>
+      </nav>
+    </footer>
+
+    <dialog class="waitlist" id="waitlist" aria-labelledby="waitlist-title">
+      <form method="dialog" class="waitlist-sheet">
+        <button type="submit" class="waitlist-x" aria-label="Close" value="cancel">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+        </button>
+        <div class="waitlist-idle" data-panel="form">
+          <p class="waitlist-kicker" data-platform-label>iOS beta</p>
+          <h2 id="waitlist-title">Join the waitlist</h2>
+          <p class="waitlist-lead" data-platform-lead>
+            Leave your email to get the TestFlight invite.
+          </p>
+          <div class="platform-switch" role="group" aria-label="Platform">
+            <button type="button" class="platform is-active" data-set-platform="iOS">iOS</button>
+            <button type="button" class="platform" data-set-platform="Android">Android</button>
+          </div>
+          <label class="field">
+            <span class="sr-only">Email</span>
+            <input
+              type="email"
+              name="email"
+              autocomplete="email"
+              required
+              placeholder="you@example.com"
+              data-email
+            />
+          </label>
+          <button type="button" class="button primary waitlist-submit" data-submit>
+            Join waitlist
+          </button>
+          <p class="waitlist-error" data-error hidden></p>
+        </div>
+        <div class="waitlist-done" data-panel="done" hidden>
+          <p class="waitlist-kicker">You're on the list</p>
+          <h2 data-done-title>You're in.</h2>
+          <p class="waitlist-lead" data-done-lead></p>
+          <a
+            class="button primary"
+            data-testflight
+            href="https://testflight.apple.com/join/2MvTg1jW"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden
+          >
+            Open in TestFlight
+            <svg class="arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 11 11 5M6 5h5v5" /></svg>
+          </a>
+          <button type="submit" class="button dark" value="cancel">Close</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>
