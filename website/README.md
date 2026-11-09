@@ -10,7 +10,7 @@ Vercel edge function for the waitlist.
 
 | File | What it is |
 |---|---|
-| `src/index.html` | The page: cave hero with the raw stone, the lit statement, why Sapphire, how it works, the close, waitlist dialog. |
+| `src/index.html` | The page: cave hero with the raw stone, the lit statement, the close, waitlist dialog. |
 | `src/privacy.html`, `src/support.html` | Privacy and support, at `/privacy` and `/support`. |
 | `src/styles.css` | The look: near-black, grey cave rock, one raw teal stone, big quiet type. |
 | `src/main.js` | Entrances, the word-by-word statement, waitlist flow (`/?join=ios` or `/?join=android` opens it), and deferred load of the scene. |
