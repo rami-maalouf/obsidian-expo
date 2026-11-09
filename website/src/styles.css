@@ -339,7 +339,7 @@ h1 {
 .statement {
   max-width: 64rem;
   margin: 0 auto;
-  padding: clamp(6rem, 13vw, 10rem) var(--gutter) clamp(2rem, 4vw, 3rem);
+  padding: clamp(2.5rem, 5vw, 4rem) var(--gutter) 0;
 }
 .lit {
   margin: 0;
@@ -386,7 +386,7 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: clamp(4rem, 8vw, 6rem);
+  padding-top: clamp(1rem, 2vw, 1.5rem);
   padding-bottom: clamp(6rem, 12vw, 9rem);
 }
 .close-stone {
