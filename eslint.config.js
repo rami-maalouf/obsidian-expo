@@ -3,5 +3,6 @@ const expoConfig = require('eslint-config-expo/flat');
 
 module.exports = defineConfig([
   expoConfig,
-  { ignores: ['dist/**', '.expo/**'] },
+  // the website is its own package with its own dependencies
+  { ignores: ['dist/**', '.expo/**', 'website/**'] },
 ]);
