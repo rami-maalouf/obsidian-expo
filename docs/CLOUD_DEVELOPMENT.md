@@ -2,7 +2,7 @@
 
 ## Start from a checkout
 
-Run commands from the repository root with Git, Bun 1.3.14, and Node.js 24.3 or later on the 24 LTS line. CI uses Node.js 24 and Ubuntu 24.04. Dependency installation and public documentation need network access.
+Run commands from the repository root with Git, Bun 1.4.4, and Node.js 24.3 or later on the 24 LTS line. CI uses Node.js 24 and Ubuntu 24.04. Dependency installation and public documentation need network access.
 
 ```sh
 bun install --frozen-lockfile
