@@ -33,3 +33,23 @@ These repository files are the project context. No previous conversation, siblin
 Run `bun install --frozen-lockfile`, `bun run check`, and `bunx expo install --check`. Run `bun run export` when changing code, dependencies, or build configuration. Run `modules/vault/android/core-tests/gradlew -p modules/vault/android/core-tests test` when changing the Kotlin vault core; the `android` workflow compiles the app and runs it on an emulator. Documentation changes need the reference check and diff review. Add behavioral tests with feature implementation; the current starter has no completed vault/editor feature tests.
 
 Record the environment and distinguish JS bundle export, native compilation, simulator interaction, physical-device performance, and multi-device iCloud tests. One passing category does not prove the others.
+
+## Cloud simulator (Expo Simulators)
+
+`bun run ios:cloud` runs this app on an Expo Simulators cloud device in the same way as `bun run ios`:
+
+- It makes the same Debug build. While the native fingerprint does not change, it reuses the build.
+- It runs Metro on its own port (never 8081) behind Expo's tunnel and connects the dev client, so Fast Refresh works.
+- It opens the browser preview.
+
+Ctrl+C stops Metro and the cloud device.
+
+Agents:
+
+1. Run `bun run ios:cloud -- --detach`.
+2. Drive the device with `cloudsim exec bunx agent-device@latest snapshot -i` and `press @eN`. Take screenshots with `cloudsim shot <png>`.
+3. Always finish with `cloudsim stop`. Sessions are billed.
+
+`cloudsim doctor` checks the setup. See `~/Documents/code/cloudsim/README.md` and the `eas-simulator` skill.
+
+Blocked for now: `ios.deploymentTarget` is 27.0 (LapermEditor needs iOS 27). The Expo Simulators iPhones run iOS 26.5, so the install fails. cloudsim reports this and stops the device. The script works once Expo offers iOS 27 devices.
