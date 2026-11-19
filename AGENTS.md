@@ -53,3 +53,9 @@ Agents:
 `cloudsim doctor` checks the setup. See `~/Documents/code/cloudsim/README.md` and the `eas-simulator` skill.
 
 Blocked for now: `ios.deploymentTarget` is 27.0 (LapermEditor needs iOS 27). The Expo Simulators iPhones run iOS 26.5, so the install fails. cloudsim reports this and stops the device. The script works once Expo offers iOS 27 devices.
+
+## Over-the-air updates (EAS Update)
+
+Builds get JavaScript and asset updates from `https://u.expo.dev/34b038c2-b880-4e9a-b790-38a7441e6486`. The `preview` build profile listens on the `preview` channel, and `production` listens on `production`. To publish, run `bun run update:preview` (the preview variant, with `APP_VARIANT=preview`) or `bun run update:production`.
+
+The runtime version uses the `fingerprint` policy, so an update reaches only builds with the same native code. A native change needs new builds, and updates published before it do not reach them. Each variant has its own bundle identifier, so publish with the variant that matches the build.

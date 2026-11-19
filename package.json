@@ -45,6 +45,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "ios:cloud": "cloudsim ios",
+    "update:production": "bunx eas-cli@latest update --channel production --environment production",
     "web": "expo start --web",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tools.json",
